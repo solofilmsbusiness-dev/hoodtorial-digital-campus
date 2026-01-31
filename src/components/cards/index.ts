@@ -1,3 +1,4 @@
 export { CourseCard } from "./CourseCard";
-export { TierCard } from "./TierCard";
+export { CourseListItem } from "./CourseListItem";
 export { FacultyCard } from "./FacultyCard";
+export { TierCard } from "./TierCard";

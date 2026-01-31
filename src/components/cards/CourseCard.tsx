@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Clock, BookOpen } from "lucide-react";
+import { Clock, BookOpen, ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
 
 interface CourseCardProps {
   code: string;
@@ -32,9 +33,10 @@ export function CourseCard({
   };
 
   return (
-    <div
+    <Link
+      to={`/course/${code}`}
       className={cn(
-        "card-urban group h-full flex flex-col",
+        "card-urban group h-full flex flex-col hover:border-primary transition-colors",
         className
       )}
     >
@@ -58,7 +60,7 @@ export function CourseCard({
 
       {/* Description */}
       {description && (
-        <p className="text-sm text-muted-foreground leading-relaxed mb-4 flex-1">
+        <p className="text-sm text-muted-foreground leading-relaxed mb-4 flex-1 line-clamp-3">
           {description}
         </p>
       )}
@@ -86,8 +88,11 @@ export function CourseCard({
         <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
           Credits
         </span>
-        <span className="text-2xl font-black text-primary">{credits}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-2xl font-black text-primary">{credits}</span>
+          <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+        </div>
       </div>
-    </div>
+    </Link>
   );
 }

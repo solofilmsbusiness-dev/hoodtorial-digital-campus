@@ -1,234 +1,9 @@
-import { PageLayout, Section, SectionHeader } from "@/components/layout";
-import { CourseCard } from "@/components/cards";
+import { PageLayout, Section } from "@/components/layout";
+import { CourseCard, CourseListItem } from "@/components/cards";
 import { Link } from "react-router-dom";
-import { ArrowRight, BookOpen, Film, Palette, Clapperboard, Briefcase, Clock, Award, Users } from "lucide-react";
+import { ArrowRight, BookOpen, Clock, Award, Users, LayoutGrid, List } from "lucide-react";
 import { useState } from "react";
-
-const departments = [
-  {
-    id: "all",
-    name: "All Courses",
-    icon: BookOpen,
-  },
-  {
-    id: "cinematography",
-    name: "Cinematography",
-    icon: Film,
-    description: "Master the art of visual storytelling through lens, light, and movement. Learn to capture stunning footage with any device.",
-    outcomes: ["Camera techniques", "Lighting setups", "Composition rules", "Mobile filmmaking", "Lens selection", "Exposure control"],
-    color: "primary",
-  },
-  {
-    id: "post-production",
-    name: "Post-Production",
-    icon: Palette,
-    description: "Transform raw footage into polished films through editing, color grading, and sound design.",
-    outcomes: ["Video editing", "Color grading", "Sound design", "Motion graphics", "VFX basics", "Audio mixing"],
-    color: "neon-purple",
-  },
-  {
-    id: "directing",
-    name: "Directing",
-    icon: Clapperboard,
-    description: "Lead creative vision from concept to final cut. Master storytelling and working with talent.",
-    outcomes: ["Story structure", "Working with talent", "Shot planning", "Creative leadership", "Visual language", "Narrative pacing"],
-    color: "accent",
-  },
-  {
-    id: "production",
-    name: "Production",
-    icon: Briefcase,
-    description: "Plan, organize, and execute film projects from start to finish. Business and logistics of filmmaking.",
-    outcomes: ["Pre-production", "Budget management", "Scheduling", "Team coordination", "Location scouting", "Client relations"],
-    color: "neon-pink",
-  },
-];
-
-const courses = [
-  // ==================== CINEMATOGRAPHY ====================
-  {
-    code: "HU-101",
-    title: "iPhone Cinematography Fundamentals",
-    department: "Cinematography",
-    departmentId: "cinematography",
-    credits: 3,
-    level: "Beginner" as const,
-    description: "Master the basics of shooting cinematic footage on your iPhone. Learn optimal settings, stabilization techniques, and composition rules that make your footage look professional.",
-    lessons: 8,
-    duration: "4 weeks",
-  },
-  {
-    code: "HU-102",
-    title: "Lighting for Mobile Film",
-    department: "Cinematography",
-    departmentId: "cinematography",
-    credits: 4,
-    level: "Beginner" as const,
-    description: "Control light like a pro using natural and affordable artificial sources. Create mood, depth, and cinematic looks without expensive gear.",
-    lessons: 10,
-    duration: "5 weeks",
-  },
-  {
-    code: "HU-201",
-    title: "Advanced Camera Movement",
-    department: "Cinematography",
-    departmentId: "cinematography",
-    credits: 5,
-    level: "Intermediate" as const,
-    description: "Dynamic movement techniques using gimbals, sliders, and intentional handheld style. Add energy and emotion to your shots through motion.",
-    lessons: 12,
-    duration: "6 weeks",
-  },
-  {
-    code: "HU-301",
-    title: "Cinematic Lens Language",
-    department: "Cinematography",
-    departmentId: "cinematography",
-    credits: 5,
-    level: "Advanced" as const,
-    description: "Deep dive into lens selection, depth of field, and the psychological impact of different focal lengths. Master the visual vocabulary of cinema.",
-    lessons: 10,
-    duration: "5 weeks",
-  },
-
-  // ==================== POST-PRODUCTION ====================
-  {
-    code: "HU-103",
-    title: "Editing Fundamentals",
-    department: "Post-Production",
-    departmentId: "post-production",
-    credits: 3,
-    level: "Beginner" as const,
-    description: "Learn the language of editing: cuts, pacing, and story flow. Master the timeline and build compelling sequences from raw footage.",
-    lessons: 10,
-    duration: "5 weeks",
-  },
-  {
-    code: "HU-104",
-    title: "Mobile Editing Workflow",
-    department: "Post-Production",
-    departmentId: "post-production",
-    credits: 3,
-    level: "Beginner" as const,
-    description: "Edit professional content entirely on your phone or tablet. Learn efficient mobile workflows using apps like CapCut, LumaFusion, and more.",
-    lessons: 8,
-    duration: "4 weeks",
-  },
-  {
-    code: "HU-202",
-    title: "Color Grading Masterclass",
-    department: "Post-Production",
-    departmentId: "post-production",
-    credits: 5,
-    level: "Intermediate" as const,
-    description: "Professional color grading techniques that transform your footage. Create signature looks, match shots, and evoke emotion through color.",
-    lessons: 14,
-    duration: "7 weeks",
-  },
-  {
-    code: "HU-302",
-    title: "Sound Design & Audio Mix",
-    department: "Post-Production",
-    departmentId: "post-production",
-    credits: 5,
-    level: "Advanced" as const,
-    description: "Create immersive audio landscapes and professional sound mixes. Layer sound effects, music, and dialogue for maximum impact.",
-    lessons: 12,
-    duration: "6 weeks",
-  },
-
-  // ==================== DIRECTING ====================
-  {
-    code: "HU-105",
-    title: "Visual Storytelling Basics",
-    department: "Directing",
-    departmentId: "directing",
-    credits: 3,
-    level: "Beginner" as const,
-    description: "Tell stories through images. Master the fundamentals of visual narrative, scene construction, and how to guide viewer attention.",
-    lessons: 8,
-    duration: "4 weeks",
-  },
-  {
-    code: "HU-203",
-    title: "Documentary Storytelling",
-    department: "Directing",
-    departmentId: "directing",
-    credits: 5,
-    level: "Intermediate" as const,
-    description: "Craft compelling documentary narratives from concept to final cut. Interview techniques, story structure, and ethical considerations.",
-    lessons: 12,
-    duration: "6 weeks",
-  },
-  {
-    code: "HU-204",
-    title: "Music Video Direction",
-    department: "Directing",
-    departmentId: "directing",
-    credits: 4,
-    level: "Intermediate" as const,
-    description: "Create visually stunning music videos. Concept development, performance direction, and syncing visuals to audio.",
-    lessons: 10,
-    duration: "5 weeks",
-  },
-  {
-    code: "HU-303",
-    title: "Directing Talent & Performance",
-    department: "Directing",
-    departmentId: "directing",
-    credits: 5,
-    level: "Advanced" as const,
-    description: "Work with actors and on-screen talent to get authentic, powerful performances. Communication, rehearsal, and on-set techniques.",
-    lessons: 10,
-    duration: "5 weeks",
-  },
-
-  // ==================== PRODUCTION ====================
-  {
-    code: "HU-106",
-    title: "Pre-Production Planning",
-    department: "Production",
-    departmentId: "production",
-    credits: 3,
-    level: "Beginner" as const,
-    description: "Plan your shoots like a pro. Scripts, shot lists, storyboards, and schedules that keep projects on track and on budget.",
-    lessons: 8,
-    duration: "4 weeks",
-  },
-  {
-    code: "HU-205",
-    title: "Budget Filmmaking",
-    department: "Production",
-    departmentId: "production",
-    credits: 4,
-    level: "Intermediate" as const,
-    description: "Create professional results on limited budgets. Maximize every dollar, find free resources, and deliver high-value productions.",
-    lessons: 10,
-    duration: "5 weeks",
-  },
-  {
-    code: "HU-206",
-    title: "Client Management & Freelancing",
-    department: "Production",
-    departmentId: "production",
-    credits: 4,
-    level: "Intermediate" as const,
-    description: "Build a sustainable freelance business. Pricing, contracts, client communication, and building long-term relationships.",
-    lessons: 8,
-    duration: "4 weeks",
-  },
-  {
-    code: "HU-304",
-    title: "Capstone Project Management",
-    department: "Production",
-    departmentId: "production",
-    credits: 5,
-    level: "Advanced" as const,
-    description: "Lead a complete film production from concept to delivery. Coordinate teams, manage timelines, and deliver your capstone film.",
-    lessons: 12,
-    duration: "8 weeks",
-  },
-];
+import { courses, departments } from "@/data/courses";
 
 const stats = [
   { icon: BookOpen, value: "16", label: "Total Courses" },
@@ -239,6 +14,7 @@ const stats = [
 
 const Academics = () => {
   const [activeFilter, setActiveFilter] = useState("all");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   const filteredCourses = activeFilter === "all" 
     ? courses 
@@ -341,27 +117,70 @@ const Academics = () => {
           <div className="text-sm text-muted-foreground">
             Showing <span className="text-foreground font-bold">{filteredCourses.length}</span> courses
           </div>
-          <div className="flex gap-6 text-sm">
-            <div className="text-muted-foreground">
-              Credits: <span className="text-primary font-bold">{totalCredits}</span>
+          
+          <div className="flex items-center gap-6">
+            <div className="flex gap-4 text-sm">
+              <div className="text-muted-foreground">
+                Credits: <span className="text-primary font-bold">{totalCredits}</span>
+              </div>
+              <div className="text-muted-foreground">
+                Lessons: <span className="text-foreground font-bold">{totalLessons}</span>
+              </div>
             </div>
-            <div className="text-muted-foreground">
-              Lessons: <span className="text-foreground font-bold">{totalLessons}</span>
+
+            {/* View Toggle */}
+            <div className="flex border-2 border-border">
+              <button
+                onClick={() => setViewMode("grid")}
+                className={`p-2 transition-colors ${
+                  viewMode === "grid" 
+                    ? "bg-primary text-primary-foreground" 
+                    : "bg-transparent text-muted-foreground hover:text-foreground"
+                }`}
+                aria-label="Grid view"
+              >
+                <LayoutGrid className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setViewMode("list")}
+                className={`p-2 transition-colors ${
+                  viewMode === "list" 
+                    ? "bg-primary text-primary-foreground" 
+                    : "bg-transparent text-muted-foreground hover:text-foreground"
+                }`}
+                aria-label="List view"
+              >
+                <List className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredCourses.map((course, index) => (
-            <div 
-              key={course.code} 
-              className="animate-reveal"
-              style={{ animationDelay: `${index * 0.05}s` }}
-            >
-              <CourseCard {...course} />
-            </div>
-          ))}
-        </div>
+        {viewMode === "grid" ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredCourses.map((course, index) => (
+              <div 
+                key={course.code} 
+                className="animate-reveal"
+                style={{ animationDelay: `${index * 0.05}s` }}
+              >
+                <CourseCard {...course} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredCourses.map((course, index) => (
+              <div 
+                key={course.code} 
+                className="animate-reveal"
+                style={{ animationDelay: `${index * 0.03}s` }}
+              >
+                <CourseListItem {...course} />
+              </div>
+            ))}
+          </div>
+        )}
       </Section>
 
       {/* Degree Path CTA */}
