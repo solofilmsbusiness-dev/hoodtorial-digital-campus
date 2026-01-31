@@ -1,0 +1,173 @@
+import { useState } from "react";
+import { useParams, Link } from "react-router-dom";
+import { PageLayout, Section } from "@/components/layout";
+import { ModuleAccordion, VideoPlayer, QuizCard } from "@/components/course";
+import { Badge } from "@/components/ui/badge";
+import { getCourseByCode, getTotalLessonsCount, getTotalQuizzesCount, type Lesson } from "@/data/courses";
+import { ArrowLeft, Clock, BookOpen, Award, CheckCircle2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const CourseDetail = () => {
+  const { code } = useParams<{ code: string }>();
+  const course = getCourseByCode(code || "");
+  const [activeLesson, setActiveLesson] = useState<Lesson | undefined>(
+    course?.modules[0]?.lessons[0]
+  );
+
+  if (!course) {
+    return (
+      <PageLayout>
+        <Section className="pt-32">
+          <div className="text-center">
+            <h1 className="heading-2 text-foreground mb-4">Course Not Found</h1>
+            <p className="text-muted-foreground mb-8">The course you're looking for doesn't exist.</p>
+            <Link to="/academics" className="btn-brutal inline-flex">
+              <ArrowLeft className="mr-2 h-5 w-5" />
+              Back to Courses
+            </Link>
+          </div>
+        </Section>
+      </PageLayout>
+    );
+  }
+
+  const levelColors = {
+    Beginner: "bg-accent/20 text-accent border-accent/50",
+    Intermediate: "bg-primary/20 text-primary border-primary/50",
+    Advanced: "bg-neon-purple/20 text-neon-purple border-neon-purple/50",
+  };
+
+  const totalLessons = getTotalLessonsCount(course);
+  const totalQuizzes = getTotalQuizzesCount(course);
+
+  return (
+    <PageLayout>
+      {/* Hero Header */}
+      <section className="relative pt-24 pb-8 bg-noise border-b-2 border-border">
+        <div className="absolute inset-0 bg-grid opacity-50" />
+        <div className="container-wide relative z-10">
+          <Link 
+            to="/academics" 
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-6"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Courses
+          </Link>
+
+          <div className="flex flex-col lg:flex-row gap-8 items-start">
+            <div className="flex-1">
+              <div className="flex flex-wrap items-center gap-3 mb-4">
+                <span className="tag-sticker">{course.code}</span>
+                <Badge variant="outline" className={cn("border-2", levelColors[course.level])}>
+                  {course.level}
+                </Badge>
+              </div>
+
+              <h1 className="heading-2 text-foreground mb-4">{course.title}</h1>
+              <p className="text-muted-foreground mb-6">{course.description}</p>
+
+              <div className="flex flex-wrap gap-4">
+                <div className="flex items-center gap-2 px-4 py-2 bg-muted border border-border">
+                  <BookOpen className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium">{totalLessons} Lessons</span>
+                </div>
+                <div className="flex items-center gap-2 px-4 py-2 bg-muted border border-border">
+                  <CheckCircle2 className="w-4 h-4 text-neon-purple" />
+                  <span className="text-sm font-medium">{totalQuizzes} Quizzes</span>
+                </div>
+                <div className="flex items-center gap-2 px-4 py-2 bg-muted border border-border">
+                  <Clock className="w-4 h-4 text-accent" />
+                  <span className="text-sm font-medium">{course.duration}</span>
+                </div>
+                <div className="flex items-center gap-2 px-4 py-2 bg-muted border border-border">
+                  <Award className="w-4 h-4 text-gold" />
+                  <span className="text-sm font-medium">{course.credits} Credits</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Progress Card */}
+            <div className="w-full lg:w-72 border-2 border-primary bg-card p-6">
+              <div className="text-center mb-4">
+                <div className="text-4xl font-black text-primary">0%</div>
+                <div className="text-sm text-muted-foreground mt-1">Complete</div>
+              </div>
+              <div className="h-2 bg-muted border border-border mb-4">
+                <div className="h-full bg-primary w-0" />
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Lessons</span>
+                  <span className="font-bold text-foreground">0/{totalLessons}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Quizzes</span>
+                  <span className="font-bold text-foreground">0/{totalQuizzes}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Course Content */}
+      <Section className="py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Video Player Area */}
+          <div className="lg:col-span-2 space-y-6">
+            {activeLesson && (
+              <>
+                <VideoPlayer lesson={activeLesson} />
+                <div className="border-2 border-border p-6 bg-card/50">
+                  <h2 className="heading-4 text-foreground mb-2">{activeLesson.title}</h2>
+                  <p className="text-muted-foreground text-sm">
+                    This lesson covers essential concepts and practical techniques. 
+                    Complete the lesson and move on to the next one to continue your progress.
+                  </p>
+                  <div className="flex gap-4 mt-6">
+                    <button className="btn-brutal">
+                      Mark Complete
+                      <CheckCircle2 className="ml-2 h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Course Modules Sidebar */}
+          <div className="space-y-4">
+            <h3 className="heading-4 text-foreground">Course Content</h3>
+            
+            <div className="space-y-3">
+              {course.modules.map((module, index) => (
+                <ModuleAccordion
+                  key={module.id}
+                  module={module}
+                  index={index}
+                  activeLesson={activeLesson}
+                  onLessonSelect={setActiveLesson}
+                  defaultOpen={index === 0}
+                />
+              ))}
+
+              {course.finalExam && (
+                <div className="pt-4 border-t-2 border-border">
+                  <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">
+                    Final Exam
+                  </h4>
+                  <QuizCard
+                    quiz={course.finalExam}
+                    type="final"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </Section>
+    </PageLayout>
+  );
+};
+
+export default CourseDetail;
