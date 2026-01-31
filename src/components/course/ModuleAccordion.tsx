@@ -3,13 +3,14 @@ import { ChevronDown, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LessonCard } from "./LessonCard";
 import { QuizCard } from "./QuizCard";
-import type { Module, Lesson } from "@/data/courses";
+import type { Module, Lesson, Quiz } from "@/data/courses";
 
 interface ModuleAccordionProps {
   module: Module;
   index: number;
   activeLesson?: Lesson;
   onLessonSelect: (lesson: Lesson) => void;
+  onQuizClick?: (quiz: Quiz) => void;
   defaultOpen?: boolean;
 }
 
@@ -18,6 +19,7 @@ export function ModuleAccordion({
   index, 
   activeLesson, 
   onLessonSelect,
+  onQuizClick,
   defaultOpen = false 
 }: ModuleAccordionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -74,6 +76,7 @@ export function ModuleAccordion({
             <QuizCard
               quiz={module.quiz}
               type="module"
+              onClick={onQuizClick ? () => onQuizClick(module.quiz!) : undefined}
             />
           )}
         </div>
