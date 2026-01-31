@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { PageLayout, Section } from "@/components/layout";
-import { ModuleAccordion, VideoPlayer, QuizCard } from "@/components/course";
+import { ModuleAccordion, VideoPlayer, QuizCard, QuizPlayer } from "@/components/course";
 import { Badge } from "@/components/ui/badge";
-import { getCourseByCode, getTotalLessonsCount, getTotalQuizzesCount, type Lesson } from "@/data/courses";
-import { ArrowLeft, Clock, BookOpen, Award, CheckCircle2 } from "lucide-react";
+import { getCourseByCode, getTotalLessonsCount, getTotalQuizzesCount, type Lesson, type Quiz } from "@/data/courses";
+import { ArrowLeft, Clock, BookOpen, Award, CheckCircle2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 const CourseDetail = () => {
   const { code } = useParams<{ code: string }>();
@@ -13,6 +14,8 @@ const CourseDetail = () => {
   const [activeLesson, setActiveLesson] = useState<Lesson | undefined>(
     course?.modules[0]?.lessons[0]
   );
+  const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null);
+  const { toast } = useToast();
 
   if (!course) {
     return (
@@ -40,8 +43,46 @@ const CourseDetail = () => {
   const totalLessons = getTotalLessonsCount(course);
   const totalQuizzes = getTotalQuizzesCount(course);
 
+  const handleQuizComplete = (score: number, passed: boolean) => {
+    toast({
+      title: passed ? "Quiz Passed! 🎉" : "Quiz Not Passed",
+      description: passed 
+        ? `Great job! You scored ${score}%.`
+        : `You scored ${score}%. Review the material and try again.`,
+      variant: passed ? "default" : "destructive",
+    });
+  };
+
+  const handleQuizClick = (quiz: Quiz) => {
+    setActiveQuiz(quiz);
+  };
+
   return (
     <PageLayout>
+      {/* Quiz Modal Overlay */}
+      {activeQuiz && (
+        <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm overflow-y-auto">
+          <div className="container-wide py-8">
+            <div className="flex justify-end mb-4">
+              <button 
+                onClick={() => setActiveQuiz(null)}
+                className="p-2 border-2 border-border hover:border-primary text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Close quiz"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="max-w-3xl mx-auto">
+              <QuizPlayer 
+                quiz={activeQuiz} 
+                onComplete={handleQuizComplete}
+                onClose={() => setActiveQuiz(null)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Hero Header */}
       <section className="relative pt-24 pb-8 bg-noise border-b-2 border-border">
         <div className="absolute inset-0 bg-grid opacity-50" />
@@ -147,6 +188,7 @@ const CourseDetail = () => {
                   index={index}
                   activeLesson={activeLesson}
                   onLessonSelect={setActiveLesson}
+                  onQuizClick={handleQuizClick}
                   defaultOpen={index === 0}
                 />
               ))}
@@ -159,6 +201,7 @@ const CourseDetail = () => {
                   <QuizCard
                     quiz={course.finalExam}
                     type="final"
+                    onClick={() => handleQuizClick(course.finalExam!)}
                   />
                 </div>
               )}
