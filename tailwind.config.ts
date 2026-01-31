@@ -57,16 +57,16 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        // Custom Hoodtorial University colors
+        // Urban neon palette
         gold: {
           DEFAULT: "hsl(var(--gold))",
           light: "hsl(var(--gold-light))",
           dark: "hsl(var(--gold-dark))",
         },
-        steel: {
-          DEFAULT: "hsl(var(--steel))",
-          light: "hsl(var(--steel-light))",
-          dark: "hsl(var(--steel-dark))",
+        neon: {
+          purple: "hsl(var(--neon-purple))",
+          green: "hsl(var(--neon-green))",
+          pink: "hsl(var(--neon-pink))",
         },
         charcoal: {
           DEFAULT: "hsl(var(--charcoal))",
@@ -93,36 +93,53 @@ export default {
           to: { height: "0" },
         },
         "fade-in": {
-          from: { opacity: "0", transform: "translateY(10px)" },
-          to: { opacity: "1", transform: "translateY(0)" },
-        },
-        "fade-in-up": {
           from: { opacity: "0", transform: "translateY(20px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        "fade-in-up": {
+          from: { opacity: "0", transform: "translateY(40px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
         "slide-in-right": {
-          from: { opacity: "0", transform: "translateX(20px)" },
+          from: { opacity: "0", transform: "translateX(40px)" },
           to: { opacity: "1", transform: "translateX(0)" },
+        },
+        "scale-up": {
+          from: { opacity: "0", transform: "scale(0.9)" },
+          to: { opacity: "1", transform: "scale(1)" },
         },
         shimmer: {
           "100%": { transform: "translateX(100%)" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-10px)" },
+        },
+        pulse: {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.5" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "fade-in": "fade-in 0.5s ease-out forwards",
-        "fade-in-up": "fade-in-up 0.6s ease-out forwards",
-        "slide-in-right": "slide-in-right 0.5s ease-out forwards",
+        "fade-in": "fade-in 0.6s ease-out forwards",
+        "fade-in-up": "fade-in-up 0.8s ease-out forwards",
+        "slide-in-right": "slide-in-right 0.6s ease-out forwards",
+        "scale-up": "scale-up 0.5s ease-out forwards",
+        "float": "float 3s ease-in-out infinite",
+        "pulse": "pulse 2s ease-in-out infinite",
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-gold': 'linear-gradient(135deg, hsl(var(--gold-dark)), hsl(var(--gold)), hsl(var(--gold-light)))',
-        'gradient-steel': 'linear-gradient(135deg, hsl(var(--steel-dark)), hsl(var(--steel)), hsl(var(--steel-light)))',
+        'gradient-neon': 'linear-gradient(135deg, hsl(var(--neon-purple)), hsl(var(--neon-pink)), hsl(var(--gold)))',
       },
       boxShadow: {
-        'glow-gold': '0 0 20px -5px hsl(var(--gold) / 0.3)',
-        'glow-steel': '0 0 20px -5px hsl(var(--steel) / 0.3)',
+        'brutal': '4px 4px 0 hsl(var(--foreground))',
+        'brutal-lg': '8px 8px 0 hsl(var(--foreground))',
+        'glow-gold': '0 0 30px -5px hsl(var(--gold) / 0.5)',
+        'glow-purple': '0 0 30px -5px hsl(var(--neon-purple) / 0.5)',
       },
     },
   },

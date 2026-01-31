@@ -4,16 +4,14 @@ interface SectionProps {
   children: React.ReactNode;
   className?: string;
   id?: string;
-  dark?: boolean;
 }
 
-export function Section({ children, className, id, dark = false }: SectionProps) {
+export function Section({ children, className, id }: SectionProps) {
   return (
     <section
       id={id}
       className={cn(
-        "py-16 md:py-24",
-        dark && "bg-charcoal-dark",
+        "py-20 md:py-28",
         className
       )}
     >
@@ -46,15 +44,15 @@ export function SectionHeader({
       className
     )}>
       {eyebrow && (
-        <span className="label-tape mb-4 inline-block">
+        <span className="tag-sticker mb-6 inline-block">
           {eyebrow}
         </span>
       )}
-      <h2 className="heading-2 text-foreground mt-2">
+      <h2 className="heading-2 text-foreground mt-4">
         {title}
       </h2>
       {description && (
-        <p className="body-large text-muted-foreground mt-4 max-w-2xl">
+        <p className="body-large text-muted-foreground mt-4 max-w-2xl mx-auto">
           {description}
         </p>
       )}
