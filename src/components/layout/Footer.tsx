@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import logo from "@/assets/logo.png";
 
 const footerLinks = {
   academics: [
@@ -37,12 +38,11 @@ export function Footer() {
           {/* Brand Column */}
           <div className="md:col-span-1">
             <Link to="/" className="inline-block mb-4">
-              <span className="text-3xl font-black tracking-tighter text-foreground">
-                HOODTORIAL
-              </span>
-              <span className="block text-xs font-bold tracking-[0.3em] text-primary">
-                UNIVERSITY
-              </span>
+              <img 
+                src={logo} 
+                alt="Hoodtorial University" 
+                className="h-16 w-auto object-contain invert"
+              />
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed mt-4">
               Where hustle meets Hollywood. Film school for the culture.
@@ -113,7 +113,7 @@ export function Footer() {
             © {new Date().getFullYear()} HOODTORIAL UNIVERSITY. ALL RIGHTS RESERVED.
           </p>
           <div className="tag-sticker">
-            EST. 2024
+            EST. 2025
           </div>
         </div>
       </div>
