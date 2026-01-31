@@ -42,10 +42,9 @@ export function Navigation() {
             ))}
           </div>
 
-          {/* CTA Button */}
           <div className="hidden md:block">
             <Link 
-              to="/enroll"
+              to="/enrollment"
               className="btn-brutal text-sm"
             >
               Enroll Now
@@ -77,7 +76,7 @@ export function Navigation() {
                 </Link>
               ))}
               <Link 
-                to="/enroll" 
+                to="/enrollment" 
                 onClick={() => setIsOpen(false)}
                 className="btn-brutal text-center mt-4"
               >
