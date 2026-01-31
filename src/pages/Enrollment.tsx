@@ -6,7 +6,7 @@ import mascot from "@/assets/mascot.png";
 const tiers = [
   {
     name: "Freshman",
-    price: 29,
+    price: 49,
     description: "Perfect for getting started with mobile filmmaking fundamentals.",
     features: [
       "Access to 4 foundational courses",
@@ -19,7 +19,7 @@ const tiers = [
   },
   {
     name: "Sophomore",
-    price: 79,
+    price: 99,
     description: "For serious creators ready to level up their craft and build a portfolio.",
     features: [
       "Access to all 16 courses",
@@ -33,7 +33,7 @@ const tiers = [
   },
   {
     name: "Graduate",
-    price: 149,
+    price: 199,
     description: "The complete Hoodtorial experience with degree certification.",
     features: [
       "Everything in Sophomore",
