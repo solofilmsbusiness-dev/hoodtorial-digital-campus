@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
+import logo from "@/assets/logo.png";
 
 const navLinks = [
   { name: "Academics", href: "/academics" },
@@ -15,19 +16,16 @@ export function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-sm border-b-2 border-border">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b-2 border-border">
       <nav className="container-wide">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
-          <Link to="/" className="group flex items-center gap-2">
-            <div className="flex flex-col leading-none">
-              <span className="text-2xl md:text-3xl font-black tracking-tighter text-foreground group-hover:text-primary transition-colors">
-                HOODTORIAL
-              </span>
-              <span className="text-[10px] md:text-xs font-bold tracking-[0.3em] text-primary">
-                UNIVERSITY
-              </span>
-            </div>
+          <Link to="/" className="group flex items-center gap-3">
+            <img 
+              src={logo} 
+              alt="Hoodtorial University" 
+              className="h-12 md:h-14 w-auto object-contain invert"
+            />
           </Link>
 
           {/* Desktop Navigation */}
