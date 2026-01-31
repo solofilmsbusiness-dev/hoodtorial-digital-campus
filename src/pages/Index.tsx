@@ -2,7 +2,7 @@ import { PageLayout, Section, SectionHeader } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { CourseCard, TierCard } from "@/components/cards";
 import { Link } from "react-router-dom";
-import { ArrowRight, Play, Zap, Trophy, Target, Sparkles, Film, GraduationCap } from "lucide-react";
+import { ArrowRight, Play, Zap, Trophy, Target, Sparkles, Film, GraduationCap, Check } from "lucide-react";
 
 const stats = [
   { value: "12", label: "Courses" },
@@ -107,44 +107,46 @@ const Index = () => {
   return (
     <PageLayout>
       {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-grid">
-        {/* Gradient overlays */}
-        <div className="absolute inset-0 bg-gradient-to-b from-background via-background/95 to-background" />
-        <div className="absolute top-0 left-0 w-full h-full">
-          <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[120px]" />
-          <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-neon-purple/10 rounded-full blur-[100px]" />
-        </div>
+      <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-noise">
+        {/* Background effects */}
+        <div className="absolute inset-0 bg-grid" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/50 to-background" />
+        
+        {/* Animated orbs */}
+        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[150px] animate-pulse" />
+        <div className="absolute bottom-1/3 right-1/4 w-[400px] h-[400px] bg-neon-purple/5 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: "1s" }} />
+        <div className="absolute top-1/2 right-1/3 w-[300px] h-[300px] bg-neon-pink/5 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: "2s" }} />
 
         <div className="container-wide relative z-10 py-20">
           <div className="max-w-5xl mx-auto">
             {/* Tag */}
-            <div className="flex justify-center mb-8 animate-fade-in">
-              <span className="tag-sticker">
+            <div className="flex justify-center mb-8">
+              <span className="tag-sticker animate-reveal">
                 <Sparkles className="w-3 h-3 mr-2" />
                 Now Enrolling
               </span>
             </div>
 
             {/* Headline */}
-            <h1 className="heading-1 text-center mb-8 animate-fade-in-up">
-              <span className="block">SHOOT BETTER.</span>
-              <span className="block text-neon-gradient">EDIT SMARTER.</span>
-              <span className="block">GRADUATE DIFFERENT.</span>
+            <h1 className="heading-1 text-center mb-8">
+              <span className="block animate-reveal stagger-1">SHOOT BETTER.</span>
+              <span className="block text-neon-gradient text-glow animate-reveal stagger-2">EDIT SMARTER.</span>
+              <span className="block animate-reveal stagger-3">GRADUATE DIFFERENT.</span>
             </h1>
 
             {/* Subheadline */}
-            <p className="body-large text-muted-foreground text-center max-w-2xl mx-auto mb-12 animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
+            <p className="body-large text-muted-foreground text-center max-w-2xl mx-auto mb-12 animate-reveal stagger-4">
               Film school for creators who want to master the craft, 
               not just watch tutorials. Earn a real degree.
             </p>
 
             {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up" style={{ animationDelay: "0.3s" }}>
-              <Link to="/enroll" className="btn-brutal">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-reveal stagger-5">
+              <Link to="/enroll" className="btn-brutal animate-glow-pulse">
                 Start Learning
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
-              <Button asChild variant="outline" size="lg" className="border-2 border-border hover:border-primary font-bold uppercase tracking-wide">
+              <Button asChild variant="outline" size="lg" className="border-2 border-border hover:border-primary hover:bg-primary/10 font-bold uppercase tracking-wide transition-all duration-300">
                 <Link to="/academics">
                   <Play className="mr-2 h-4 w-4" />
                   View Curriculum
@@ -153,9 +155,13 @@ const Index = () => {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-20 animate-fade-in-up" style={{ animationDelay: "0.4s" }}>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-24">
               {stats.map((stat, index) => (
-                <div key={index} className="text-center p-6 border-2 border-border bg-card/50">
+                <div 
+                  key={index} 
+                  className="text-center p-6 border-2 border-border bg-card/30 backdrop-blur-sm animate-reveal hover:border-primary transition-all duration-300"
+                  style={{ animationDelay: `${0.6 + index * 0.1}s` }}
+                >
                   <div className="text-4xl md:text-5xl font-black text-primary mb-1">{stat.value}</div>
                   <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{stat.label}</div>
                 </div>
@@ -165,15 +171,15 @@ const Index = () => {
         </div>
 
         {/* Scroll indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-pulse">
-          <div className="w-6 h-10 border-2 border-muted-foreground rounded-full flex justify-center pt-2">
-            <div className="w-1 h-2 bg-muted-foreground rounded-full animate-bounce" />
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
+          <div className="w-6 h-10 border-2 border-primary/50 rounded-full flex justify-center pt-2 animate-glow-pulse">
+            <div className="w-1 h-2 bg-primary rounded-full animate-bounce" />
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <Section className="bg-charcoal-dark">
+      <Section className="bg-card/50 bg-noise">
         <SectionHeader
           eyebrow="Why HU"
           title="NOT YOUR AVERAGE FILM SCHOOL"
@@ -185,13 +191,13 @@ const Index = () => {
           {features.map((feature, index) => (
             <div 
               key={index} 
-              className="card-urban group"
-              style={{ animationDelay: `${index * 0.1}s` }}
+              className="card-urban group animate-reveal"
+              style={{ animationDelay: `${index * 0.15}s` }}
             >
-              <div className="w-14 h-14 mb-6 bg-primary/10 border-2 border-primary flex items-center justify-center group-hover:bg-primary transition-colors">
-                <feature.icon className="h-7 w-7 text-primary group-hover:text-primary-foreground transition-colors" />
+              <div className="w-16 h-16 mb-6 bg-primary/10 border-2 border-primary/50 flex items-center justify-center group-hover:bg-primary group-hover:border-primary transition-all duration-500">
+                <feature.icon className="h-8 w-8 text-primary group-hover:text-primary-foreground transition-colors duration-500" />
               </div>
-              <h3 className="heading-4 text-foreground mb-3">{feature.title}</h3>
+              <h3 className="heading-4 text-foreground mb-3 group-hover:text-primary transition-colors duration-300">{feature.title}</h3>
               <p className="text-muted-foreground">{feature.description}</p>
             </div>
           ))}
@@ -199,7 +205,7 @@ const Index = () => {
       </Section>
 
       {/* How It Works */}
-      <Section className="bg-stripes">
+      <Section>
         <SectionHeader
           eyebrow="The Process"
           title="HOW GRADUATION WORKS"
@@ -208,14 +214,18 @@ const Index = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {graduationSteps.map((step, index) => (
-            <div key={index} className="relative text-center group">
+            <div 
+              key={index} 
+              className="relative text-center group animate-reveal"
+              style={{ animationDelay: `${index * 0.1}s` }}
+            >
               {/* Connector line */}
               {index < graduationSteps.length - 1 && (
-                <div className="hidden md:block absolute top-8 left-1/2 w-full h-0.5 bg-border" />
+                <div className="hidden md:block absolute top-8 left-1/2 w-full h-0.5 bg-gradient-to-r from-primary/50 to-transparent" />
               )}
               
               {/* Number */}
-              <div className="relative z-10 w-16 h-16 mx-auto mb-4 bg-primary text-primary-foreground flex items-center justify-center font-black text-xl border-2 border-primary group-hover:bg-background group-hover:text-primary transition-colors">
+              <div className="relative z-10 w-16 h-16 mx-auto mb-4 bg-primary text-primary-foreground flex items-center justify-center font-black text-xl border-2 border-primary group-hover:bg-transparent group-hover:text-primary transition-all duration-500 group-hover:animate-glow-pulse">
                 {step.number}
               </div>
               
@@ -227,7 +237,7 @@ const Index = () => {
       </Section>
 
       {/* Featured Courses */}
-      <Section className="bg-charcoal-dark">
+      <Section className="bg-card/50 bg-noise">
         <SectionHeader
           eyebrow="Curriculum"
           title="FEATURED CLASSES"
@@ -236,7 +246,9 @@ const Index = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {featuredCourses.map((course, index) => (
-            <CourseCard key={index} {...course} />
+            <div key={index} className="animate-reveal" style={{ animationDelay: `${index * 0.15}s` }}>
+              <CourseCard {...course} />
+            </div>
           ))}
         </div>
 
@@ -250,12 +262,12 @@ const Index = () => {
 
       {/* Degree Preview */}
       <Section>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <div className="animate-slide-left">
             <span className="tag-sticker mb-6">Credentials</span>
-            <h2 className="heading-2 text-foreground mb-6">
+            <h2 className="heading-2 text-foreground mb-6 mt-4">
               EARN YOUR
-              <span className="text-gold-gradient"> DEGREE</span>
+              <span className="text-gold-gradient text-glow"> DEGREE</span>
             </h2>
             <p className="body-large text-muted-foreground mb-8">
               Complete 60 credits, pass all exams, submit your capstone film. 
@@ -271,8 +283,12 @@ const Index = () => {
                 "1 capstone film",
                 "Official degree",
               ].map((item, index) => (
-                <div key={index} className="flex items-center gap-3 p-3 border-2 border-border bg-card/50">
-                  <Zap className="w-4 h-4 text-primary shrink-0" />
+                <div 
+                  key={index} 
+                  className="flex items-center gap-3 p-3 border-2 border-border bg-card/50 hover:border-primary transition-all duration-300 animate-reveal"
+                  style={{ animationDelay: `${0.3 + index * 0.1}s` }}
+                >
+                  <Check className="w-4 h-4 text-primary shrink-0" />
                   <span className="text-sm font-medium text-foreground">{item}</span>
                 </div>
               ))}
@@ -287,30 +303,30 @@ const Index = () => {
           </div>
 
           {/* Visual */}
-          <div className="relative flex justify-center items-center">
+          <div className="relative flex justify-center items-center animate-scale-in" style={{ animationDelay: "0.4s" }}>
             <div className="relative">
               {/* Progress visualization */}
-              <div className="w-64 h-64 md:w-80 md:h-80 border-4 border-primary relative">
-                <div className="absolute inset-4 border-2 border-border bg-card/50 flex flex-col items-center justify-center">
-                  <div className="text-6xl md:text-7xl font-black text-primary">75%</div>
+              <div className="w-72 h-72 md:w-80 md:h-80 border-4 border-primary relative animate-border-flow">
+                <div className="absolute inset-4 border-2 border-border bg-card/80 backdrop-blur-sm flex flex-col items-center justify-center">
+                  <div className="text-7xl md:text-8xl font-black text-primary text-glow">75%</div>
                   <div className="text-sm font-bold uppercase tracking-widest text-muted-foreground mt-2">Complete</div>
-                  <div className="mt-4 px-4 py-2 bg-muted text-muted-foreground text-xs font-bold uppercase tracking-wide">
+                  <div className="mt-4 px-4 py-2 bg-muted/50 text-muted-foreground text-xs font-bold uppercase tracking-wide border border-border">
                     45 / 60 Credits
                   </div>
                 </div>
                 
                 {/* Decorative corners */}
-                <div className="absolute -top-2 -left-2 w-4 h-4 bg-primary" />
-                <div className="absolute -top-2 -right-2 w-4 h-4 bg-primary" />
-                <div className="absolute -bottom-2 -left-2 w-4 h-4 bg-primary" />
-                <div className="absolute -bottom-2 -right-2 w-4 h-4 bg-primary" />
+                <div className="absolute -top-2 -left-2 w-4 h-4 bg-primary animate-pulse" />
+                <div className="absolute -top-2 -right-2 w-4 h-4 bg-neon-purple animate-pulse" style={{ animationDelay: "0.5s" }} />
+                <div className="absolute -bottom-2 -left-2 w-4 h-4 bg-neon-pink animate-pulse" style={{ animationDelay: "1s" }} />
+                <div className="absolute -bottom-2 -right-2 w-4 h-4 bg-accent animate-pulse" style={{ animationDelay: "1.5s" }} />
               </div>
 
               {/* Floating tags */}
-              <div className="absolute -top-4 -right-8 tag-sticker rotate-6">
+              <div className="absolute -top-6 -right-6 tag-sticker rotate-6 animate-float">
                 Dean's List
               </div>
-              <div className="absolute -bottom-4 -left-8 tag-outline text-neon-purple border-neon-purple -rotate-3">
+              <div className="absolute -bottom-6 -left-6 tag-outline text-neon-purple border-neon-purple -rotate-3 animate-float" style={{ animationDelay: "1s" }}>
                 In Progress
               </div>
             </div>
@@ -319,7 +335,7 @@ const Index = () => {
       </Section>
 
       {/* Membership Tiers */}
-      <Section className="bg-charcoal-dark">
+      <Section className="bg-card/50 bg-noise">
         <SectionHeader
           eyebrow="Enrollment"
           title="CHOOSE YOUR PATH"
@@ -329,19 +345,21 @@ const Index = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
           {membershipTiers.map((tier, index) => (
-            <TierCard key={index} {...tier} />
+            <div key={index} className="animate-reveal" style={{ animationDelay: `${index * 0.15}s` }}>
+              <TierCard {...tier} />
+            </div>
           ))}
         </div>
       </Section>
 
       {/* Email Capture */}
       <Section>
-        <div className="max-w-2xl mx-auto text-center">
+        <div className="max-w-2xl mx-auto text-center animate-reveal">
           <span className="tag-sticker mb-6">
             <Trophy className="w-3 h-3 mr-2" />
             Free Drops
           </span>
-          <h2 className="heading-3 text-foreground mb-4">
+          <h2 className="heading-3 text-foreground mb-4 mt-4">
             DROPS FROM THE DEAN'S OFFICE
           </h2>
           <p className="text-muted-foreground mb-8">
@@ -352,7 +370,7 @@ const Index = () => {
             <input
               type="email"
               placeholder="your@email.com"
-              className="flex-1 h-14 px-4 border-2 border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary font-medium"
+              className="flex-1 h-14 px-4 border-2 border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-all duration-300 font-medium"
             />
             <button type="submit" className="btn-brutal h-14">
               Subscribe
