@@ -29,17 +29,17 @@ export function TierCard({
   return (
     <div
       className={cn(
-        "relative flex flex-col bg-card border rounded-lg p-6 md:p-8 transition-all duration-300",
+        "relative flex flex-col border-2 p-6 md:p-8 transition-all duration-300 bg-card",
         highlighted
-          ? "border-primary shadow-glow-gold scale-[1.02]"
-          : "border-border hover:border-primary/50",
+          ? "border-primary glow-gold scale-[1.02]"
+          : "border-border hover:border-primary",
         className
       )}
     >
       {/* Highlighted Badge */}
       {highlighted && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-          <span className="label-tape">Most Popular</span>
+        <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+          <span className="tag-sticker">Most Popular</span>
         </div>
       )}
 
@@ -48,10 +48,10 @@ export function TierCard({
 
       {/* Price */}
       <div className="flex items-baseline gap-1 mb-4">
-        <span className="text-4xl md:text-5xl font-bold text-primary">
+        <span className="text-5xl md:text-6xl font-black text-primary">
           ${price}
         </span>
-        <span className="text-muted-foreground">{period}</span>
+        <span className="text-muted-foreground font-medium">{period}</span>
       </div>
 
       {/* Description */}
@@ -61,24 +61,28 @@ export function TierCard({
       <ul className="flex-1 space-y-3 mb-8">
         {features.map((feature, index) => (
           <li key={index} className="flex items-start gap-3">
-            <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+            <div className="w-5 h-5 mt-0.5 bg-primary/20 border border-primary flex items-center justify-center shrink-0">
+              <Check className="h-3 w-3 text-primary" />
+            </div>
             <span className="text-sm text-foreground">{feature}</span>
           </li>
         ))}
       </ul>
 
       {/* CTA Button */}
-      <Button
-        asChild
-        className={cn(
-          "w-full font-bold uppercase tracking-wide",
-          highlighted
-            ? "bg-primary hover:bg-primary/90 text-primary-foreground"
-            : "bg-muted hover:bg-muted/80 text-foreground"
-        )}
-      >
-        <Link to={ctaHref}>{ctaText}</Link>
-      </Button>
+      {highlighted ? (
+        <Link to={ctaHref} className="btn-brutal w-full text-center">
+          {ctaText}
+        </Link>
+      ) : (
+        <Button
+          asChild
+          variant="outline"
+          className="w-full font-bold uppercase tracking-wide border-2 border-border hover:border-primary hover:bg-primary hover:text-primary-foreground h-12"
+        >
+          <Link to={ctaHref}>{ctaText}</Link>
+        </Button>
+      )}
     </div>
   );
 }

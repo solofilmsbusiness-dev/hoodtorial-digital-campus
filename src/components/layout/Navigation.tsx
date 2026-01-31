@@ -2,11 +2,10 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
-import mascot from "@/assets/mascot.png";
 
 const navLinks = [
   { name: "Academics", href: "/academics" },
-  { name: "Degree Paths", href: "/degrees" },
+  { name: "Degrees", href: "/degrees" },
   { name: "Faculty", href: "/faculty" },
   { name: "About", href: "/about" },
   { name: "Shop", href: "/shop" },
@@ -16,21 +15,16 @@ export function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-sm border-b-2 border-border">
       <nav className="container-wide">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3 group">
-            <img 
-              src={mascot} 
-              alt="Hoodtorial University Mascot" 
-              className="h-10 w-10 md:h-12 md:w-12 object-contain transition-transform group-hover:scale-105"
-            />
-            <div className="flex flex-col">
-              <span className="text-lg md:text-xl font-bold tracking-tight text-foreground">
+          <Link to="/" className="group flex items-center gap-2">
+            <div className="flex flex-col leading-none">
+              <span className="text-2xl md:text-3xl font-black tracking-tighter text-foreground group-hover:text-primary transition-colors">
                 HOODTORIAL
               </span>
-              <span className="text-xs tracking-widest text-primary uppercase">
+              <span className="text-[10px] md:text-xs font-bold tracking-[0.3em] text-primary">
                 UNIVERSITY
               </span>
             </div>
@@ -42,18 +36,22 @@ export function Navigation() {
               <Link
                 key={link.name}
                 to={link.href}
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide"
+                className="text-sm font-bold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide relative group"
               >
                 {link.name}
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full" />
               </Link>
             ))}
           </div>
 
           {/* CTA Button */}
           <div className="hidden md:block">
-            <Button asChild className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase tracking-wide">
-              <Link to="/enroll">Enroll Now</Link>
-            </Button>
+            <Link 
+              to="/enroll"
+              className="btn-brutal text-sm"
+            >
+              Enroll Now
+            </Link>
           </div>
 
           {/* Mobile Menu Button */}
@@ -68,21 +66,25 @@ export function Navigation() {
 
         {/* Mobile Navigation */}
         {isOpen && (
-          <div className="md:hidden py-4 border-t border-border animate-fade-in">
+          <div className="md:hidden py-6 border-t-2 border-border animate-fade-in">
             <div className="flex flex-col gap-4">
               {navLinks.map((link) => (
                 <Link
                   key={link.name}
                   to={link.href}
                   onClick={() => setIsOpen(false)}
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide py-2"
+                  className="text-lg font-bold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide py-2"
                 >
                   {link.name}
                 </Link>
               ))}
-              <Button asChild className="mt-4 bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase tracking-wide">
-                <Link to="/enroll" onClick={() => setIsOpen(false)}>Enroll Now</Link>
-              </Button>
+              <Link 
+                to="/enroll" 
+                onClick={() => setIsOpen(false)}
+                className="btn-brutal text-center mt-4"
+              >
+                Enroll Now
+              </Link>
             </div>
           </div>
         )}

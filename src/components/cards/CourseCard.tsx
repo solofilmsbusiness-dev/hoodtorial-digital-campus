@@ -21,22 +21,22 @@ export function CourseCard({
   className,
 }: CourseCardProps) {
   const levelColors = {
-    Beginner: "bg-green-500/20 text-green-400 border-green-500/30",
-    Intermediate: "bg-primary/20 text-primary border-primary/30",
-    Advanced: "bg-red-500/20 text-red-400 border-red-500/30",
+    Beginner: "bg-accent/20 text-accent border-accent/50",
+    Intermediate: "bg-primary/20 text-primary border-primary/50",
+    Advanced: "bg-neon-purple/20 text-neon-purple border-neon-purple/50",
   };
 
   return (
     <div
       className={cn(
-        "group relative bg-card border border-border rounded-lg p-6 card-hover",
+        "card-urban group",
         className
       )}
     >
-      {/* Course Code Badge */}
+      {/* Header */}
       <div className="flex items-start justify-between mb-4">
-        <span className="stamp-badge">{code}</span>
-        <Badge variant="outline" className={cn("text-xs", levelColors[level])}>
+        <span className="tag-sticker text-[10px]">{code}</span>
+        <Badge variant="outline" className={cn("text-xs font-bold border-2", levelColors[level])}>
           {level}
         </Badge>
       </div>
@@ -47,7 +47,7 @@ export function CourseCard({
       </h3>
 
       {/* Department */}
-      <p className="text-sm text-muted-foreground uppercase tracking-wide mb-3">
+      <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">
         {department}
       </p>
 
@@ -59,11 +59,11 @@ export function CourseCard({
       )}
 
       {/* Credits */}
-      <div className="flex items-center gap-2 pt-4 border-t border-border">
-        <span className="text-xs text-muted-foreground uppercase tracking-wide">
+      <div className="flex items-center gap-2 pt-4 border-t-2 border-border">
+        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
           Credits:
         </span>
-        <span className="text-sm font-bold text-primary">{credits}</span>
+        <span className="text-lg font-black text-primary">{credits}</span>
       </div>
     </div>
   );
