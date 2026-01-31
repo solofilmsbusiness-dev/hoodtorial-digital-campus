@@ -54,8 +54,8 @@ export default function About() {
               The People's Film School
             </h1>
             <p className="body-large text-muted-foreground max-w-2xl mx-auto">
-              Democratizing cinematic education for the smartphone generation. 
-              No gatekeepers. No expensive gear. Just pure craft.
+              Democratizing cinematic education for the next generation of filmmakers. 
+              No gatekeepers. No barriers. Just pure craft.
             </p>
           </div>
         </div>
@@ -73,7 +73,7 @@ export default function About() {
               </p>
               <p className="text-muted-foreground text-lg leading-relaxed">
                 Hoodtorial University was founded on a simple belief: the next generation of 
-                groundbreaking filmmakers are already out there, phone in hand, ready to create. 
+                groundbreaking filmmakers are already out there, camera in hand, ready to create. 
                 They just need the knowledge, structure, and community to turn raw talent into 
                 professional-grade craft.
               </p>
@@ -140,18 +140,18 @@ export default function About() {
                 <div className="space-y-4 text-muted-foreground">
                   <p>
                     Hoodtorial University started in 2024 with a simple observation: 
-                    some of the most creative, innovative filmmaking was happening on 
-                    smartphones in neighborhoods that Hollywood never visits.
+                    some of the most creative, innovative filmmaking was happening in 
+                    neighborhoods that Hollywood never visits.
                   </p>
                   <p>
-                    We saw music videos shot on iPhones that outperformed million-dollar 
+                    We saw music videos and short films that outperformed million-dollar 
                     productions. We saw documentary footage from community creators that 
                     told stories mainstream media ignored. We saw raw, unfiltered talent 
                     everywhere—just waiting for the right education.
                   </p>
                   <p>
                     So we built it. A film school that meets creators where they are: 
-                    on their phones, in their communities, on their terms.
+                    in their communities, on their terms, with whatever camera they have.
                   </p>
                 </div>
               </div>
