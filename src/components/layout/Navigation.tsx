@@ -1,7 +1,15 @@
 import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Menu, X } from "lucide-react";
+import { Menu, X, User, LogOut } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import logo from "@/assets/logo.png";
 
 const navLinks = [
@@ -14,6 +22,16 @@ const navLinks = [
 
 export function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
+
+  const getInitials = (email?: string | null) => {
+    if (!email) return "S";
+    return email.charAt(0).toUpperCase();
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b-2 border-border">
@@ -42,13 +60,49 @@ export function Navigation() {
             ))}
           </div>
 
-          <div className="hidden md:block">
-            <Link 
-              to="/enrollment"
-              className="btn-brutal text-sm"
-            >
-              Enroll Now
-            </Link>
+          <div className="hidden md:flex items-center gap-4">
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-2 p-1 rounded-full hover:bg-muted transition-colors">
+                    <Avatar className="h-9 w-9 border-2 border-primary">
+                      <AvatarImage src={undefined} />
+                      <AvatarFallback className="bg-primary text-primary-foreground font-bold">
+                        {getInitials(user.email)}
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem asChild>
+                    <Link to="/student" className="flex items-center gap-2 cursor-pointer">
+                      <User className="h-4 w-4" />
+                      Student Center
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="flex items-center gap-2 cursor-pointer text-destructive">
+                    <LogOut className="h-4 w-4" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <>
+                <Link 
+                  to="/auth"
+                  className="text-sm font-bold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide"
+                >
+                  Login
+                </Link>
+                <Link 
+                  to="/enrollment"
+                  className="btn-brutal text-sm"
+                >
+                  Enroll Now
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -75,13 +129,43 @@ export function Navigation() {
                   {link.name}
                 </Link>
               ))}
-              <Link 
-                to="/enrollment" 
-                onClick={() => setIsOpen(false)}
-                className="btn-brutal text-center mt-4"
-              >
-                Enroll Now
-              </Link>
+              {user ? (
+                <>
+                  <Link 
+                    to="/student" 
+                    onClick={() => setIsOpen(false)}
+                    className="text-lg font-bold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide py-2"
+                  >
+                    Student Center
+                  </Link>
+                  <button
+                    onClick={() => {
+                      handleSignOut();
+                      setIsOpen(false);
+                    }}
+                    className="text-lg font-bold text-destructive hover:text-destructive/80 transition-colors uppercase tracking-wide py-2 text-left"
+                  >
+                    Sign Out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link 
+                    to="/auth" 
+                    onClick={() => setIsOpen(false)}
+                    className="text-lg font-bold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide py-2"
+                  >
+                    Login
+                  </Link>
+                  <Link 
+                    to="/enrollment" 
+                    onClick={() => setIsOpen(false)}
+                    className="btn-brutal text-center mt-4"
+                  >
+                    Enroll Now
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         )}
