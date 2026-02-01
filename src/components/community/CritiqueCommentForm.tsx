@@ -5,6 +5,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Lightbulb, Send } from "lucide-react";
+import { ImageUploader } from "./ImageUploader";
+import { useCommunityUploads } from "@/hooks/useCommunityUploads";
 
 interface CritiqueCommentFormProps {
   postId: string;
@@ -14,6 +16,7 @@ interface CritiqueCommentFormProps {
     what_works?: string;
     what_could_improve?: string;
     actionable_suggestion?: string;
+    media_urls?: string[];
   }) => void;
   isSubmitting: boolean;
 }
@@ -29,6 +32,9 @@ export function CritiqueCommentForm({
   const [whatWorks, setWhatWorks] = useState("");
   const [whatCouldImprove, setWhatCouldImprove] = useState("");
   const [suggestion, setSuggestion] = useState("");
+  const [mediaUrls, setMediaUrls] = useState<string[]>([]);
+  
+  const { uploadImages, isUploading, uploadProgress } = useCommunityUploads();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,15 +46,20 @@ export function CritiqueCommentForm({
         what_works: whatWorks.trim() || undefined,
         what_could_improve: whatCouldImprove.trim() || undefined,
         actionable_suggestion: suggestion.trim() || undefined,
+        media_urls: mediaUrls.length > 0 ? mediaUrls : undefined,
       });
       setWhatWorks("");
       setWhatCouldImprove("");
       setSuggestion("");
     } else {
       if (!content.trim()) return;
-      onSubmit({ content: content.trim() });
+      onSubmit({ 
+        content: content.trim(),
+        media_urls: mediaUrls.length > 0 ? mediaUrls : undefined,
+      });
       setContent("");
     }
+    setMediaUrls([]);
   };
 
   return (
@@ -129,10 +140,23 @@ export function CritiqueCommentForm({
             </div>
           )}
 
+          {/* Image uploader */}
+          <div className="space-y-2">
+            <Label className="text-sm text-muted-foreground">Attach images (optional)</Label>
+            <ImageUploader
+              images={mediaUrls}
+              onImagesChange={setMediaUrls}
+              onUpload={uploadImages}
+              isUploading={isUploading}
+              uploadProgress={uploadProgress}
+              maxImages={3}
+            />
+          </div>
+
           <div className="flex justify-end">
             <Button 
               type="submit" 
-              disabled={isSubmitting || (useStructuredFeedback 
+              disabled={isSubmitting || isUploading || (useStructuredFeedback 
                 ? (!whatWorks.trim() && !whatCouldImprove.trim() && !suggestion.trim())
                 : !content.trim()
               )}

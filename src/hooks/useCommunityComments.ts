@@ -14,6 +14,7 @@ export interface CommunityComment {
   actionable_suggestion: string | null;
   is_instructor_comment: boolean;
   is_highlighted: boolean;
+  media_urls: string[];
   created_at: string;
   updated_at: string;
   // Joined fields
@@ -34,6 +35,7 @@ interface CreateCommentData {
   what_works?: string;
   what_could_improve?: string;
   actionable_suggestion?: string;
+  media_urls?: string[];
 }
 
 export function useCommunityComments(postId: string | null) {
@@ -110,6 +112,7 @@ export function useCommunityComments(postId: string | null) {
         user_role: rolesMap[comment.user_id] || 'student',
         likes_count: likesCount[comment.id] || 0,
         user_has_liked: userLikes.includes(comment.id),
+        media_urls: comment.media_urls || [],
         replies: [] as CommunityComment[],
       }));
 
@@ -157,6 +160,7 @@ export function useCommunityComments(postId: string | null) {
           what_could_improve: data.what_could_improve || null,
           actionable_suggestion: data.actionable_suggestion || null,
           is_instructor_comment: isInstructor || false,
+          media_urls: data.media_urls || [],
         })
         .select()
         .single();
