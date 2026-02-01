@@ -1,151 +1,215 @@
 
 
-# New Home Page with University Logo Hero
+# Build Admin Backend System
 
-## Overview
-Redesign the home page to feature the uploaded "Hoodtorial University" graduation cap logo as the centerpiece of a bold, impactful hero section. This creates a more collegiate, branded experience while maintaining the ultra-dark brutalist aesthetic.
-
----
-
-## What Will Change
-
-### Hero Section Redesign
-The current text-heavy hero will be replaced with a logo-centric design:
-
-**Current Hero:**
-- "SHOOT BETTER. EDIT SMARTER. GRADUATE DIFFERENT." headline
-- Paragraph subheadline
-- CTA buttons below text
-
-**New Hero:**
-- Large animated university logo as the focal point (the uploaded image)
-- Tagline beneath: "WHERE HUSTLE MEETS HOLLYWOOD"
-- "Class of 2025" enrollment badge
-- CTA buttons
-- Subtle background effects (keep existing orbs/grid)
+## The Problem
+The `/admin` route returns a 404 error because the admin pages were never created. The previous plan was proposed but not implemented.
 
 ---
 
-## Page Structure
+## What Will Be Built
 
+### 1. Admin Route Protection
+Create a secure `AdminRoute` component that:
+- Checks if user is authenticated
+- Verifies user has `admin` role via `has_role()` function
+- Redirects non-admins to home with error toast
+
+### 2. Admin Hook
+Create `useAdminAuth` hook to:
+- Query user's role from database
+- Return `{ isAdmin, isLoading }` for use throughout admin pages
+
+### 3. Admin Pages
+
+**Dashboard (`/admin`)**
+- Overview stats (total courses, students, quiz completions)
+- Quick action links
+- Recent activity
+
+**Course Manager (`/admin/courses`)**
+- List all courses from static data (for now)
+- Edit, lock/unlock, and visibility toggles
+- "Coming Soon" badge support
+
+**Course Editor (`/admin/courses/:code`)**
+- Edit course title, description, credits, level
+- Manage modules (add, edit, delete, reorder)
+- Add lessons with video URLs
+- Quiz configuration
+
+### 4. Admin Layout
+Create consistent admin layout with:
+- Sidebar navigation
+- Dark theme matching site aesthetic
+- Breadcrumb navigation
+
+---
+
+## Database Changes
+
+### New Tables
+
+**courses**
 ```text
-New Home Page Layout:
-|
-+-- Hero Section (REDESIGNED)
-|     - Full-screen height
-|     - Centered university logo (large, animated glow)
-|     - "HOODTORIAL UNIVERSITY" text treatment
-|     - "WHERE HUSTLE MEETS HOLLYWOOD" tagline
-|     - "Now Enrolling" sticker badge
-|     - CTA buttons: "Start Learning" / "View Curriculum"
-|     - Animated scroll indicator
-|
-+-- Stats Bar (KEEP)
-|     - 12 Courses / 60 Credits / 4 Departments / Infinite Potential
-|
-+-- Features Section (KEEP)
-|     - Real Film Training / Scenario Exams / Actual Credentials
-|
-+-- How It Works (KEEP)
-|     - Enroll -> Study -> Create -> Graduate
-|
-+-- Featured Courses (KEEP)
-|
-+-- Degree Preview (KEEP)
-|
-+-- Membership Tiers (KEEP)
-|
-+-- Email Capture (KEEP)
+id              uuid PRIMARY KEY
+code            text UNIQUE
+title           text
+description     text
+department_id   text
+credits         integer
+level           text
+duration        text
+is_published    boolean DEFAULT true
+is_locked       boolean DEFAULT false (Coming Soon)
+sort_order      integer
+created_at      timestamp
+updated_at      timestamp
+```
+
+**modules**
+```text
+id              uuid PRIMARY KEY
+course_id       uuid REFERENCES courses
+title           text
+sort_order      integer
+created_at      timestamp
+updated_at      timestamp
+```
+
+**lessons**
+```text
+id              uuid PRIMARY KEY
+module_id       uuid REFERENCES modules
+title           text
+description     text
+duration        text
+type            text (video, reading, practice)
+video_url       text NULLABLE
+content         text NULLABLE
+sort_order      integer
+created_at      timestamp
+updated_at      timestamp
+```
+
+### RLS Policies
+- All users can READ published courses
+- Only admin role can INSERT, UPDATE, DELETE
+- Uses `has_role(auth.uid(), 'admin')` for authorization
+
+---
+
+## Files to Create
+
+### Admin Components
+- `src/components/admin/AdminLayout.tsx` - Layout wrapper with sidebar
+- `src/components/admin/AdminSidebar.tsx` - Navigation sidebar
+- `src/components/admin/CourseTable.tsx` - Course listing table
+- `src/components/admin/ModuleEditor.tsx` - Module management
+- `src/components/admin/LessonForm.tsx` - Lesson creation/editing
+- `src/components/admin/VideoUrlInput.tsx` - Video URL with preview
+
+### Admin Pages
+- `src/pages/admin/AdminDashboard.tsx` - Main dashboard
+- `src/pages/admin/CourseManager.tsx` - Course list/management
+- `src/pages/admin/CourseEditor.tsx` - Individual course editing
+
+### Protected Route
+- `src/components/auth/AdminRoute.tsx` - Admin-only route guard
+
+### Hooks
+- `src/hooks/useAdminAuth.ts` - Admin role verification
+- `src/hooks/useCourses.ts` - Course CRUD operations
+- `src/hooks/useModules.ts` - Module CRUD operations
+- `src/hooks/useLessons.ts` - Lesson CRUD operations
+
+### Route Updates
+Add to `src/App.tsx`:
+```text
+/admin          -> AdminDashboard (AdminRoute protected)
+/admin/courses  -> CourseManager (AdminRoute protected)
+/admin/courses/:code -> CourseEditor (AdminRoute protected)
 ```
 
 ---
 
-## Hero Design Details
+## Admin Features
 
-### Logo Treatment
-- Copy uploaded image to `src/assets/hero-logo.png`
-- Display centered at large size (350-400px height on desktop)
-- Add subtle pulsing glow effect around the logo
-- The logo's black/white design works perfectly on the dark background
+### Course Management
+- View all courses in sortable table
+- Toggle "Published" status (visible to students)
+- Toggle "Coming Soon" / locked status
+- Edit any course content inline or via detail page
+- Add new courses
+- Delete courses (with confirmation)
 
-### Typography Stack
+### Module & Lesson Management
+- Drag-and-drop reordering
+- Add/edit/delete modules within a course
+- Add/edit/delete lessons within modules
+- Video URL field with YouTube/Vimeo auto-detection
+- Rich text for reading content
+
+### Video URL Support
+The video input will:
+- Accept YouTube URLs (youtube.com, youtu.be)
+- Accept Vimeo URLs
+- Accept direct video links (.mp4, .webm)
+- Show thumbnail preview when valid URL entered
+
+---
+
+## Data Migration Strategy
+
+1. Create database tables first
+2. Build admin interface pointing to database
+3. Keep static `courses.ts` as fallback during transition
+4. Add a data seeder to populate database from static data
+5. Frontend queries database, falls back to static if empty
+
+---
+
+## Security Model
+
+### Route Protection
 ```text
-[University Logo Image - graduation cap with "Class of 2025"]
-
-HOODTORIAL
-UNIVERSITY
-
-Where Hustle Meets Hollywood
-
-[Now Enrolling Badge]
-
-[Start Learning CTA]  [View Curriculum CTA]
+User visits /admin
+  -> Check if authenticated (redirect to /auth if not)
+  -> Check if has admin role (redirect to / with error if not)
+  -> Show admin content
 ```
 
-### Animation Sequence
-1. Logo fades in with scale effect (0.2s delay)
-2. "HOODTORIAL" text reveals from bottom (0.4s delay)
-3. "UNIVERSITY" text reveals (0.5s delay)
-4. Tagline fades in (0.6s delay)
-5. CTAs animate in (0.8s delay)
-
-### Background Effects
-- Keep existing animated gradient orbs (gold/purple/pink)
-- Keep grid overlay
-- Keep noise texture
-- Optional: add radial gradient behind logo for depth
+### Database Security
+- RLS ensures only admins can modify course data
+- Students can only read published, non-locked courses
+- All checks happen server-side via Supabase policies
 
 ---
 
-## Technical Implementation
+## Implementation Order
 
-### Image Setup
-1. Copy `user-uploads://BangOUT_university_design_4.PNG` to `src/assets/hero-logo.png`
-2. Import as ES6 module in Index.tsx
-
-### Component Changes
-Modify `src/pages/Index.tsx`:
-- Replace hero headline text with logo image
-- Add styled text beneath logo
-- Adjust layout to be more visually centered
-- Keep all other sections (stats, features, etc.) intact
-
-### Styling Additions
-- `.logo-glow` class for the pulsing effect around the logo
-- Responsive sizing for the logo (smaller on mobile)
+1. Create database tables and RLS policies
+2. Create `AdminRoute` guard and `useAdminAuth` hook
+3. Build admin layout and sidebar
+4. Create dashboard page with basic stats
+5. Build course manager (list view)
+6. Build course editor with module/lesson management
+7. Add video URL input with preview
+8. Connect public course pages to database (with static fallback)
 
 ---
 
-## Responsive Behavior
+## Summary
 
-| Breakpoint | Logo Height | Text Size |
-|------------|-------------|-----------|
-| Mobile (<640px) | 200px | text-4xl |
-| Tablet (640-1024px) | 280px | text-5xl |
-| Desktop (>1024px) | 380px | text-6xl/7xl |
+This implementation creates a complete admin backend for managing all course content:
 
----
-
-## Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/assets/hero-logo.png` | Copy uploaded image here |
-| `src/pages/Index.tsx` | Replace hero section with logo-centric design |
-| `src/index.css` | Add logo glow animation class (optional) |
-
----
-
-## What Stays the Same
-
-All sections below the hero remain unchanged:
-- Stats bar (12 Courses, 60 Credits, etc.)
-- Features section (Why HU)
-- How It Works (graduation steps)
-- Featured Courses grid
-- Degree Preview
-- Membership Tiers
-- Email capture form
-
-The overall ultra-dark, brutalist aesthetic is preserved - the logo simply becomes the new focal point of the hero.
+| Feature | Description |
+|---------|-------------|
+| Protected routes | Admin-only access via role check |
+| Course CRUD | Add, edit, delete, lock courses |
+| Module management | Organize course sections |
+| Lesson management | Videos, readings, practice exercises |
+| Video integration | YouTube, Vimeo, direct URL support |
+| "Coming Soon" | Lock unreleased courses |
+| Database-driven | All content stored in Lovable Cloud |
 
