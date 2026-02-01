@@ -62,14 +62,20 @@ export function useMentions() {
 
   // Filter users based on search query
   const filteredUsers = useMemo(() => {
-    if (!searchQuery) return [];
+    // Show top 5 users when @ is typed with no query yet
+    if (searchQuery === "") {
+      return allUsers
+        .filter(u => u.id !== user?.id)
+        .slice(0, 5);
+    }
+    // Filter by search query
     const query = searchQuery.toLowerCase();
     return allUsers
       .filter(u => 
-        u.id !== user?.id && // Exclude current user
+        u.id !== user?.id &&
         u.display_name?.toLowerCase().includes(query)
       )
-      .slice(0, 5); // Limit to 5 suggestions
+      .slice(0, 5);
   }, [allUsers, searchQuery, user?.id]);
 
   // Create notifications for mentioned users
