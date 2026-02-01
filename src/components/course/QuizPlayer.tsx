@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { 
   ChevronLeft, 
@@ -7,30 +7,46 @@ import {
   XCircle, 
   Trophy, 
   RotateCcw,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from "lucide-react";
 import { getQuizQuestions, calculateScore, type QuizQuestion } from "@/data/quizQuestions";
+import { useQuizResults } from "@/hooks/useQuizResults";
+import { useAuth } from "@/contexts/AuthContext";
 import type { Quiz } from "@/data/courses";
 
 interface QuizPlayerProps {
   quiz: Quiz;
+  courseCode: string;
   onComplete?: (score: number, passed: boolean) => void;
   onClose?: () => void;
 }
 
 type QuizState = "intro" | "playing" | "review" | "results";
 
-export function QuizPlayer({ quiz, onComplete, onClose }: QuizPlayerProps) {
+export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayerProps) {
   const questions = getQuizQuestions(quiz.id);
+  const { user } = useAuth();
+  const { saveQuizResult } = useQuizResults();
+  
   const [state, setState] = useState<QuizState>("intro");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [showExplanation, setShowExplanation] = useState(false);
+  const [startTime, setStartTime] = useState<number | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const currentQuestion = questions[currentIndex];
   const selectedAnswer = currentQuestion ? answers[currentQuestion.id] : undefined;
   const score = calculateScore(answers, questions);
   const passed = score >= quiz.passingScore;
+
+  // Start timer when quiz begins
+  useEffect(() => {
+    if (state === "playing" && startTime === null) {
+      setStartTime(Date.now());
+    }
+  }, [state, startTime]);
 
   const handleSelectAnswer = useCallback((optionIndex: number) => {
     if (state === "review") return;
@@ -39,15 +55,37 @@ export function QuizPlayer({ quiz, onComplete, onClose }: QuizPlayerProps) {
     }
   }, [currentQuestion, state]);
 
+  const handleFinishQuiz = useCallback(async () => {
+    setState("results");
+    
+    // Save to database if user is logged in
+    if (user && startTime) {
+      setIsSaving(true);
+      const timeTaken = Math.round((Date.now() - startTime) / 1000);
+      
+      await saveQuizResult({
+        quiz_id: quiz.id,
+        course_code: courseCode,
+        score,
+        total_questions: questions.length,
+        passed,
+        time_taken_seconds: timeTaken,
+      });
+      
+      setIsSaving(false);
+    }
+    
+    onComplete?.(score, passed);
+  }, [user, startTime, quiz.id, courseCode, score, questions.length, passed, saveQuizResult, onComplete]);
+
   const handleNext = useCallback(() => {
     setShowExplanation(false);
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(prev => prev + 1);
     } else {
-      setState("results");
-      onComplete?.(score, passed);
+      handleFinishQuiz();
     }
-  }, [currentIndex, questions.length, score, passed, onComplete]);
+  }, [currentIndex, questions.length, handleFinishQuiz]);
 
   const handlePrev = useCallback(() => {
     setShowExplanation(false);
@@ -60,6 +98,8 @@ export function QuizPlayer({ quiz, onComplete, onClose }: QuizPlayerProps) {
     setAnswers({});
     setCurrentIndex(0);
     setShowExplanation(false);
+    setStartTime(null);
+    setIsSaving(false);
     setState("intro");
   }, []);
 
@@ -99,6 +139,14 @@ export function QuizPlayer({ quiz, onComplete, onClose }: QuizPlayerProps) {
             Test your knowledge with {quiz.questions} questions. 
             You need {quiz.passingScore}% to pass.
           </p>
+
+          {!user && (
+            <div className="mb-6 p-4 border border-primary/50 bg-primary/5 text-sm">
+              <p className="text-muted-foreground">
+                <span className="text-primary font-bold">Note:</span> Log in to save your progress and track your quiz results.
+              </p>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4 mb-8 text-sm">
             <div className="p-4 border border-border bg-muted/30">
@@ -160,11 +208,24 @@ export function QuizPlayer({ quiz, onComplete, onClose }: QuizPlayerProps) {
           )}>
             {score}%
           </div>
-          <p className="text-muted-foreground mb-8">
+          <p className="text-muted-foreground mb-4">
             {Object.values(answers).filter((a, i) => a === questions[i]?.correctAnswer).length} of {questions.length} correct
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          {isSaving && (
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Saving your progress...
+            </div>
+          )}
+
+          {user && !isSaving && passed && (
+            <p className="text-sm text-accent mb-4">
+              ✓ Your result has been saved
+            </p>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mt-4">
             <button onClick={handleReviewAnswers} className="px-6 py-3 border-2 border-border text-muted-foreground hover:border-primary hover:text-foreground transition-colors font-bold">
               Review Answers
             </button>

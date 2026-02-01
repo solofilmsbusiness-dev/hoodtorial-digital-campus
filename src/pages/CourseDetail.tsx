@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { PageLayout, Section } from "@/components/layout";
 import { ModuleAccordion, VideoPlayer, QuizCard, QuizPlayer } from "@/components/course";
@@ -7,6 +7,8 @@ import { getCourseByCode, getTotalLessonsCount, getTotalQuizzesCount, type Lesso
 import { ArrowLeft, Clock, BookOpen, Award, CheckCircle2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useQuizResults } from "@/hooks/useQuizResults";
+import { useUserProgress } from "@/hooks/useUserProgress";
 
 const CourseDetail = () => {
   const { code } = useParams<{ code: string }>();
@@ -16,6 +18,49 @@ const CourseDetail = () => {
   );
   const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null);
   const { toast } = useToast();
+  
+  // Get real progress data from database
+  const { results: quizResults } = useQuizResults();
+  const { progress: userProgress, markLessonComplete } = useUserProgress();
+
+  // Calculate progress for this course
+  const courseProgress = useMemo(() => {
+    if (!course) return { completedLessons: 0, completedQuizzes: 0, percent: 0 };
+    
+    const courseQuizResults = quizResults.filter(r => r.course_code === course.code);
+    const passedQuizIds = new Set(
+      courseQuizResults.filter(r => r.passed).map(r => r.quiz_id)
+    );
+    
+    const completedLessonIds = new Set(
+      userProgress
+        .filter(p => p.course_code === course.code && p.lesson_id && p.completed)
+        .map(p => p.lesson_id)
+    );
+    
+    const totalLessons = getTotalLessonsCount(course);
+    const totalQuizzes = getTotalQuizzesCount(course);
+    
+    const completedLessons = completedLessonIds.size;
+    const completedQuizzes = passedQuizIds.size;
+    
+    const total = totalLessons + totalQuizzes;
+    const completed = completedLessons + completedQuizzes;
+    const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+    
+    return { 
+      completedLessons, 
+      completedQuizzes, 
+      percent,
+      passedQuizIds,
+      completedLessonIds
+    };
+  }, [course, quizResults, userProgress]);
+
+  // Check if a specific quiz is passed
+  const isQuizPassed = (quizId: string) => {
+    return courseProgress.passedQuizIds?.has(quizId) || false;
+  };
 
   if (!course) {
     return (
@@ -47,7 +92,7 @@ const CourseDetail = () => {
     toast({
       title: passed ? "Quiz Passed! 🎉" : "Quiz Not Passed",
       description: passed 
-        ? `Great job! You scored ${score}%.`
+        ? `Great job! You scored ${score}%. Your progress has been saved.`
         : `You scored ${score}%. Review the material and try again.`,
       variant: passed ? "default" : "destructive",
     });
@@ -55,6 +100,16 @@ const CourseDetail = () => {
 
   const handleQuizClick = (quiz: Quiz) => {
     setActiveQuiz(quiz);
+  };
+
+  const handleMarkComplete = async () => {
+    if (activeLesson) {
+      await markLessonComplete(course.code, activeLesson.id, 0);
+      toast({
+        title: "Lesson Completed!",
+        description: "Your progress has been saved.",
+      });
+    }
   };
 
   return (
@@ -74,7 +129,8 @@ const CourseDetail = () => {
             </div>
             <div className="max-w-3xl mx-auto">
               <QuizPlayer 
-                quiz={activeQuiz} 
+                quiz={activeQuiz}
+                courseCode={course.code}
                 onComplete={handleQuizComplete}
                 onClose={() => setActiveQuiz(null)}
               />
@@ -130,20 +186,23 @@ const CourseDetail = () => {
             {/* Progress Card */}
             <div className="w-full lg:w-72 border-2 border-primary bg-card p-6">
               <div className="text-center mb-4">
-                <div className="text-4xl font-black text-primary">0%</div>
+                <div className="text-4xl font-black text-primary">{courseProgress.percent}%</div>
                 <div className="text-sm text-muted-foreground mt-1">Complete</div>
               </div>
               <div className="h-2 bg-muted border border-border mb-4">
-                <div className="h-full bg-primary w-0" />
+                <div 
+                  className="h-full bg-primary transition-all duration-300" 
+                  style={{ width: `${courseProgress.percent}%` }}
+                />
               </div>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Lessons</span>
-                  <span className="font-bold text-foreground">0/{totalLessons}</span>
+                  <span className="font-bold text-foreground">{courseProgress.completedLessons}/{totalLessons}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Quizzes</span>
-                  <span className="font-bold text-foreground">0/{totalQuizzes}</span>
+                  <span className="font-bold text-foreground">{courseProgress.completedQuizzes}/{totalQuizzes}</span>
                 </div>
               </div>
             </div>
@@ -166,7 +225,7 @@ const CourseDetail = () => {
                     Complete the lesson and move on to the next one to continue your progress.
                   </p>
                   <div className="flex gap-4 mt-6">
-                    <button className="btn-brutal">
+                    <button onClick={handleMarkComplete} className="btn-brutal">
                       Mark Complete
                       <CheckCircle2 className="ml-2 h-5 w-5" />
                     </button>
@@ -189,6 +248,7 @@ const CourseDetail = () => {
                   activeLesson={activeLesson}
                   onLessonSelect={setActiveLesson}
                   onQuizClick={handleQuizClick}
+                  isQuizPassed={module.quiz ? isQuizPassed(module.quiz.id) : false}
                   defaultOpen={index === 0}
                 />
               ))}
@@ -201,6 +261,7 @@ const CourseDetail = () => {
                   <QuizCard
                     quiz={course.finalExam}
                     type="final"
+                    isCompleted={isQuizPassed(course.finalExam.id)}
                     onClick={() => handleQuizClick(course.finalExam!)}
                   />
                 </div>

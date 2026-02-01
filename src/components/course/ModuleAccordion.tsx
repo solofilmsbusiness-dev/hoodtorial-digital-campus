@@ -11,6 +11,7 @@ interface ModuleAccordionProps {
   activeLesson?: Lesson;
   onLessonSelect: (lesson: Lesson) => void;
   onQuizClick?: (quiz: Quiz) => void;
+  isQuizPassed?: boolean;
   defaultOpen?: boolean;
 }
 
@@ -20,6 +21,7 @@ export function ModuleAccordion({
   activeLesson, 
   onLessonSelect,
   onQuizClick,
+  isQuizPassed = false,
   defaultOpen = false 
 }: ModuleAccordionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -76,6 +78,7 @@ export function ModuleAccordion({
             <QuizCard
               quiz={module.quiz}
               type="module"
+              isCompleted={isQuizPassed}
               onClick={onQuizClick ? () => onQuizClick(module.quiz!) : undefined}
             />
           )}
