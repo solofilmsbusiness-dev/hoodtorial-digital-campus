@@ -24,6 +24,7 @@ import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import CourseManager from "./pages/admin/CourseManager";
 import CourseEditor from "./pages/admin/CourseEditor";
+import UserManager from "./pages/admin/UserManager";
 
 const queryClient = new QueryClient();
 
@@ -78,6 +79,11 @@ const App = () => (
             <Route path="/admin/courses/:code" element={
               <AdminRoute>
                 <CourseEditor />
+              </AdminRoute>
+            } />
+            <Route path="/admin/users" element={
+              <AdminRoute>
+                <UserManager />
               </AdminRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

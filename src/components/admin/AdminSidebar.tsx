@@ -22,8 +22,8 @@ const navItems = [
     icon: BookOpen,
   },
   {
-    title: "Students",
-    href: "/admin/students",
+    title: "Users",
+    href: "/admin/users",
     icon: Users,
   },
   {
