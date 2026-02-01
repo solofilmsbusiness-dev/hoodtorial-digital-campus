@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { AdminRoute } from "@/components/auth/AdminRoute";
 import Index from "./pages/Index";
 import Degrees from "./pages/Degrees";
 import Academics from "./pages/Academics";
@@ -20,6 +21,9 @@ import StudentGrades from "./pages/StudentGrades";
 import Assessment from "./pages/Assessment";
 import Shop from "./pages/Shop";
 import NotFound from "./pages/NotFound";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import CourseManager from "./pages/admin/CourseManager";
+import CourseEditor from "./pages/admin/CourseEditor";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +64,21 @@ const App = () => (
               <ProtectedRoute>
                 <StudentGrades />
               </ProtectedRoute>
+            } />
+            <Route path="/admin" element={
+              <AdminRoute>
+                <AdminDashboard />
+              </AdminRoute>
+            } />
+            <Route path="/admin/courses" element={
+              <AdminRoute>
+                <CourseManager />
+              </AdminRoute>
+            } />
+            <Route path="/admin/courses/:code" element={
+              <AdminRoute>
+                <CourseEditor />
+              </AdminRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
