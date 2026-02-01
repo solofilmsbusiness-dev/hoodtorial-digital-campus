@@ -168,7 +168,7 @@ export default function Community() {
                     <SelectItem value="all">All Courses</SelectItem>
                     {enrolledCourses.map((course) => (
                       <SelectItem key={course.code} value={course.code}>
-                        {course.code}
+                        {course.code} – {course.title}
                       </SelectItem>
                     ))}
                   </SelectContent>
