@@ -6,7 +6,8 @@ import {
   Users, 
   Settings,
   ChevronLeft,
-  GraduationCap
+  GraduationCap,
+  MessageSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -20,6 +21,11 @@ const navItems = [
     title: "Courses",
     href: "/admin/courses",
     icon: BookOpen,
+  },
+  {
+    title: "Community",
+    href: "/admin/community",
+    icon: MessageSquare,
   },
   {
     title: "Users",
