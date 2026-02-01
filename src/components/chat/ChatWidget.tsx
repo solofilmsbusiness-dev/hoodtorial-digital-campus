@@ -24,7 +24,6 @@ export function ChatWidget() {
           "w-14 h-14 rounded-full shadow-lg transition-all duration-200",
           "bg-primary hover:bg-primary/90 text-primary-foreground",
           "hover:scale-105 hover:shadow-glow-gold",
-          !isOpen && "animate-glow-pulse",
           isOpen && "rotate-0"
         )}
       >
