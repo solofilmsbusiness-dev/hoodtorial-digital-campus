@@ -108,12 +108,21 @@ export default function Auth() {
             });
           }
         } else if (data?.user) {
-          // Check if profile is complete
+          // Check if profile is complete and assessment is done
           const { data: profile } = await supabase
             .from("profiles")
             .select("display_name")
             .eq("user_id", data.user.id)
             .maybeSingle();
+          
+          // Check if user has completed assessment
+          const { data: assessmentResults } = await supabase
+            .from("assessment_results")
+            .select("id")
+            .eq("user_id", data.user.id)
+            .limit(1);
+          
+          const hasCompletedAssessment = assessmentResults && assessmentResults.length > 0;
           
           if (!profile?.display_name) {
             toast({
@@ -121,6 +130,12 @@ export default function Auth() {
               description: "Please fill out your profile to get started.",
             });
             navigate("/student/profile", { replace: true });
+          } else if (!hasCompletedAssessment) {
+            toast({
+              title: "Take your entry assessment",
+              description: "Complete a quick assessment to get personalized course recommendations.",
+            });
+            navigate("/assessment", { replace: true });
           } else {
             const from = (location.state as { from?: { pathname: string } })?.from?.pathname || "/student";
             navigate(from, { replace: true });

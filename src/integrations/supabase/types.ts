@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      assessment_results: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          department_scores: Json
+          experience_level: string
+          id: string
+          interests: string[]
+          recommended_courses: string[]
+          time_taken_seconds: number | null
+          total_score: number
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          department_scores: Json
+          experience_level: string
+          id?: string
+          interests: string[]
+          recommended_courses: string[]
+          time_taken_seconds?: number | null
+          total_score: number
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          department_scores?: Json
+          experience_level?: string
+          id?: string
+          interests?: string[]
+          recommended_courses?: string[]
+          time_taken_seconds?: number | null
+          total_score?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

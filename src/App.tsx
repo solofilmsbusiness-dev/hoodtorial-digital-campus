@@ -16,6 +16,7 @@ import Auth from "./pages/Auth";
 import StudentCenter from "./pages/StudentCenter";
 import StudentProfile from "./pages/StudentProfile";
 import StudentGrades from "./pages/StudentGrades";
+import Assessment from "./pages/Assessment";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,11 @@ const App = () => (
             <Route path="/faculty" element={<Faculty />} />
             <Route path="/about" element={<About />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/assessment" element={
+              <ProtectedRoute>
+                <Assessment />
+              </ProtectedRoute>
+            } />
             <Route path="/student" element={
               <ProtectedRoute>
                 <StudentCenter />
