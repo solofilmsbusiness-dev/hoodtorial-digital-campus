@@ -1,86 +1,172 @@
 
 
-# Plan: Add Search to Academics Page
+# Plan: Admin Video Management for Course Lessons
 
 ## Overview
-Add a search input to the Academics page that allows students to quickly find courses by typing course codes, titles, descriptions, or keywords.
+Implement a complete admin interface for managing modules and lessons within courses, with video URL support for YouTube, Vimeo, and direct video files. This will replace the current "coming soon" placeholder in the CourseEditor with a fully functional module and lesson management system.
 
 ## Current State
-- The page already has department filtering buttons
-- There's a toolbar area with course counts and view mode toggle
-- Courses are filtered by `activeFilter` state (department ID)
+- The database already has `modules` and `lessons` tables with `video_url` column
+- The CourseEditor has a "Modules & Lessons" section with a disabled "Add Module" button
+- The VideoPlayer component currently shows a placeholder instead of real videos
+- RLS policies for admin CRUD operations already exist
 
-## Proposed Design
-Add a search bar in the toolbar section alongside the existing view controls. The search will filter courses in real-time as users type.
+## What Will Be Built
 
-### Layout Update
+### 1. Module Management
+- Add new modules to a course
+- Edit module titles
+- Reorder modules via drag-and-drop or sort buttons
+- Delete modules (with confirmation)
+
+### 2. Lesson Management (per Module)
+- Add lessons with:
+  - Title
+  - Type (video, reading, practice)
+  - Duration
+  - Video URL (for video lessons)
+  - Content/description
+- Edit existing lessons
+- Reorder lessons within modules
+- Delete lessons
+
+### 3. Video URL Input
+Support three video sources:
+- **YouTube**: Paste link like `https://youtube.com/watch?v=...` or `https://youtu.be/...`
+- **Vimeo**: Paste link like `https://vimeo.com/...`
+- **Direct URL**: Paste `.mp4` or `.webm` file URLs
+
+### 4. Updated Video Player
+Modify the VideoPlayer component to actually play videos based on the URL type, using:
+- YouTube embed iframe for YouTube links
+- Vimeo embed iframe for Vimeo links
+- Native HTML5 `<video>` element for direct file URLs
+
+## UI Layout
+
+### Course Editor - Modules Section
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│  Showing X courses                                               │
-│                                                                  │
-│  ┌────────────────────────────────┐   Credits: X  Lessons: X     │
-│  │ 🔍 Search courses...           │   [Grid] [List]              │
-│  └────────────────────────────────┘                              │
+│  Modules & Lessons                           [+ Add Module]       │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  ┌────────────────────────────────────────────────────────────┐  │
+│  │ ⋮⋮  Module 1: Getting Started           [Edit] [Delete]    │  │
+│  │     ├─ Lesson 1: Introduction (video, 12 min)  [Edit] [×]  │  │
+│  │     ├─ Lesson 2: Setup Guide (reading)         [Edit] [×]  │  │
+│  │     └─ [+ Add Lesson]                                      │  │
+│  └────────────────────────────────────────────────────────────┘  │
+│                                                                   │
+│  ┌────────────────────────────────────────────────────────────┐  │
+│  │ ⋮⋮  Module 2: Core Concepts             [Edit] [Delete]    │  │
+│  │     └─ [+ Add Lesson]                                      │  │
+│  └────────────────────────────────────────────────────────────┘  │
+│                                                                   │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-## Technical Details
+### Add/Edit Lesson Dialog
+```
+┌────────────────────────────────────────────┐
+│  Add Lesson                           [×]  │
+├────────────────────────────────────────────┤
+│  Title:  [________________________]        │
+│                                            │
+│  Type:   [Video        ▼]                  │
+│                                            │
+│  Duration: [12 min      ]                  │
+│                                            │
+│  Video URL:                                │
+│  [https://youtube.com/watch?v=abc123]      │
+│  ℹ️ Supports YouTube, Vimeo, or direct URLs │
+│                                            │
+│  Description (optional):                   │
+│  [____________________________________]    │
+│  [____________________________________]    │
+│                                            │
+│           [Cancel]    [Save Lesson]        │
+└────────────────────────────────────────────┘
+```
 
-### Search Fields
-The search will match against:
-- **Course code** (e.g., "HU-101", "201")
-- **Course title** (e.g., "iPhone", "Lighting")
-- **Course description** (e.g., "cinematography", "grading")
-- **Department name** (e.g., "Post-Production")
+## Technical Implementation
 
-### Implementation Steps
+### Files to Create
 
-1. **Add search state**
-   ```typescript
-   const [searchQuery, setSearchQuery] = useState("");
-   ```
+**1. `src/components/admin/ModuleEditor.tsx`**
+Component for managing a single module with its lessons:
+- Module title edit inline
+- List of lessons with edit/delete buttons
+- Add lesson button opening dialog
+- Drag handle for reordering
 
-2. **Update filtering logic**
-   ```typescript
-   const filteredCourses = courses.filter(course => {
-     // Department filter
-     const matchesDepartment = activeFilter === "all" || course.departmentId === activeFilter;
-     
-     // Search filter
-     const query = searchQuery.toLowerCase();
-     const matchesSearch = !query || 
-       course.code.toLowerCase().includes(query) ||
-       course.title.toLowerCase().includes(query) ||
-       course.description.toLowerCase().includes(query) ||
-       course.department.toLowerCase().includes(query);
-     
-     return matchesDepartment && matchesSearch;
-   });
-   ```
+**2. `src/components/admin/LessonDialog.tsx`**
+Dialog component for adding/editing lessons:
+- Form with title, type, duration, video_url, content
+- Video URL validation and preview
+- Save/cancel actions
 
-3. **Add search input in toolbar**
-   - Import `Search` and `X` icons from lucide-react
-   - Add Input component from UI library
-   - Include clear button when search has text
-   - Style to match the brutal/urban aesthetic
+**3. `src/hooks/useAdminCourseContent.ts`**
+Custom hook for managing modules and lessons:
+- Fetch modules and lessons for a course
+- CRUD mutations for modules
+- CRUD mutations for lessons
+- Reorder functionality
 
-4. **Show "no results" state**
-   - Display helpful message when search returns no courses
-   - Suggest clearing the search or trying different terms
+### Files to Modify
 
-## Files to Modify
+**1. `src/pages/admin/CourseEditor.tsx`**
+- Replace "coming soon" section with functional ModuleEditor list
+- Add "Add Module" functionality
+- Fetch and display modules from database
 
-### `src/pages/Academics.tsx`
-- Add `searchQuery` state
-- Import `Search`, `X` icons and `Input` component
-- Update `filteredCourses` logic to include search
-- Add search input in the toolbar section
-- Add empty state for no search results
+**2. `src/components/course/VideoPlayer.tsx`**
+- Parse video URL to detect source type
+- Render appropriate player (YouTube embed, Vimeo embed, or HTML5 video)
+- Keep existing placeholder style for lessons without video_url
 
-## User Experience
-1. User types in search box
-2. Results filter instantly as they type
-3. Clear button appears to reset search
-4. "No courses found" message if no matches
-5. Search works in combination with department filter
+**3. `src/pages/CourseDetail.tsx`**
+- Update to fetch lessons from database when available
+- Fall back to static data when no database lessons exist
+
+### Database Changes
+No schema changes needed - the existing `lessons.video_url` column will be used.
+
+### Video URL Parsing Logic
+```typescript
+function getVideoType(url: string): 'youtube' | 'vimeo' | 'direct' | null {
+  if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
+  if (url.includes('vimeo.com')) return 'vimeo';
+  if (url.match(/\.(mp4|webm)$/i)) return 'direct';
+  return null;
+}
+
+function getYouTubeId(url: string): string | null {
+  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+  return match ? match[1] : null;
+}
+
+function getVimeoId(url: string): string | null {
+  const match = url.match(/vimeo\.com\/(\d+)/);
+  return match ? match[1] : null;
+}
+```
+
+## Implementation Order
+
+1. Create `useAdminCourseContent` hook with data fetching and mutations
+2. Create `LessonDialog` component for add/edit forms
+3. Create `ModuleEditor` component with lesson list
+4. Update `CourseEditor` to use new components
+5. Update `VideoPlayer` to render actual videos
+6. Update `CourseDetail` to prefer database lessons
+
+## User Experience Flow
+
+1. Admin navigates to `/admin/courses/HU-101`
+2. Scrolls to "Modules & Lessons" section
+3. Clicks "Add Module" → enters title → module appears
+4. Clicks "Add Lesson" in module → dialog opens
+5. Enters lesson details including YouTube URL
+6. Saves → lesson appears in list
+7. Student visits course → video plays in lesson viewer
 
