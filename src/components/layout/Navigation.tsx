@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
-import { Menu, X, User, LogOut } from "lucide-react";
+import { Menu, X, User, LogOut, Shield } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -23,6 +24,7 @@ const navLinks = [
 export function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
   const { user, signOut } = useAuth();
+  const { isAdmin } = useAdminAuth();
 
   const handleSignOut = async () => {
     await signOut();
@@ -80,6 +82,14 @@ export function Navigation() {
                       Student Center
                     </Link>
                   </DropdownMenuItem>
+                  {isAdmin && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/admin" className="flex items-center gap-2 cursor-pointer">
+                        <Shield className="h-4 w-4" />
+                        Admin Panel
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut} className="flex items-center gap-2 cursor-pointer text-destructive">
                     <LogOut className="h-4 w-4" />
@@ -138,6 +148,15 @@ export function Navigation() {
                   >
                     Student Center
                   </Link>
+                  {isAdmin && (
+                    <Link 
+                      to="/admin" 
+                      onClick={() => setIsOpen(false)}
+                      className="text-lg font-bold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide py-2"
+                    >
+                      Admin Panel
+                    </Link>
+                  )}
                   <button
                     onClick={() => {
                       handleSignOut();
