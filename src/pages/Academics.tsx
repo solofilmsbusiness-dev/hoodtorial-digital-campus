@@ -1,7 +1,8 @@
 import { PageLayout, Section } from "@/components/layout";
 import { CourseCard, CourseListItem } from "@/components/cards";
 import { Link } from "react-router-dom";
-import { ArrowRight, BookOpen, Clock, Award, Users, LayoutGrid, List } from "lucide-react";
+import { ArrowRight, BookOpen, Clock, Award, Users, LayoutGrid, List, Search, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { courses, departments } from "@/data/courses";
 
@@ -15,10 +16,18 @@ const stats = [
 const Academics = () => {
   const [activeFilter, setActiveFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredCourses = activeFilter === "all" 
-    ? courses 
-    : courses.filter(course => course.departmentId === activeFilter);
+  const filteredCourses = courses.filter(course => {
+    const matchesDepartment = activeFilter === "all" || course.departmentId === activeFilter;
+    const query = searchQuery.toLowerCase();
+    const matchesSearch = !query || 
+      course.code.toLowerCase().includes(query) ||
+      course.title.toLowerCase().includes(query) ||
+      course.description.toLowerCase().includes(query) ||
+      course.department.toLowerCase().includes(query);
+    return matchesDepartment && matchesSearch;
+  });
 
   const activeDepartment = departments.find(d => d.id === activeFilter);
 
@@ -113,50 +122,90 @@ const Academics = () => {
 
       {/* Course Grid */}
       <Section className={activeFilter === "all" ? "" : "pt-0"}>
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8 p-4 border-2 border-border bg-card/30">
-          <div className="text-sm text-muted-foreground">
-            Showing <span className="text-foreground font-bold">{filteredCourses.length}</span> courses
-          </div>
-          
-          <div className="flex items-center gap-6">
-            <div className="flex gap-4 text-sm">
-              <div className="text-muted-foreground">
-                Credits: <span className="text-primary font-bold">{totalCredits}</span>
-              </div>
-              <div className="text-muted-foreground">
-                Lessons: <span className="text-foreground font-bold">{totalLessons}</span>
-              </div>
+        <div className="flex flex-col gap-4 mb-8 p-4 border-2 border-border bg-card/30">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="text-sm text-muted-foreground">
+              Showing <span className="text-foreground font-bold">{filteredCourses.length}</span> courses
             </div>
+            
+            <div className="flex items-center gap-6">
+              <div className="flex gap-4 text-sm">
+                <div className="text-muted-foreground">
+                  Credits: <span className="text-primary font-bold">{totalCredits}</span>
+                </div>
+                <div className="text-muted-foreground">
+                  Lessons: <span className="text-foreground font-bold">{totalLessons}</span>
+                </div>
+              </div>
 
-            {/* View Toggle */}
-            <div className="flex border-2 border-border">
-              <button
-                onClick={() => setViewMode("grid")}
-                className={`p-2 transition-colors ${
-                  viewMode === "grid" 
-                    ? "bg-primary text-primary-foreground" 
-                    : "bg-transparent text-muted-foreground hover:text-foreground"
-                }`}
-                aria-label="Grid view"
-              >
-                <LayoutGrid className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setViewMode("list")}
-                className={`p-2 transition-colors ${
-                  viewMode === "list" 
-                    ? "bg-primary text-primary-foreground" 
-                    : "bg-transparent text-muted-foreground hover:text-foreground"
-                }`}
-                aria-label="List view"
-              >
-                <List className="w-5 h-5" />
-              </button>
+              {/* View Toggle */}
+              <div className="flex border-2 border-border">
+                <button
+                  onClick={() => setViewMode("grid")}
+                  className={`p-2 transition-colors ${
+                    viewMode === "grid" 
+                      ? "bg-primary text-primary-foreground" 
+                      : "bg-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                  aria-label="Grid view"
+                >
+                  <LayoutGrid className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setViewMode("list")}
+                  className={`p-2 transition-colors ${
+                    viewMode === "list" 
+                      ? "bg-primary text-primary-foreground" 
+                      : "bg-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                  aria-label="List view"
+                >
+                  <List className="w-5 h-5" />
+                </button>
+              </div>
             </div>
+          </div>
+
+          {/* Search Input */}
+          <div className="relative w-full md:max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Search courses by code, title, or description..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-10 bg-background border-2 border-border focus:border-primary"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Clear search"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
 
-        {viewMode === "grid" ? (
+        {filteredCourses.length === 0 ? (
+          <div className="text-center py-16 border-2 border-dashed border-border">
+            <Search className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-bold text-foreground mb-2">No courses found</h3>
+            <p className="text-muted-foreground mb-4">
+              No courses match "{searchQuery}"{activeFilter !== "all" && " in this department"}
+            </p>
+            <button
+              onClick={() => {
+                setSearchQuery("");
+                setActiveFilter("all");
+              }}
+              className="text-primary hover:underline font-medium"
+            >
+              Clear filters
+            </button>
+          </div>
+        ) : viewMode === "grid" ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredCourses.map((course, index) => (
               <div 
