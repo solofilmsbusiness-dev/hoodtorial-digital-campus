@@ -2,7 +2,8 @@ import { PageLayout, Section, SectionHeader } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { CourseCard, TierCard } from "@/components/cards";
 import { Link } from "react-router-dom";
-import { ArrowRight, Play, Zap, Trophy, Target, Sparkles, Film, GraduationCap, Check } from "lucide-react";
+import { ArrowRight, Play, Trophy, Target, Sparkles, Film, GraduationCap, Check } from "lucide-react";
+import heroLogo from "@/assets/hero-logo.png";
 
 const stats = [
   { value: "12", label: "Courses" },
@@ -118,30 +119,37 @@ const Index = () => {
         <div className="absolute top-1/2 right-1/3 w-[300px] h-[300px] bg-neon-pink/5 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: "2s" }} />
 
         <div className="container-wide relative z-10 py-20">
-          <div className="max-w-5xl mx-auto">
-            {/* Tag */}
-            <div className="flex justify-center mb-8">
-              <span className="tag-sticker animate-reveal">
+          <div className="max-w-5xl mx-auto flex flex-col items-center">
+            {/* University Logo */}
+            <div className="animate-reveal">
+              <img 
+                src={heroLogo} 
+                alt="Hoodtorial University - Class of 2025" 
+                className="h-[200px] sm:h-[280px] lg:h-[380px] w-auto animate-logo-pulse"
+              />
+            </div>
+
+            {/* University Name */}
+            <h1 className="heading-1 text-center mt-8">
+              <span className="block animate-reveal stagger-1">HOODTORIAL</span>
+              <span className="block text-gold-gradient text-glow animate-reveal stagger-2">UNIVERSITY</span>
+            </h1>
+
+            {/* Tagline */}
+            <p className="text-lg md:text-xl lg:text-2xl font-bold uppercase tracking-[0.3em] text-muted-foreground text-center mt-6 animate-reveal stagger-3">
+              Where Hustle Meets Hollywood
+            </p>
+
+            {/* Now Enrolling Badge */}
+            <div className="flex justify-center mt-8 animate-reveal stagger-4">
+              <span className="tag-sticker">
                 <Sparkles className="w-3 h-3 mr-2" />
                 Now Enrolling
               </span>
             </div>
 
-            {/* Headline */}
-            <h1 className="heading-1 text-center mb-8">
-              <span className="block animate-reveal stagger-1">SHOOT BETTER.</span>
-              <span className="block text-neon-gradient text-glow animate-reveal stagger-2">EDIT SMARTER.</span>
-              <span className="block animate-reveal stagger-3">GRADUATE DIFFERENT.</span>
-            </h1>
-
-            {/* Subheadline */}
-            <p className="body-large text-muted-foreground text-center max-w-2xl mx-auto mb-12 animate-reveal stagger-4">
-              Film school for creators who want to master the craft, 
-              not just watch tutorials. Earn a real degree.
-            </p>
-
             {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-reveal stagger-5">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10 animate-reveal stagger-5">
               <Link to="/enroll" className="btn-brutal animate-glow-pulse">
                 Start Learning
                 <ArrowRight className="ml-2 h-5 w-5" />
@@ -155,7 +163,7 @@ const Index = () => {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-24">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-20 w-full">
               {stats.map((stat, index) => (
                 <div 
                   key={index} 
