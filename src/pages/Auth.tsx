@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { PageLayout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import heroLogo from "@/assets/hero-logo.png";
 
 const emailSchema = z.string().email("Please enter a valid email address");
 const passwordSchema = z.string().min(4, "Password must be at least 4 characters");
@@ -148,28 +148,56 @@ export default function Auth() {
   };
 
   return (
-    <PageLayout>
-      <div className="min-h-[80vh] flex items-center justify-center py-12 px-4">
-        <div className="w-full max-w-md">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="heading-2 text-foreground mb-2">
-              {isSignUp ? "Join the University" : "Welcome Back"}
-            </h1>
-            <p className="text-muted-foreground">
-              {isSignUp 
-                ? "Create your account to start your filmmaking journey" 
-                : "Sign in to access your Student Center"}
-            </p>
+    <div className="min-h-screen flex flex-col items-center justify-center overflow-hidden bg-noise relative">
+      {/* Background effects */}
+      <div className="absolute inset-0 bg-grid" />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/50 to-background" />
+      
+      {/* Animated orbs */}
+      <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[150px] animate-pulse" />
+      <div className="absolute bottom-1/3 right-1/4 w-[400px] h-[400px] bg-neon-purple/5 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: "1s" }} />
+      <div className="absolute top-1/2 right-1/3 w-[300px] h-[300px] bg-neon-pink/5 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: "2s" }} />
+
+      <div className="container-wide relative z-10 py-8 md:py-12">
+        <div className="max-w-md mx-auto flex flex-col items-center">
+          {/* University Logo */}
+          <div className="animate-reveal">
+            <img 
+              src={heroLogo} 
+              alt="Hoodtorial University - Class of 2025" 
+              className="h-[120px] sm:h-[160px] lg:h-[200px] w-auto animate-logo-pulse"
+            />
           </div>
 
+          {/* University Name */}
+          <h1 className="heading-3 md:heading-2 text-center mt-6">
+            <span className="block animate-reveal stagger-1">HOODTORIAL</span>
+            <span className="block text-gold-gradient text-glow animate-reveal stagger-2">UNIVERSITY</span>
+          </h1>
+
+          {/* Tagline */}
+          <p className="text-xs md:text-sm font-bold uppercase tracking-[0.2em] text-muted-foreground text-center mt-3 animate-reveal stagger-3">
+            Where Hustle Meets Hollywood
+          </p>
+
           {/* Form Card */}
-          <div className="card-urban p-8">
-            <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="w-full mt-8 card-urban p-6 md:p-8 animate-reveal stagger-4">
+            <div className="text-center mb-6">
+              <h2 className="heading-4 text-foreground">
+                {isSignUp ? "Join the University" : "Welcome Back"}
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                {isSignUp 
+                  ? "Create your account to start your journey" 
+                  : "Sign in to access your Student Center"}
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
               {/* Display Name (Sign Up only) */}
               {isSignUp && (
                 <div className="space-y-2">
-                  <Label htmlFor="displayName" className="text-sm font-bold uppercase tracking-wide">
+                  <Label htmlFor="displayName" className="text-xs font-bold uppercase tracking-wide">
                     Display Name
                   </Label>
                   <div className="relative">
@@ -191,7 +219,7 @@ export default function Auth() {
 
               {/* Email */}
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-bold uppercase tracking-wide">
+                <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wide">
                   Email
                 </Label>
                 <div className="relative">
@@ -212,7 +240,7 @@ export default function Auth() {
 
               {/* Password */}
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-bold uppercase tracking-wide">
+                <Label htmlFor="password" className="text-xs font-bold uppercase tracking-wide">
                   Password
                 </Label>
                 <div className="relative">
@@ -250,7 +278,7 @@ export default function Auth() {
 
             {/* Toggle Sign In/Up */}
             <div className="mt-6 text-center">
-              <p className="text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 {isSignUp ? "Already have an account?" : "Don't have an account?"}
                 <button
                   type="button"
@@ -264,10 +292,9 @@ export default function Auth() {
                 </button>
               </p>
             </div>
-
           </div>
         </div>
       </div>
-    </PageLayout>
+    </div>
   );
 }
