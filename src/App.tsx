@@ -18,6 +18,7 @@ import StudentCenter from "./pages/StudentCenter";
 import StudentProfile from "./pages/StudentProfile";
 import StudentGrades from "./pages/StudentGrades";
 import Assessment from "./pages/Assessment";
+import Shop from "./pages/Shop";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/enrollment" element={<Enrollment />} />
             <Route path="/faculty" element={<Faculty />} />
             <Route path="/about" element={<About />} />
+            <Route path="/shop" element={<Shop />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/assessment" element={
               <ProtectedRoute>
