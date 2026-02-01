@@ -183,10 +183,17 @@ export default function Auth() {
           {/* Form Card */}
           <div className="w-full mt-8 card-urban p-6 md:p-8 animate-reveal stagger-4">
             <div className="text-center mb-6">
-              <h2 className="heading-4 text-foreground">
+              <h2 
+                key={isSignUp ? 'signup' : 'signin'} 
+                className="heading-4 text-foreground animate-fade-in"
+              >
                 {isSignUp ? "Join the University" : "Welcome Back"}
               </h2>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p 
+                key={isSignUp ? 'signup-desc' : 'signin-desc'} 
+                className="text-sm text-muted-foreground mt-1 animate-fade-in"
+                style={{ animationDelay: '50ms' }}
+              >
                 {isSignUp 
                   ? "Create your account to start your journey" 
                   : "Sign in to access your Student Center"}
@@ -195,27 +202,30 @@ export default function Auth() {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Display Name (Sign Up only) */}
-              {isSignUp && (
-                <div className="space-y-2">
-                  <Label htmlFor="displayName" className="text-xs font-bold uppercase tracking-wide">
-                    Display Name
-                  </Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="displayName"
-                      type="text"
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
-                      placeholder="Your name"
-                      className="pl-10 bg-background border-2 border-border focus:border-primary"
-                    />
-                  </div>
-                  {errors.displayName && (
-                    <p className="text-sm text-destructive">{errors.displayName}</p>
-                  )}
+              <div 
+                className={`space-y-2 overflow-hidden transition-all duration-300 ease-out ${
+                  isSignUp ? 'max-h-24 opacity-100' : 'max-h-0 opacity-0'
+                }`}
+              >
+                <Label htmlFor="displayName" className="text-xs font-bold uppercase tracking-wide">
+                  Display Name
+                </Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="displayName"
+                    type="text"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="Your name"
+                    className="pl-10 bg-background border-2 border-border focus:border-primary"
+                    tabIndex={isSignUp ? 0 : -1}
+                  />
                 </div>
-              )}
+                {errors.displayName && (
+                  <p className="text-sm text-destructive">{errors.displayName}</p>
+                )}
+              </div>
 
               {/* Email */}
               <div className="space-y-2">
