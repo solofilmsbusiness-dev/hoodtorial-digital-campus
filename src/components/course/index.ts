@@ -1,4 +1,9 @@
 export { LessonCard } from "./LessonCard";
+export { LockedLessonCard } from "./LockedLessonCard";
+export { LockedQuizCard } from "./LockedQuizCard";
+export { ProgressionModuleAccordion } from "./ProgressionModuleAccordion";
+export { ProgressionInfo } from "./ProgressionInfo";
+export { EnrollmentCard } from "./EnrollmentCard";
 export { QuizCard } from "./QuizCard";
 export { VideoPlayer } from "./VideoPlayer";
 export { ModuleAccordion } from "./ModuleAccordion";

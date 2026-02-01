@@ -38,6 +38,10 @@ export function useQuizResults() {
     fetchResults();
   }, [user]);
 
+  const getAttemptCount = (quizId: string) => {
+    return results.filter((r) => r.quiz_id === quizId).length;
+  };
+
   const saveQuizResult = async (result: {
     quiz_id: string;
     course_code: string;
@@ -48,12 +52,16 @@ export function useQuizResults() {
   }) => {
     if (!user) return { error: new Error("Not authenticated") };
 
+    // Get current attempt count for this quiz
+    const attemptNumber = getAttemptCount(result.quiz_id) + 1;
+
     try {
       const { data, error } = await supabase
         .from("quiz_results")
         .insert({
           user_id: user.id,
           ...result,
+          attempt_number: attemptNumber,
         })
         .select()
         .single();
@@ -67,5 +75,5 @@ export function useQuizResults() {
     }
   };
 
-  return { results, loading, error, saveQuizResult };
+  return { results, loading, error, saveQuizResult, getAttemptCount };
 }

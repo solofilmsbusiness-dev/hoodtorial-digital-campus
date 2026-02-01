@@ -1,66 +1,83 @@
 import { useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { PageLayout, Section } from "@/components/layout";
-import { ModuleAccordion, VideoPlayer, QuizCard, QuizPlayer } from "@/components/course";
+import { 
+  ProgressionModuleAccordion, 
+  VideoPlayer, 
+  LockedQuizCard, 
+  QuizPlayer,
+  ProgressionInfo,
+  EnrollmentCard 
+} from "@/components/course";
 import { Badge } from "@/components/ui/badge";
 import { getCourseByCode, getTotalLessonsCount, getTotalQuizzesCount, type Lesson, type Quiz } from "@/data/courses";
-import { ArrowLeft, Clock, BookOpen, Award, CheckCircle2, X } from "lucide-react";
+import { ArrowLeft, Clock, BookOpen, Award, CheckCircle2, X, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { useQuizResults } from "@/hooks/useQuizResults";
-import { useUserProgress } from "@/hooks/useUserProgress";
+import { useEnrollments } from "@/hooks/useEnrollments";
+import { useLessonProgress } from "@/hooks/useLessonProgress";
+import { useAuth } from "@/contexts/AuthContext";
 
 const CourseDetail = () => {
   const { code } = useParams<{ code: string }>();
   const course = getCourseByCode(code || "");
+  const { user } = useAuth();
+  const { toast } = useToast();
+  
   const [activeLesson, setActiveLesson] = useState<Lesson | undefined>(
     course?.modules[0]?.lessons[0]
   );
   const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null);
-  const { toast } = useToast();
-  
-  // Get real progress data from database
-  const { results: quizResults } = useQuizResults();
-  const { progress: userProgress, markLessonComplete } = useUserProgress();
+  const [enrolling, setEnrolling] = useState(false);
 
-  // Calculate progress for this course
+  // Enrollment state
+  const { 
+    isEnrolled, 
+    getEnrollment, 
+    enroll, 
+    canEnroll, 
+    slotsRemaining, 
+    maxSlots 
+  } = useEnrollments();
+
+  // Progression state
+  const {
+    isContentUnlocked,
+    isLessonCompleted,
+    isQuizPassed,
+    getQuizAttempts,
+    canAttemptQuiz,
+    getModuleProgress,
+    markLessonComplete,
+  } = useLessonProgress(course);
+
+  const enrollment = course ? getEnrollment(course.code) : undefined;
+  const enrolled = course ? isEnrolled(course.code) : false;
+
+  // Calculate overall course progress
   const courseProgress = useMemo(() => {
     if (!course) return { completedLessons: 0, completedQuizzes: 0, percent: 0 };
+
+    let completedLessons = 0;
+    let completedQuizzes = 0;
     
-    const courseQuizResults = quizResults.filter(r => r.course_code === course.code);
-    const passedQuizIds = new Set(
-      courseQuizResults.filter(r => r.passed).map(r => r.quiz_id)
-    );
+    course.modules.forEach((module) => {
+      module.lessons.forEach((lesson) => {
+        if (isLessonCompleted(lesson.id)) completedLessons++;
+      });
+      if (module.quiz && isQuizPassed(module.quiz.id)) completedQuizzes++;
+    });
     
-    const completedLessonIds = new Set(
-      userProgress
-        .filter(p => p.course_code === course.code && p.lesson_id && p.completed)
-        .map(p => p.lesson_id)
-    );
-    
+    if (course.finalExam && isQuizPassed(course.finalExam.id)) completedQuizzes++;
+
     const totalLessons = getTotalLessonsCount(course);
     const totalQuizzes = getTotalQuizzesCount(course);
-    
-    const completedLessons = completedLessonIds.size;
-    const completedQuizzes = passedQuizIds.size;
-    
     const total = totalLessons + totalQuizzes;
     const completed = completedLessons + completedQuizzes;
     const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
-    
-    return { 
-      completedLessons, 
-      completedQuizzes, 
-      percent,
-      passedQuizIds,
-      completedLessonIds
-    };
-  }, [course, quizResults, userProgress]);
 
-  // Check if a specific quiz is passed
-  const isQuizPassed = (quizId: string) => {
-    return courseProgress.passedQuizIds?.has(quizId) || false;
-  };
+    return { completedLessons, completedQuizzes, percent };
+  }, [course, isLessonCompleted, isQuizPassed]);
 
   if (!course) {
     return (
@@ -88,10 +105,24 @@ const CourseDetail = () => {
   const totalLessons = getTotalLessonsCount(course);
   const totalQuizzes = getTotalQuizzesCount(course);
 
+  const handleEnroll = async () => {
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to enroll in courses.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setEnrolling(true);
+    await enroll(course.code);
+    setEnrolling(false);
+  };
+
   const handleQuizComplete = (score: number, passed: boolean) => {
     toast({
       title: passed ? "Quiz Passed! 🎉" : "Quiz Not Passed",
-      description: passed 
+      description: passed
         ? `Great job! You scored ${score}%. Your progress has been saved.`
         : `You scored ${score}%. Review the material and try again.`,
       variant: passed ? "default" : "destructive",
@@ -99,10 +130,20 @@ const CourseDetail = () => {
   };
 
   const handleQuizClick = (quiz: Quiz) => {
-    setActiveQuiz(quiz);
+    if (enrolled && canAttemptQuiz(quiz.id)) {
+      setActiveQuiz(quiz);
+    }
   };
 
   const handleMarkComplete = async () => {
+    if (!enrolled) {
+      toast({
+        title: "Enrollment Required",
+        description: "Please enroll in this course to track your progress.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (activeLesson) {
       await markLessonComplete(course.code, activeLesson.id, 0);
       toast({
@@ -112,6 +153,35 @@ const CourseDetail = () => {
     }
   };
 
+  const handleLessonSelect = (lesson: Lesson) => {
+    // Find the lesson's module and index
+    for (let mi = 0; mi < course.modules.length; mi++) {
+      const module = course.modules[mi];
+      const li = module.lessons.findIndex((l) => l.id === lesson.id);
+      if (li !== -1) {
+        if (enrolled && isContentUnlocked(mi, li, "lesson")) {
+          setActiveLesson(lesson);
+        } else if (!enrolled) {
+          toast({
+            title: "Enrollment Required",
+            description: "Enroll in this course to access lessons.",
+            variant: "destructive",
+          });
+        }
+        return;
+      }
+    }
+  };
+
+  // Check if final exam is unlocked (all modules complete)
+  const isFinalExamUnlocked = useMemo(() => {
+    if (!course.finalExam) return false;
+    return course.modules.every((module) => {
+      const progress = getModuleProgress(module);
+      return progress.percent === 100;
+    });
+  }, [course, getModuleProgress]);
+
   return (
     <PageLayout>
       {/* Quiz Modal Overlay */}
@@ -119,7 +189,7 @@ const CourseDetail = () => {
         <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm overflow-y-auto">
           <div className="container-wide py-8">
             <div className="flex justify-end mb-4">
-              <button 
+              <button
                 onClick={() => setActiveQuiz(null)}
                 className="p-2 border-2 border-border hover:border-primary text-muted-foreground hover:text-foreground transition-colors"
                 aria-label="Close quiz"
@@ -128,7 +198,7 @@ const CourseDetail = () => {
               </button>
             </div>
             <div className="max-w-3xl mx-auto">
-              <QuizPlayer 
+              <QuizPlayer
                 quiz={activeQuiz}
                 courseCode={course.code}
                 onComplete={handleQuizComplete}
@@ -143,8 +213,8 @@ const CourseDetail = () => {
       <section className="relative pt-24 pb-8 bg-noise border-b-2 border-border">
         <div className="absolute inset-0 bg-grid opacity-50" />
         <div className="container-wide relative z-10">
-          <Link 
-            to="/academics" 
+          <Link
+            to="/academics"
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-6"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -190,19 +260,23 @@ const CourseDetail = () => {
                 <div className="text-sm text-muted-foreground mt-1">Complete</div>
               </div>
               <div className="h-2 bg-muted border border-border mb-4">
-                <div 
-                  className="h-full bg-primary transition-all duration-300" 
+                <div
+                  className="h-full bg-primary transition-all duration-300"
                   style={{ width: `${courseProgress.percent}%` }}
                 />
               </div>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Lessons</span>
-                  <span className="font-bold text-foreground">{courseProgress.completedLessons}/{totalLessons}</span>
+                  <span className="font-bold text-foreground">
+                    {courseProgress.completedLessons}/{totalLessons}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Quizzes</span>
-                  <span className="font-bold text-foreground">{courseProgress.completedQuizzes}/{totalQuizzes}</span>
+                  <span className="font-bold text-foreground">
+                    {courseProgress.completedQuizzes}/{totalQuizzes}
+                  </span>
                 </div>
               </div>
             </div>
@@ -215,14 +289,30 @@ const CourseDetail = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Video Player Area */}
           <div className="lg:col-span-2 space-y-6">
-            {activeLesson && (
+            {/* Enrollment Card for non-enrolled users */}
+            {!enrolled && (
+              <EnrollmentCard
+                course={course}
+                isEnrolled={false}
+                canEnroll={canEnroll}
+                slotsRemaining={slotsRemaining}
+                maxSlots={maxSlots}
+                onEnroll={handleEnroll}
+                isLoading={enrolling}
+              />
+            )}
+
+            {/* Progression info */}
+            <ProgressionInfo isEnrolled={enrolled} />
+
+            {activeLesson && enrolled ? (
               <>
                 <VideoPlayer lesson={activeLesson} />
                 <div className="border-2 border-border p-6 bg-card/50">
                   <h2 className="heading-4 text-foreground mb-2">{activeLesson.title}</h2>
                   <p className="text-muted-foreground text-sm">
-                    This lesson covers essential concepts and practical techniques. 
-                    Complete the lesson and move on to the next one to continue your progress.
+                    This lesson covers essential concepts and practical techniques. Complete the
+                    lesson and move on to the next one to continue your progress.
                   </p>
                   <div className="flex gap-4 mt-6">
                     <button onClick={handleMarkComplete} className="btn-brutal">
@@ -232,23 +322,38 @@ const CourseDetail = () => {
                   </div>
                 </div>
               </>
-            )}
+            ) : !enrolled ? (
+              <div className="border-2 border-border p-12 bg-card/50 text-center">
+                <Lock className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="heading-4 text-foreground mb-2">Enroll to Access Content</h3>
+                <p className="text-muted-foreground mb-6">
+                  Enroll in this course to watch lessons and track your progress.
+                </p>
+              </div>
+            ) : null}
           </div>
 
           {/* Course Modules Sidebar */}
           <div className="space-y-4">
             <h3 className="heading-4 text-foreground">Course Content</h3>
-            
+
             <div className="space-y-3">
               {course.modules.map((module, index) => (
-                <ModuleAccordion
+                <ProgressionModuleAccordion
                   key={module.id}
                   module={module}
-                  index={index}
+                  moduleIndex={index}
                   activeLesson={activeLesson}
-                  onLessonSelect={setActiveLesson}
+                  onLessonSelect={handleLessonSelect}
                   onQuizClick={handleQuizClick}
-                  isQuizPassed={module.quiz ? isQuizPassed(module.quiz.id) : false}
+                  isContentUnlocked={(mi, li, type) =>
+                    enrolled ? isContentUnlocked(mi, li, type) : false
+                  }
+                  isLessonCompleted={isLessonCompleted}
+                  isQuizPassed={isQuizPassed}
+                  getQuizAttempts={getQuizAttempts}
+                  canAttemptQuiz={canAttemptQuiz}
+                  moduleProgress={getModuleProgress(module)}
                   defaultOpen={index === 0}
                 />
               ))}
@@ -258,10 +363,13 @@ const CourseDetail = () => {
                   <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">
                     Final Exam
                   </h4>
-                  <QuizCard
+                  <LockedQuizCard
                     quiz={course.finalExam}
                     type="final"
-                    isCompleted={isQuizPassed(course.finalExam.id)}
+                    isUnlocked={enrolled && isFinalExamUnlocked}
+                    isPassed={isQuizPassed(course.finalExam.id)}
+                    attemptCount={getQuizAttempts(course.finalExam.id)}
+                    maxAttempts={3}
                     onClick={() => handleQuizClick(course.finalExam!)}
                   />
                 </div>
