@@ -1,143 +1,151 @@
 
 
-# Hoodtorial University Shop
+# New Home Page with University Logo Hero
 
 ## Overview
-Create a merch shop page that matches the ultra-dark, urban, brutalist aesthetic of the rest of the site. The shop will feature university apparel including varsity jackets and t-shirts with the designs you provided.
+Redesign the home page to feature the uploaded "Hoodtorial University" graduation cap logo as the centerpiece of a bold, impactful hero section. This creates a more collegiate, branded experience while maintaining the ultra-dark brutalist aesthetic.
 
 ---
 
-## What Will Be Created
+## What Will Change
 
-### 1. Shop Page (`/shop`)
-A full-featured merchandise page with:
-- Hero section with urban vibe ("GEAR UP" / "REP THE CULTURE")
-- Product grid displaying all merch items
-- Category filter tabs (All, Jackets, Tees, Accessories)
-- Product cards with hover effects matching site style
+### Hero Section Redesign
+The current text-heavy hero will be replaced with a logo-centric design:
 
-### 2. Product Card Component
-Each product will display:
-- Product image
-- Title and category
-- Price with the brutalist styling
-- "SOLD OUT" or "COMING SOON" badges where applicable
-- Hover effects with gold border glow
+**Current Hero:**
+- "SHOOT BETTER. EDIT SMARTER. GRADUATE DIFFERENT." headline
+- Paragraph subheadline
+- CTA buttons below text
 
-### 3. Product Detail Modal (Optional Quick View)
-When clicking a product:
-- Larger image view
-- Size selector (S, M, L, XL, 2XL)
-- Add to cart button (linking to external store or showing "Coming Soon")
-
----
-
-## Products to Display
-
-Using your uploaded images as the product photos:
-
-| Product | Image | Price | Status |
-|---------|-------|-------|--------|
-| Varsity Jacket (Crown Logo) | Gold/black jacket with Hoodtorials crown | $249 | Available |
-| Varsity Jacket (Class of 2025) | Graduation cap design jacket | $249 | Available |
-| Bali 25 Tee | "25 BALI" graphic | $45 | Available |
-| Classic HT Tee | Film strip logo | $40 | Available |
-| Class of 2025 Tee | Palm tree house graphic | $45 | Available |
+**New Hero:**
+- Large animated university logo as the focal point (the uploaded image)
+- Tagline beneath: "WHERE HUSTLE MEETS HOLLYWOOD"
+- "Class of 2025" enrollment badge
+- CTA buttons
+- Subtle background effects (keep existing orbs/grid)
 
 ---
 
 ## Page Structure
 
 ```text
-Shop Page
+New Home Page Layout:
 |
-+-- Hero Section
-|     - "GEAR UP" headline
-|     - "Rep the culture. Show the world you're film school different."
++-- Hero Section (REDESIGNED)
+|     - Full-screen height
+|     - Centered university logo (large, animated glow)
+|     - "HOODTORIAL UNIVERSITY" text treatment
+|     - "WHERE HUSTLE MEETS HOLLYWOOD" tagline
+|     - "Now Enrolling" sticker badge
+|     - CTA buttons: "Start Learning" / "View Curriculum"
+|     - Animated scroll indicator
 |
-+-- Filter Tabs
-|     - All / Jackets / Tees
++-- Stats Bar (KEEP)
+|     - 12 Courses / 60 Credits / 4 Departments / Infinite Potential
 |
-+-- Product Grid
-|     - 2 columns on mobile
-|     - 3-4 columns on desktop
-|     - ProductCard components
++-- Features Section (KEEP)
+|     - Real Film Training / Scenario Exams / Actual Credentials
 |
-+-- Coming Soon Banner (optional)
-      - "More drops loading..."
++-- How It Works (KEEP)
+|     - Enroll -> Study -> Create -> Graduate
+|
++-- Featured Courses (KEEP)
+|
++-- Degree Preview (KEEP)
+|
++-- Membership Tiers (KEEP)
+|
++-- Email Capture (KEEP)
 ```
 
 ---
 
-## Design Details
+## Hero Design Details
 
-### Product Card Styling
-- Black/charcoal background (card-urban style)
-- Border-2 border, hover to gold
-- Image with subtle scale on hover
-- Gold price text (matches brand)
-- Category tag in top corner (tag-sticker style)
+### Logo Treatment
+- Copy uploaded image to `src/assets/hero-logo.png`
+- Display centered at large size (350-400px height on desktop)
+- Add subtle pulsing glow effect around the logo
+- The logo's black/white design works perfectly on the dark background
 
-### Responsive Layout
-- Mobile: 1-2 columns
-- Tablet: 2-3 columns  
-- Desktop: 3-4 columns
+### Typography Stack
+```text
+[University Logo Image - graduation cap with "Class of 2025"]
+
+HOODTORIAL
+UNIVERSITY
+
+Where Hustle Meets Hollywood
+
+[Now Enrolling Badge]
+
+[Start Learning CTA]  [View Curriculum CTA]
+```
+
+### Animation Sequence
+1. Logo fades in with scale effect (0.2s delay)
+2. "HOODTORIAL" text reveals from bottom (0.4s delay)
+3. "UNIVERSITY" text reveals (0.5s delay)
+4. Tagline fades in (0.6s delay)
+5. CTAs animate in (0.8s delay)
+
+### Background Effects
+- Keep existing animated gradient orbs (gold/purple/pink)
+- Keep grid overlay
+- Keep noise texture
+- Optional: add radial gradient behind logo for depth
 
 ---
 
 ## Technical Implementation
 
-### New Files
-1. `src/pages/Shop.tsx` - Main shop page
-2. `src/components/cards/ProductCard.tsx` - Reusable product card
-3. Copy product images to `src/assets/shop/` folder
+### Image Setup
+1. Copy `user-uploads://BangOUT_university_design_4.PNG` to `src/assets/hero-logo.png`
+2. Import as ES6 module in Index.tsx
 
-### Route Addition
-Add to `src/App.tsx`:
-```text
-<Route path="/shop" element={<Shop />} />
-```
+### Component Changes
+Modify `src/pages/Index.tsx`:
+- Replace hero headline text with logo image
+- Add styled text beneath logo
+- Adjust layout to be more visually centered
+- Keep all other sections (stats, features, etc.) intact
 
-### Product Card Props
-- `id`: unique identifier
-- `name`: product name
-- `category`: "Jacket" | "Tee" | "Accessory"
-- `price`: number
-- `image`: imported image path
-- `status`: "available" | "sold-out" | "coming-soon"
-- `sizes`: array of available sizes
+### Styling Additions
+- `.logo-glow` class for the pulsing effect around the logo
+- Responsive sizing for the logo (smaller on mobile)
 
 ---
 
-## Images Usage
+## Responsive Behavior
 
-Your uploaded product images will be:
-1. Copied to `src/assets/shop/` directory
-2. Imported as ES6 modules in the Shop page
-3. Displayed as the actual product photos
-
-The jacket photos and design graphics will serve as:
-- Varsity Jacket 1: Crown logo jacket (IMG A3BE33D5)
-- Varsity Jacket 2: Class of 2025 jacket (IMG_2900)
-- Tee designs: The logo graphics will be shown as t-shirt mockups
+| Breakpoint | Logo Height | Text Size |
+|------------|-------------|-----------|
+| Mobile (<640px) | 200px | text-4xl |
+| Tablet (640-1024px) | 280px | text-5xl |
+| Desktop (>1024px) | 380px | text-6xl/7xl |
 
 ---
 
-## Future Enhancements (Not in This Build)
-- Shopping cart functionality
-- Checkout integration (would require Shopify)
-- Size guide modal
-- Product zoom gallery
+## Files to Modify
 
----
-
-## Files Summary
-
-| File | Purpose |
+| File | Changes |
 |------|---------|
-| `src/pages/Shop.tsx` | Main shop page with hero, filters, product grid |
-| `src/components/cards/ProductCard.tsx` | Reusable product display card |
-| `src/components/cards/index.ts` | Add ProductCard export |
-| `src/App.tsx` | Add /shop route |
-| `src/assets/shop/*` | Product images |
+| `src/assets/hero-logo.png` | Copy uploaded image here |
+| `src/pages/Index.tsx` | Replace hero section with logo-centric design |
+| `src/index.css` | Add logo glow animation class (optional) |
+
+---
+
+## What Stays the Same
+
+All sections below the hero remain unchanged:
+- Stats bar (12 Courses, 60 Credits, etc.)
+- Features section (Why HU)
+- How It Works (graduation steps)
+- Featured Courses grid
+- Degree Preview
+- Membership Tiers
+- Email capture form
+
+The overall ultra-dark, brutalist aesthetic is preserved - the logo simply becomes the new focal point of the hero.
 
