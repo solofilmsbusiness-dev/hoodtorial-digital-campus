@@ -101,6 +101,39 @@ export type Database = {
         }
         Relationships: []
       }
+      enrollments: {
+        Row: {
+          completed_at: string | null
+          course_code: string
+          created_at: string
+          enrolled_at: string
+          id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          course_code: string
+          created_at?: string
+          enrolled_at?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          course_code?: string
+          created_at?: string
+          enrolled_at?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       lessons: {
         Row: {
           content: string | null
@@ -239,6 +272,7 @@ export type Database = {
       }
       quiz_results: {
         Row: {
+          attempt_number: number | null
           course_code: string
           created_at: string
           id: string
@@ -250,6 +284,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          attempt_number?: number | null
           course_code: string
           created_at?: string
           id?: string
@@ -261,6 +296,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          attempt_number?: number | null
           course_code?: string
           created_at?: string
           id?: string
@@ -284,6 +320,9 @@ export type Database = {
           lesson_id: string | null
           updated_at: string
           user_id: string
+          video_duration_seconds: number | null
+          watch_percentage: number | null
+          watched_seconds: number | null
         }
         Insert: {
           completed?: boolean
@@ -295,6 +334,9 @@ export type Database = {
           lesson_id?: string | null
           updated_at?: string
           user_id: string
+          video_duration_seconds?: number | null
+          watch_percentage?: number | null
+          watched_seconds?: number | null
         }
         Update: {
           completed?: boolean
@@ -306,6 +348,9 @@ export type Database = {
           lesson_id?: string | null
           updated_at?: string
           user_id?: string
+          video_duration_seconds?: number | null
+          watch_percentage?: number | null
+          watched_seconds?: number | null
         }
         Relationships: []
       }
@@ -335,6 +380,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_enroll: { Args: { _user_id: string }; Returns: boolean }
+      get_active_enrollment_count: {
+        Args: { _user_id: string }
+        Returns: number
+      }
+      get_quiz_attempt_count: {
+        Args: { _quiz_id: string; _user_id: string }
+        Returns: number
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

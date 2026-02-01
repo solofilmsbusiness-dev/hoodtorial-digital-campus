@@ -5,6 +5,7 @@ import { useProfile } from "@/hooks/useProfile";
 import { useQuizResults } from "@/hooks/useQuizResults";
 import { useUserProgress } from "@/hooks/useUserProgress";
 import { useAssessmentResults } from "@/hooks/useAssessmentResults";
+import { useEnrollments } from "@/hooks/useEnrollments";
 import { courses } from "@/data/courses";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
@@ -19,8 +20,12 @@ import {
   Award,
   Clock,
   Sparkles,
-  RotateCcw
+  RotateCcw,
+  Layers,
+  CheckCircle2,
+  Play
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function StudentCenter() {
   const { user } = useAuth();
@@ -28,6 +33,7 @@ export default function StudentCenter() {
   const { results } = useQuizResults();
   const { getTotalCredits, getCompletedCourses } = useUserProgress();
   const { latestResult, hasCompletedAssessment } = useAssessmentResults();
+  const { activeEnrollments, completedEnrollments, slotsRemaining, maxSlots } = useEnrollments();
 
   const totalCredits = getTotalCredits();
   const completedCourses = getCompletedCourses();
@@ -41,6 +47,11 @@ export default function StudentCenter() {
     .map((code) => courses.find((c) => c.code === code))
     .filter(Boolean)
     .slice(0, 3) || [];
+
+  // Get active course details
+  const activeCourseDetails = activeEnrollments
+    .map((e) => courses.find((c) => c.code === e.course_code))
+    .filter(Boolean);
 
   const getInitials = (name?: string | null) => {
     if (!name) return user?.email?.charAt(0).toUpperCase() || "S";
@@ -101,6 +112,74 @@ export default function StudentCenter() {
             </Link>
           </div>
 
+          {/* Active Courses Section */}
+          <Card className="card-urban mb-8">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Layers className="h-5 w-5 text-primary" />
+                  Active Courses
+                </CardTitle>
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-muted-foreground">Slots:</span>
+                  <span className={cn(
+                    "font-bold",
+                    slotsRemaining === 0 ? "text-destructive" : "text-primary"
+                  )}>
+                    {activeEnrollments.length}/{maxSlots}
+                  </span>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {activeEnrollments.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="mb-2">No active courses yet.</p>
+                  <p className="text-sm">You can enroll in up to {maxSlots} courses at a time.</p>
+                  <Link to="/academics" className="text-primary font-bold hover:underline mt-4 inline-block">
+                    Browse Courses →
+                  </Link>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {activeCourseDetails.map((course) => (
+                    <Link
+                      key={course!.code}
+                      to={`/course/${course!.code}`}
+                      className="group p-4 border-2 border-border hover:border-primary bg-card/50 hover:bg-primary/5 transition-all"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-1">
+                          {course!.code}
+                        </span>
+                        <Play className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                      </div>
+                      <h4 className="font-bold text-foreground mb-1 line-clamp-2">
+                        {course!.title}
+                      </h4>
+                      <p className="text-xs text-muted-foreground">
+                        {course!.department} • {course!.credits} credits
+                      </p>
+                    </Link>
+                  ))}
+                  {slotsRemaining > 0 && (
+                    <Link
+                      to="/academics"
+                      className="p-4 border-2 border-dashed border-border hover:border-primary flex flex-col items-center justify-center text-center text-muted-foreground hover:text-primary transition-all"
+                    >
+                      <BookOpen className="h-8 w-8 mb-2 opacity-50" />
+                      <span className="text-sm font-medium">
+                        {slotsRemaining} {slotsRemaining === 1 ? "slot" : "slots"} available
+                      </span>
+                      <span className="text-xs">Add a course</span>
+                    </Link>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Quick Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
             <Card className="card-urban">
@@ -118,10 +197,10 @@ export default function StudentCenter() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <BookOpen className="h-8 w-8 text-accent" />
-                  <span className="text-3xl font-black text-foreground">{completedCourses}/{requiredCourses}</span>
+                  <span className="text-3xl font-black text-foreground">{completedEnrollments.length}/{requiredCourses}</span>
                 </div>
                 <p className="text-sm font-bold uppercase tracking-wide text-muted-foreground mb-2">Courses Completed</p>
-                <Progress value={(completedCourses / requiredCourses) * 100} className="h-2" />
+                <Progress value={(completedEnrollments.length / requiredCourses) * 100} className="h-2" />
               </CardContent>
             </Card>
 
