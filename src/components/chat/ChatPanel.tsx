@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { X, Send, Trash2, Sparkles, Loader2 } from "lucide-react";
+import { X, Send, Trash2, Sparkles, Loader2, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -39,7 +39,7 @@ function TypingIndicator() {
 export function ChatPanel({ onClose }: ChatPanelProps) {
   const [input, setInput] = useState("");
   const { messages, isLoading, sendMessage, clearMessages } = useChat();
-  const { playMessageSound } = useChatSound();
+  const { playMessageSound, isMuted, toggleMute } = useChatSound();
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
@@ -102,6 +102,15 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
           </div>
         </div>
         <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleMute}
+            className="h-8 w-8 hover:scale-110 transition-transform"
+            title={isMuted ? "Unmute sounds" : "Mute sounds"}
+          >
+            {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+          </Button>
           {messages.length > 0 && (
             <Button
               variant="ghost"
