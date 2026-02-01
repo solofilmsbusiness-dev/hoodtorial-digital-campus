@@ -15,6 +15,8 @@ import { Switch } from "@/components/ui/switch";
 import { PenSquare, X, Link as LinkIcon } from "lucide-react";
 import { PostCategory } from "@/hooks/useCommunityPosts";
 import { courses } from "@/data/courses";
+import { ImageUploader } from "./ImageUploader";
+import { useCommunityUploads } from "@/hooks/useCommunityUploads";
 
 interface CreatePostFormProps {
   onSubmit: (data: {
@@ -24,6 +26,7 @@ interface CreatePostFormProps {
     course_code?: string;
     is_project_post?: boolean;
     video_url?: string;
+    media_urls?: string[];
   }) => void;
   onCancel: () => void;
   isSubmitting: boolean;
@@ -36,6 +39,9 @@ export function CreatePostForm({ onSubmit, onCancel, isSubmitting }: CreatePostF
   const [courseCode, setCourseCode] = useState<string>("");
   const [isProjectPost, setIsProjectPost] = useState(false);
   const [videoUrl, setVideoUrl] = useState("");
+  const [mediaUrls, setMediaUrls] = useState<string[]>([]);
+  
+  const { uploadImages, isUploading, uploadProgress } = useCommunityUploads();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,6 +54,7 @@ export function CreatePostForm({ onSubmit, onCancel, isSubmitting }: CreatePostF
       course_code: courseCode || undefined,
       is_project_post: isProjectPost,
       video_url: videoUrl || undefined,
+      media_urls: mediaUrls.length > 0 ? mediaUrls : undefined,
     });
   };
 
@@ -127,6 +134,18 @@ export function CreatePostForm({ onSubmit, onCancel, isSubmitting }: CreatePostF
           </div>
 
           <div className="space-y-2">
+            <Label>Images (optional)</Label>
+            <ImageUploader
+              images={mediaUrls}
+              onImagesChange={setMediaUrls}
+              onUpload={uploadImages}
+              isUploading={isUploading}
+              uploadProgress={uploadProgress}
+              maxImages={5}
+            />
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="video">Video Link (optional)</Label>
             <div className="relative">
               <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -164,7 +183,7 @@ export function CreatePostForm({ onSubmit, onCancel, isSubmitting }: CreatePostF
             </Button>
             <Button 
               type="submit" 
-              disabled={!title.trim() || !content.trim() || isSubmitting}
+              disabled={!title.trim() || !content.trim() || isSubmitting || isUploading}
               className="btn-brutal"
             >
               {isSubmitting ? "Posting..." : "Post to Community"}

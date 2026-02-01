@@ -139,19 +139,34 @@ export function PostCard({ post, onLike, onFollow, onDelete, onClick }: PostCard
           {post.content}
         </p>
 
+        {/* Image thumbnails */}
+        {post.media_urls.length > 0 && (
+          <div className="mb-4">
+            <div className="flex gap-2 overflow-hidden">
+              {post.media_urls.slice(0, 3).map((url, index) => (
+                <div key={url} className="relative flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border border-border">
+                  <img
+                    src={url}
+                    alt={`Preview ${index + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                  {index === 2 && post.media_urls.length > 3 && (
+                    <div className="absolute inset-0 bg-background/70 flex items-center justify-center">
+                      <span className="text-sm font-bold">+{post.media_urls.length - 3}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Media indicators */}
-        {(post.media_urls.length > 0 || post.video_url) && (
+        {post.video_url && (
           <div className="flex items-center gap-2 mb-4">
-            {post.video_url && (
-              <span className="flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-                <Film className="h-3 w-3" /> Video
-              </span>
-            )}
-            {post.media_urls.length > 0 && (
-              <span className="flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-                <ImageIcon className="h-3 w-3" /> {post.media_urls.length} image{post.media_urls.length > 1 ? 's' : ''}
-              </span>
-            )}
+            <span className="flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+              <Film className="h-3 w-3" /> Video
+            </span>
           </div>
         )}
 

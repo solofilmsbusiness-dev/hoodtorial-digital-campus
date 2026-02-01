@@ -13,7 +13,6 @@ import {
   Star,
   ArrowLeft,
   Film,
-  Image as ImageIcon,
   ExternalLink
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,6 +20,7 @@ import { CommunityPost, PostCategory } from "@/hooks/useCommunityPosts";
 import { useCommunityComments } from "@/hooks/useCommunityComments";
 import { CommentThread } from "./CommentThread";
 import { CritiqueCommentForm } from "./CritiqueCommentForm";
+import { ImageGallery } from "./ImageGallery";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface PostDetailProps {
@@ -176,25 +176,9 @@ export function PostDetail({ post, onBack, onLike, onFollow }: PostDetailProps) 
             </div>
           )}
 
-          {/* Media images */}
+          {/* Media images with lightbox */}
           {post.media_urls.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-4">
-              {post.media_urls.map((url, idx) => (
-                <a 
-                  key={idx} 
-                  href={url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="aspect-video bg-muted rounded-lg overflow-hidden hover:opacity-80 transition-opacity"
-                >
-                  <img 
-                    src={url} 
-                    alt={`Attachment ${idx + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                </a>
-              ))}
-            </div>
+            <ImageGallery images={post.media_urls} className="mt-4" />
           )}
 
           <Separator className="my-4" />
