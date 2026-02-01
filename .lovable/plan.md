@@ -1,78 +1,86 @@
 
-# Plan: Add Logo to Login Page
+
+# Plan: Add Search to Academics Page
 
 ## Overview
-Transform the login page into a proper "login home page" with the university logo displayed prominently, giving it the same branded feel as the homepage hero section.
+Add a search input to the Academics page that allows students to quickly find courses by typing course codes, titles, descriptions, or keywords.
 
 ## Current State
-- The Auth page uses `PageLayout` which includes navigation header and footer
-- No logo is displayed on the login page
-- The page has a simple "Welcome Back" heading
+- The page already has department filtering buttons
+- There's a toolbar area with course counts and view mode toggle
+- Courses are filtered by `activeFilter` state (department ID)
 
 ## Proposed Design
-Create a full-screen login experience with:
-- The hero logo displayed above the form
-- The "HOODTORIAL UNIVERSITY" branding and tagline
-- Dark background with subtle animated effects (matching homepage aesthetic)
-- No navigation bar - this is the entry point before seeing the site
-- Clean, centered layout
+Add a search bar in the toolbar section alongside the existing view controls. The search will filter courses in real-time as users type.
 
-## Changes
-
-### File: `src/pages/Auth.tsx`
-
-1. **Remove PageLayout wrapper** - Replace with a standalone full-screen layout (no nav/footer)
-
-2. **Add logo import and display**:
-   - Import `heroLogo` from `@/assets/hero-logo.png`
-   - Display the logo above the form with the pulsing glow animation
-
-3. **Add branded header section**:
-   - University name with gold gradient
-   - "Where Hustle Meets Hollywood" tagline
-   - Background effects (grid, gradient orbs) matching homepage
-
-4. **Update layout structure**:
-   ```
-   ┌─────────────────────────────────────┐
-   │         [Animated Background]        │
-   │                                      │
-   │          [University Logo]           │
-   │                                      │
-   │       HOODTORIAL UNIVERSITY          │
-   │    Where Hustle Meets Hollywood      │
-   │                                      │
-   │     ┌────────────────────────┐       │
-   │     │     [Login Form]       │       │
-   │     │                        │       │
-   │     │   Email / Password     │       │
-   │     │      [Sign In]         │       │
-   │     └────────────────────────┘       │
-   │                                      │
-   └─────────────────────────────────────┘
-   ```
+### Layout Update
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  Showing X courses                                               │
+│                                                                  │
+│  ┌────────────────────────────────┐   Credits: X  Lessons: X     │
+│  │ 🔍 Search courses...           │   [Grid] [List]              │
+│  └────────────────────────────────┘                              │
+└──────────────────────────────────────────────────────────────────┘
+```
 
 ## Technical Details
 
-### Imports to Add
-```typescript
-import heroLogo from "@/assets/hero-logo.png";
-```
+### Search Fields
+The search will match against:
+- **Course code** (e.g., "HU-101", "201")
+- **Course title** (e.g., "iPhone", "Lighting")
+- **Course description** (e.g., "cinematography", "grading")
+- **Department name** (e.g., "Post-Production")
 
-### Remove
-- `PageLayout` wrapper (since we want a standalone login screen)
+### Implementation Steps
 
-### Layout Structure
-- Full-screen container with `min-h-screen`
-- Background effects: noise texture, grid overlay, gradient orbs
-- Centered content with logo, branding, and form card
-- Same animation classes used on homepage: `animate-reveal`, `animate-logo-pulse`, `text-gold-gradient`
+1. **Add search state**
+   ```typescript
+   const [searchQuery, setSearchQuery] = useState("");
+   ```
 
-## User Experience
-1. User navigates to `/auth` (or is redirected after sign out)
-2. Sees the full university branding with animated logo
-3. Form is centered below the branding
-4. After successful login, they are taken into the site with full navigation
+2. **Update filtering logic**
+   ```typescript
+   const filteredCourses = courses.filter(course => {
+     // Department filter
+     const matchesDepartment = activeFilter === "all" || course.departmentId === activeFilter;
+     
+     // Search filter
+     const query = searchQuery.toLowerCase();
+     const matchesSearch = !query || 
+       course.code.toLowerCase().includes(query) ||
+       course.title.toLowerCase().includes(query) ||
+       course.description.toLowerCase().includes(query) ||
+       course.department.toLowerCase().includes(query);
+     
+     return matchesDepartment && matchesSearch;
+   });
+   ```
+
+3. **Add search input in toolbar**
+   - Import `Search` and `X` icons from lucide-react
+   - Add Input component from UI library
+   - Include clear button when search has text
+   - Style to match the brutal/urban aesthetic
+
+4. **Show "no results" state**
+   - Display helpful message when search returns no courses
+   - Suggest clearing the search or trying different terms
 
 ## Files to Modify
-- `src/pages/Auth.tsx` - Complete redesign of the page layout
+
+### `src/pages/Academics.tsx`
+- Add `searchQuery` state
+- Import `Search`, `X` icons and `Input` component
+- Update `filteredCourses` logic to include search
+- Add search input in the toolbar section
+- Add empty state for no search results
+
+## User Experience
+1. User types in search box
+2. Results filter instantly as they type
+3. Clear button appears to reset search
+4. "No courses found" message if no matches
+5. Search works in combination with department filter
+
