@@ -1,4 +1,6 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState, useEffect } from "react";
+
+const SOUND_MUTED_KEY = "hoodtorial-chat-sound-muted";
 
 // Create a subtle "pop" sound using Web Audio API
 function createPopSound(audioContext: AudioContext) {
@@ -21,8 +23,25 @@ function createPopSound(audioContext: AudioContext) {
 
 export function useChatSound() {
   const audioContextRef = useRef<AudioContext | null>(null);
+  const [isMuted, setIsMuted] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem(SOUND_MUTED_KEY) === "true";
+    }
+    return false;
+  });
+
+  // Persist mute preference
+  useEffect(() => {
+    localStorage.setItem(SOUND_MUTED_KEY, String(isMuted));
+  }, [isMuted]);
+
+  const toggleMute = useCallback(() => {
+    setIsMuted((prev) => !prev);
+  }, []);
 
   const playMessageSound = useCallback(() => {
+    if (isMuted) return;
+    
     try {
       // Create audio context on demand (required for browser autoplay policies)
       if (!audioContextRef.current) {
@@ -38,7 +57,7 @@ export function useChatSound() {
       // Silently fail - sound is a nice-to-have
       console.debug("Sound playback failed:", error);
     }
-  }, []);
+  }, [isMuted]);
 
-  return { playMessageSound };
+  return { playMessageSound, isMuted, toggleMute };
 }
