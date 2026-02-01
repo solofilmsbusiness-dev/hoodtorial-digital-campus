@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -219,6 +220,33 @@ export function useCommunityComments(postId: string | null) {
       toast.success('Comment deleted');
     },
   });
+
+  // Subscribe to realtime updates for this post's comments
+  useEffect(() => {
+    if (!postId) return;
+
+    const channel = supabase
+      .channel(`community-comments-${postId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'community_comments',
+          filter: `post_id=eq.${postId}`,
+        },
+        () => {
+          // Invalidate and refetch when any change occurs
+          queryClient.invalidateQueries({ queryKey: ['community-comments', postId] });
+          queryClient.invalidateQueries({ queryKey: ['community-posts'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [postId, queryClient]);
 
   return {
     comments,

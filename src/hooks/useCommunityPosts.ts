@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -247,6 +248,30 @@ export function useCommunityPosts(filters?: {
       toast.error('Failed to delete post');
     },
   });
+
+  // Subscribe to realtime updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('community-posts-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'community_posts',
+        },
+        () => {
+          // Invalidate and refetch when any change occurs
+          queryClient.invalidateQueries({ queryKey: ['community-posts'] });
+          queryClient.invalidateQueries({ queryKey: ['admin-community-posts'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   return {
     posts,
