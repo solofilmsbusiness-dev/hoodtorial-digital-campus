@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { AdminSidebar } from "./AdminSidebar";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,12 @@ interface AdminLayoutProps {
 
 export function AdminLayout({ children, title, description }: AdminLayoutProps) {
   const { signOut, user } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/auth');
+  };
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -29,7 +36,7 @@ export function AdminLayout({ children, title, description }: AdminLayoutProps) 
             <span className="text-sm text-muted-foreground">
               {user?.email}
             </span>
-            <Button variant="ghost" size="sm" onClick={signOut}>
+            <Button variant="ghost" size="sm" onClick={handleSignOut}>
               <LogOut className="h-4 w-4 mr-2" />
               Sign Out
             </Button>

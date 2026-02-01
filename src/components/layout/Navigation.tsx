@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Menu, X, User, LogOut, Shield, Users } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -27,8 +27,11 @@ export function Navigation() {
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdminAuth();
 
+  const navigate = useNavigate();
+
   const handleSignOut = async () => {
     await signOut();
+    navigate('/auth');
   };
 
   const getInitials = (email?: string | null) => {
