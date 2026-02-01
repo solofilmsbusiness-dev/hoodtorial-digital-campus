@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
-import { Eye, EyeOff, Mail, Lock, User, FlaskConical } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 const emailSchema = z.string().email("Please enter a valid email address");
@@ -265,26 +265,6 @@ export default function Auth() {
               </p>
             </div>
 
-            {/* Test Login Button */}
-            {!isSignUp && (
-              <div className="mt-6 pt-6 border-t border-border">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setEmail("test@example.com");
-                    setPassword("1234");
-                  }}
-                  className="w-full border-2 border-amber-500/50 text-amber-500 hover:bg-amber-500/10 hover:border-amber-500"
-                >
-                  <FlaskConical className="h-4 w-4 mr-2" />
-                  Quick Test Login
-                </Button>
-                <p className="text-xs text-muted-foreground text-center mt-2">
-                  Pre-fills test@example.com / 1234
-                </p>
-              </div>
-            )}
           </div>
         </div>
       </div>
