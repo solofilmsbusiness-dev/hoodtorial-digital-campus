@@ -1,4 +1,4 @@
-import { Film, Palette, Clapperboard, Briefcase, BookOpen, LucideIcon } from "lucide-react";
+import { Film, Palette, Clapperboard, Briefcase, BookOpen, Camera, Video, LucideIcon } from "lucide-react";
 
 export interface Quiz {
   id: string;
@@ -82,6 +82,22 @@ export const departments: Department[] = [
     description: "Plan, organize, and execute film projects from start to finish. Business and logistics of filmmaking.",
     outcomes: ["Pre-production", "Budget management", "Scheduling", "Team coordination", "Location scouting", "Client relations"],
     color: "neon-pink",
+  },
+  {
+    id: "photography",
+    name: "Photography",
+    icon: Camera,
+    description: "Capture stunning still images with professional techniques. From portraits to landscapes, master the art of photography.",
+    outcomes: ["Composition", "Portrait lighting", "Landscape techniques", "Photo editing", "Studio setups", "Natural light mastery"],
+    color: "neon-green",
+  },
+  {
+    id: "camera-systems",
+    name: "Camera Systems",
+    icon: Video,
+    description: "Deep dive into professional camera systems. Master Sony, Canon, and other cinema cameras for professional productions.",
+    outcomes: ["Camera menus", "Codec selection", "Log profiles", "Lens adaptation", "Rigging", "Workflow optimization"],
+    color: "neon-blue",
   },
 ];
 
@@ -945,6 +961,522 @@ export const courses: Course[] = [
       },
     ],
     finalExam: { id: "hu304-final", title: "Final Exam: Project Management", questions: 45, passingScore: 80 },
+  },
+
+  // ==================== PHOTOGRAPHY ====================
+  {
+    code: "HU-401",
+    title: "Photography Fundamentals",
+    department: "Photography",
+    departmentId: "photography",
+    credits: 3,
+    level: "Beginner",
+    description: "Master the basics of digital photography. Learn exposure triangle, composition rules, and how to capture stunning images in any situation.",
+    lessons: 10,
+    duration: "5 weeks",
+    modules: [
+      {
+        id: "hu401-m1",
+        title: "Camera Basics",
+        lessons: [
+          { id: "hu401-l1", title: "Understanding Your Camera", duration: "18 min", type: "video" },
+          { id: "hu401-l2", title: "The Exposure Triangle", duration: "22 min", type: "video" },
+        ],
+        quiz: { id: "hu401-q1", title: "Camera Basics Quiz", questions: 8, passingScore: 80 },
+      },
+      {
+        id: "hu401-m2",
+        title: "Composition Essentials",
+        lessons: [
+          { id: "hu401-l3", title: "Rule of Thirds & Beyond", duration: "20 min", type: "video" },
+          { id: "hu401-l4", title: "Leading Lines & Framing", duration: "18 min", type: "video" },
+          { id: "hu401-l5", title: "Negative Space & Balance", duration: "16 min", type: "video" },
+        ],
+        quiz: { id: "hu401-q2", title: "Composition Quiz", questions: 10, passingScore: 80 },
+      },
+      {
+        id: "hu401-m3",
+        title: "Light & Exposure",
+        lessons: [
+          { id: "hu401-l6", title: "Natural Light Photography", duration: "22 min", type: "video" },
+          { id: "hu401-l7", title: "Golden Hour & Blue Hour", duration: "18 min", type: "video" },
+        ],
+        quiz: { id: "hu401-q3", title: "Lighting Quiz", questions: 8, passingScore: 80 },
+      },
+      {
+        id: "hu401-m4",
+        title: "Practical Projects",
+        lessons: [
+          { id: "hu401-l8", title: "Street Photography Walk", duration: "45 min", type: "practice" },
+          { id: "hu401-l9", title: "Portrait Session", duration: "40 min", type: "practice" },
+          { id: "hu401-l10", title: "Landscape Challenge", duration: "50 min", type: "practice" },
+        ],
+      },
+    ],
+    finalExam: { id: "hu401-final", title: "Final Exam: Photography Fundamentals", questions: 25, passingScore: 75 },
+  },
+  {
+    code: "HU-402",
+    title: "Portrait Photography Mastery",
+    department: "Photography",
+    departmentId: "photography",
+    credits: 4,
+    level: "Intermediate",
+    description: "Create stunning portraits that capture personality and emotion. Master lighting setups, posing techniques, and post-processing for portraits.",
+    lessons: 12,
+    duration: "6 weeks",
+    modules: [
+      {
+        id: "hu402-m1",
+        title: "Portrait Lighting",
+        lessons: [
+          { id: "hu402-l1", title: "One-Light Portraits", duration: "25 min", type: "video" },
+          { id: "hu402-l2", title: "Two-Light Setups", duration: "22 min", type: "video" },
+          { id: "hu402-l3", title: "Natural Light Portraits", duration: "20 min", type: "video" },
+        ],
+        quiz: { id: "hu402-q1", title: "Portrait Lighting Quiz", questions: 10, passingScore: 80 },
+      },
+      {
+        id: "hu402-m2",
+        title: "Posing & Direction",
+        lessons: [
+          { id: "hu402-l4", title: "Posing Fundamentals", duration: "22 min", type: "video" },
+          { id: "hu402-l5", title: "Directing Non-Models", duration: "18 min", type: "video" },
+          { id: "hu402-l6", title: "Expression & Emotion", duration: "20 min", type: "video" },
+        ],
+        quiz: { id: "hu402-q2", title: "Posing Quiz", questions: 8, passingScore: 80 },
+      },
+      {
+        id: "hu402-m3",
+        title: "Portrait Retouching",
+        lessons: [
+          { id: "hu402-l7", title: "Skin Retouching Techniques", duration: "28 min", type: "video" },
+          { id: "hu402-l8", title: "Color Grading Portraits", duration: "22 min", type: "video" },
+        ],
+        quiz: { id: "hu402-q3", title: "Retouching Quiz", questions: 8, passingScore: 80 },
+      },
+      {
+        id: "hu402-m4",
+        title: "Portrait Projects",
+        lessons: [
+          { id: "hu402-l9", title: "Studio Portrait Session", duration: "60 min", type: "practice" },
+          { id: "hu402-l10", title: "Environmental Portrait", duration: "50 min", type: "practice" },
+          { id: "hu402-l11", title: "Creative Portrait Series", duration: "70 min", type: "practice" },
+          { id: "hu402-l12", title: "Portfolio Building", duration: "40 min", type: "practice" },
+        ],
+      },
+    ],
+    finalExam: { id: "hu402-final", title: "Final Exam: Portrait Photography", questions: 30, passingScore: 75 },
+  },
+  {
+    code: "HU-403",
+    title: "Landscape & Nature Photography",
+    department: "Photography",
+    departmentId: "photography",
+    credits: 4,
+    level: "Intermediate",
+    description: "Capture breathtaking landscapes and nature scenes. Master long exposures, HDR, panoramas, and the art of finding the perfect light.",
+    lessons: 10,
+    duration: "5 weeks",
+    modules: [
+      {
+        id: "hu403-m1",
+        title: "Landscape Essentials",
+        lessons: [
+          { id: "hu403-l1", title: "Scouting & Planning", duration: "20 min", type: "video" },
+          { id: "hu403-l2", title: "Composition for Landscapes", duration: "22 min", type: "video" },
+        ],
+        quiz: { id: "hu403-q1", title: "Landscape Basics Quiz", questions: 8, passingScore: 80 },
+      },
+      {
+        id: "hu403-m2",
+        title: "Advanced Techniques",
+        lessons: [
+          { id: "hu403-l3", title: "Long Exposure Photography", duration: "25 min", type: "video" },
+          { id: "hu403-l4", title: "HDR & Bracketing", duration: "20 min", type: "video" },
+          { id: "hu403-l5", title: "Panoramic Photography", duration: "18 min", type: "video" },
+        ],
+        quiz: { id: "hu403-q2", title: "Techniques Quiz", questions: 10, passingScore: 80 },
+      },
+      {
+        id: "hu403-m3",
+        title: "Processing Landscapes",
+        lessons: [
+          { id: "hu403-l6", title: "Lightroom for Landscapes", duration: "28 min", type: "video" },
+          { id: "hu403-l7", title: "Luminosity Masking", duration: "25 min", type: "video" },
+        ],
+        quiz: { id: "hu403-q3", title: "Processing Quiz", questions: 8, passingScore: 80 },
+      },
+      {
+        id: "hu403-m4",
+        title: "Field Projects",
+        lessons: [
+          { id: "hu403-l8", title: "Sunrise Shoot", duration: "90 min", type: "practice" },
+          { id: "hu403-l9", title: "Night Sky Photography", duration: "120 min", type: "practice" },
+          { id: "hu403-l10", title: "Landscape Portfolio", duration: "60 min", type: "practice" },
+        ],
+      },
+    ],
+    finalExam: { id: "hu403-final", title: "Final Exam: Landscape Photography", questions: 28, passingScore: 75 },
+  },
+  {
+    code: "HU-404",
+    title: "Photo Editing & Retouching",
+    department: "Photography",
+    departmentId: "photography",
+    credits: 5,
+    level: "Advanced",
+    description: "Transform your photos with professional editing and retouching techniques. Master Lightroom, Photoshop, and develop your signature style.",
+    lessons: 14,
+    duration: "7 weeks",
+    modules: [
+      {
+        id: "hu404-m1",
+        title: "Lightroom Mastery",
+        lessons: [
+          { id: "hu404-l1", title: "Raw Processing Workflow", duration: "25 min", type: "video" },
+          { id: "hu404-l2", title: "Local Adjustments", duration: "22 min", type: "video" },
+          { id: "hu404-l3", title: "Presets & Batch Editing", duration: "18 min", type: "video" },
+        ],
+        quiz: { id: "hu404-q1", title: "Lightroom Quiz", questions: 10, passingScore: 85 },
+      },
+      {
+        id: "hu404-m2",
+        title: "Photoshop Essentials",
+        lessons: [
+          { id: "hu404-l4", title: "Layers & Masks", duration: "28 min", type: "video" },
+          { id: "hu404-l5", title: "Advanced Selection Tools", duration: "25 min", type: "video" },
+          { id: "hu404-l6", title: "Compositing Basics", duration: "30 min", type: "video" },
+        ],
+        quiz: { id: "hu404-q2", title: "Photoshop Quiz", questions: 12, passingScore: 85 },
+      },
+      {
+        id: "hu404-m3",
+        title: "Professional Retouching",
+        lessons: [
+          { id: "hu404-l7", title: "Frequency Separation", duration: "30 min", type: "video" },
+          { id: "hu404-l8", title: "Dodge & Burn Techniques", duration: "25 min", type: "video" },
+          { id: "hu404-l9", title: "Color Harmony", duration: "22 min", type: "video" },
+        ],
+        quiz: { id: "hu404-q3", title: "Retouching Quiz", questions: 10, passingScore: 85 },
+      },
+      {
+        id: "hu404-m4",
+        title: "Style Development",
+        lessons: [
+          { id: "hu404-l10", title: "Creating Your Look", duration: "20 min", type: "video" },
+          { id: "hu404-l11", title: "Film Emulation", duration: "22 min", type: "video" },
+        ],
+        quiz: { id: "hu404-q4", title: "Style Quiz", questions: 6, passingScore: 85 },
+      },
+      {
+        id: "hu404-m5",
+        title: "Editing Projects",
+        lessons: [
+          { id: "hu404-l12", title: "Portrait Retouch Project", duration: "60 min", type: "practice" },
+          { id: "hu404-l13", title: "Composite Creation", duration: "90 min", type: "practice" },
+          { id: "hu404-l14", title: "Preset Pack Development", duration: "45 min", type: "practice" },
+        ],
+      },
+    ],
+    finalExam: { id: "hu404-final", title: "Final Exam: Photo Editing", questions: 40, passingScore: 80 },
+  },
+
+  // ==================== CAMERA SYSTEMS ====================
+  {
+    code: "HU-501",
+    title: "Sony A7S III Complete Guide",
+    department: "Camera Systems",
+    departmentId: "camera-systems",
+    credits: 4,
+    level: "Intermediate",
+    description: "Master the Sony A7S III for professional video production. Deep dive into menus, S-Log, autofocus systems, and optimal recording settings.",
+    lessons: 12,
+    duration: "6 weeks",
+    modules: [
+      {
+        id: "hu501-m1",
+        title: "Camera Overview",
+        lessons: [
+          { id: "hu501-l1", title: "A7S III Introduction & Philosophy", duration: "18 min", type: "video" },
+          { id: "hu501-l2", title: "Menu System Deep Dive", duration: "30 min", type: "video" },
+        ],
+        quiz: { id: "hu501-q1", title: "Camera Basics Quiz", questions: 10, passingScore: 80 },
+      },
+      {
+        id: "hu501-m2",
+        title: "Recording Formats & Codecs",
+        lessons: [
+          { id: "hu501-l3", title: "Understanding XAVC S-I & XAVC HS", duration: "25 min", type: "video" },
+          { id: "hu501-l4", title: "4K 120fps Workflow", duration: "22 min", type: "video" },
+          { id: "hu501-l5", title: "Choosing the Right Format", duration: "18 min", type: "video" },
+        ],
+        quiz: { id: "hu501-q2", title: "Codecs Quiz", questions: 12, passingScore: 80 },
+      },
+      {
+        id: "hu501-m3",
+        title: "S-Log3 & Color Science",
+        lessons: [
+          { id: "hu501-l6", title: "Exposing S-Log3 Correctly", duration: "28 min", type: "video" },
+          { id: "hu501-l7", title: "S-Cinetone for Easy Color", duration: "20 min", type: "video" },
+          { id: "hu501-l8", title: "Grading S-Log3 Footage", duration: "35 min", type: "video" },
+        ],
+        quiz: { id: "hu501-q3", title: "Color Science Quiz", questions: 10, passingScore: 80 },
+      },
+      {
+        id: "hu501-m4",
+        title: "Autofocus Mastery",
+        lessons: [
+          { id: "hu501-l9", title: "Real-Time Eye AF", duration: "22 min", type: "video" },
+          { id: "hu501-l10", title: "AF Settings for Video", duration: "20 min", type: "video" },
+        ],
+        quiz: { id: "hu501-q4", title: "Autofocus Quiz", questions: 8, passingScore: 80 },
+      },
+      {
+        id: "hu501-m5",
+        title: "Practical Projects",
+        lessons: [
+          { id: "hu501-l11", title: "Low Light Challenge", duration: "60 min", type: "practice" },
+          { id: "hu501-l12", title: "Slow Motion Project", duration: "50 min", type: "practice" },
+        ],
+      },
+    ],
+    finalExam: { id: "hu501-final", title: "Final Exam: Sony A7S III", questions: 35, passingScore: 75 },
+  },
+  {
+    code: "HU-502",
+    title: "Sony FX Series for Cinema",
+    department: "Camera Systems",
+    departmentId: "camera-systems",
+    credits: 5,
+    level: "Advanced",
+    description: "Professional cinema production with Sony FX3, FX6, and FX9. Master cinema workflows, ND systems, and broadcast-ready output.",
+    lessons: 14,
+    duration: "7 weeks",
+    modules: [
+      {
+        id: "hu502-m1",
+        title: "FX Series Overview",
+        lessons: [
+          { id: "hu502-l1", title: "Choosing Your FX Camera", duration: "22 min", type: "video" },
+          { id: "hu502-l2", title: "Cinema vs Mirrorless Workflow", duration: "20 min", type: "video" },
+        ],
+        quiz: { id: "hu502-q1", title: "FX Overview Quiz", questions: 8, passingScore: 85 },
+      },
+      {
+        id: "hu502-m2",
+        title: "Professional Features",
+        lessons: [
+          { id: "hu502-l3", title: "Built-In ND System", duration: "18 min", type: "video" },
+          { id: "hu502-l4", title: "Timecode & Genlock", duration: "25 min", type: "video" },
+          { id: "hu502-l5", title: "SDI & HDMI Output", duration: "20 min", type: "video" },
+        ],
+        quiz: { id: "hu502-q2", title: "Pro Features Quiz", questions: 10, passingScore: 85 },
+      },
+      {
+        id: "hu502-m3",
+        title: "Advanced Color",
+        lessons: [
+          { id: "hu502-l6", title: "Venice CS vs S-Log3", duration: "28 min", type: "video" },
+          { id: "hu502-l7", title: "LUT Workflows", duration: "25 min", type: "video" },
+          { id: "hu502-l8", title: "On-Set Monitoring", duration: "22 min", type: "video" },
+        ],
+        quiz: { id: "hu502-q3", title: "Color Workflow Quiz", questions: 10, passingScore: 85 },
+      },
+      {
+        id: "hu502-m4",
+        title: "Rigging & Accessories",
+        lessons: [
+          { id: "hu502-l9", title: "Professional Rigging", duration: "30 min", type: "video" },
+          { id: "hu502-l10", title: "Audio Integration", duration: "22 min", type: "video" },
+        ],
+        quiz: { id: "hu502-q4", title: "Rigging Quiz", questions: 8, passingScore: 85 },
+      },
+      {
+        id: "hu502-m5",
+        title: "Cinema Projects",
+        lessons: [
+          { id: "hu502-l11", title: "Narrative Scene Shoot", duration: "90 min", type: "practice" },
+          { id: "hu502-l12", title: "Documentary Setup", duration: "60 min", type: "practice" },
+          { id: "hu502-l13", title: "Commercial Production", duration: "80 min", type: "practice" },
+          { id: "hu502-l14", title: "Multi-Camera Setup", duration: "70 min", type: "practice" },
+        ],
+      },
+    ],
+    finalExam: { id: "hu502-final", title: "Final Exam: Sony FX Series", questions: 45, passingScore: 80 },
+  },
+  {
+    code: "HU-503",
+    title: "Canon Cinema EOS Fundamentals",
+    department: "Camera Systems",
+    departmentId: "camera-systems",
+    credits: 4,
+    level: "Intermediate",
+    description: "Master Canon's Cinema EOS line including the C70, C300, and C500. Learn Canon Log, Dual Pixel AF, and professional cinema workflows.",
+    lessons: 12,
+    duration: "6 weeks",
+    modules: [
+      {
+        id: "hu503-m1",
+        title: "Cinema EOS Overview",
+        lessons: [
+          { id: "hu503-l1", title: "Canon Cinema Philosophy", duration: "18 min", type: "video" },
+          { id: "hu503-l2", title: "C70 vs C300 vs C500", duration: "25 min", type: "video" },
+        ],
+        quiz: { id: "hu503-q1", title: "Cinema EOS Quiz", questions: 10, passingScore: 80 },
+      },
+      {
+        id: "hu503-m2",
+        title: "Canon Log & Color",
+        lessons: [
+          { id: "hu503-l3", title: "Canon Log 2 & 3 Explained", duration: "28 min", type: "video" },
+          { id: "hu503-l4", title: "Wide DR vs Canon Log", duration: "20 min", type: "video" },
+          { id: "hu503-l5", title: "Canon Color Science", duration: "25 min", type: "video" },
+        ],
+        quiz: { id: "hu503-q2", title: "Canon Color Quiz", questions: 12, passingScore: 80 },
+      },
+      {
+        id: "hu503-m3",
+        title: "Recording & Codecs",
+        lessons: [
+          { id: "hu503-l6", title: "XF-AVC vs MP4", duration: "22 min", type: "video" },
+          { id: "hu503-l7", title: "RAW Recording Options", duration: "25 min", type: "video" },
+        ],
+        quiz: { id: "hu503-q3", title: "Recording Quiz", questions: 10, passingScore: 80 },
+      },
+      {
+        id: "hu503-m4",
+        title: "Dual Pixel AF System",
+        lessons: [
+          { id: "hu503-l8", title: "DPAF Deep Dive", duration: "25 min", type: "video" },
+          { id: "hu503-l9", title: "Face Tracking & Eye AF", duration: "20 min", type: "video" },
+        ],
+        quiz: { id: "hu503-q4", title: "Autofocus Quiz", questions: 8, passingScore: 80 },
+      },
+      {
+        id: "hu503-m5",
+        title: "Canon Projects",
+        lessons: [
+          { id: "hu503-l10", title: "Interview Setup", duration: "50 min", type: "practice" },
+          { id: "hu503-l11", title: "Run & Gun Documentary", duration: "60 min", type: "practice" },
+          { id: "hu503-l12", title: "Cinematic Short", duration: "90 min", type: "practice" },
+        ],
+      },
+    ],
+    finalExam: { id: "hu503-final", title: "Final Exam: Canon Cinema EOS", questions: 35, passingScore: 75 },
+  },
+  {
+    code: "HU-504",
+    title: "Canon R Series for Hybrid Shooters",
+    department: "Camera Systems",
+    departmentId: "camera-systems",
+    credits: 4,
+    level: "Intermediate",
+    description: "Maximize the Canon R5 and R6 for photo and video. Master IBIS, oversampled 4K, and seamless photo-to-video transitions.",
+    lessons: 10,
+    duration: "5 weeks",
+    modules: [
+      {
+        id: "hu504-m1",
+        title: "R Series Overview",
+        lessons: [
+          { id: "hu504-l1", title: "R5 vs R6: Choosing Your Camera", duration: "20 min", type: "video" },
+          { id: "hu504-l2", title: "RF Lens Ecosystem", duration: "22 min", type: "video" },
+        ],
+        quiz: { id: "hu504-q1", title: "R Series Basics Quiz", questions: 8, passingScore: 80 },
+      },
+      {
+        id: "hu504-m2",
+        title: "Video Capabilities",
+        lessons: [
+          { id: "hu504-l3", title: "4K & 8K Recording Modes", duration: "28 min", type: "video" },
+          { id: "hu504-l4", title: "Heat Management Strategies", duration: "18 min", type: "video" },
+          { id: "hu504-l5", title: "C-Log 3 on Mirrorless", duration: "22 min", type: "video" },
+        ],
+        quiz: { id: "hu504-q2", title: "Video Features Quiz", questions: 10, passingScore: 80 },
+      },
+      {
+        id: "hu504-m3",
+        title: "Photo Excellence",
+        lessons: [
+          { id: "hu504-l6", title: "High-Speed Burst Modes", duration: "20 min", type: "video" },
+          { id: "hu504-l7", title: "Focus Stacking & Bracketing", duration: "25 min", type: "video" },
+        ],
+        quiz: { id: "hu504-q3", title: "Photo Features Quiz", questions: 8, passingScore: 80 },
+      },
+      {
+        id: "hu504-m4",
+        title: "Hybrid Workflows",
+        lessons: [
+          { id: "hu504-l8", title: "Event Hybrid Shooting", duration: "55 min", type: "practice" },
+          { id: "hu504-l9", title: "Product Photography & Video", duration: "50 min", type: "practice" },
+          { id: "hu504-l10", title: "Travel Content Creation", duration: "60 min", type: "practice" },
+        ],
+      },
+    ],
+    finalExam: { id: "hu504-final", title: "Final Exam: Canon R Series", questions: 30, passingScore: 75 },
+  },
+  {
+    code: "HU-505",
+    title: "Advanced Sony Ecosystem",
+    department: "Camera Systems",
+    departmentId: "camera-systems",
+    credits: 5,
+    level: "Advanced",
+    description: "Master the complete Sony ecosystem including lenses, monitoring, and multi-camera workflows. Professional techniques for broadcast and cinema.",
+    lessons: 14,
+    duration: "7 weeks",
+    modules: [
+      {
+        id: "hu505-m1",
+        title: "Sony Lens System",
+        lessons: [
+          { id: "hu505-l1", title: "G Master vs G vs Zeiss", duration: "25 min", type: "video" },
+          { id: "hu505-l2", title: "Adapting Vintage Lenses", duration: "22 min", type: "video" },
+        ],
+        quiz: { id: "hu505-q1", title: "Lens Quiz", questions: 10, passingScore: 85 },
+      },
+      {
+        id: "hu505-m2",
+        title: "Sony Accessories",
+        lessons: [
+          { id: "hu505-l3", title: "Sony Monitor & Recording", duration: "28 min", type: "video" },
+          { id: "hu505-l4", title: "Wireless Audio Solutions", duration: "22 min", type: "video" },
+          { id: "hu505-l5", title: "Power & Rigging", duration: "25 min", type: "video" },
+        ],
+        quiz: { id: "hu505-q2", title: "Accessories Quiz", questions: 10, passingScore: 85 },
+      },
+      {
+        id: "hu505-m3",
+        title: "Multi-Camera Production",
+        lessons: [
+          { id: "hu505-l6", title: "Matching Multiple Sony Bodies", duration: "30 min", type: "video" },
+          { id: "hu505-l7", title: "Timecode Sync Solutions", duration: "25 min", type: "video" },
+          { id: "hu505-l8", title: "Live Switching Workflow", duration: "28 min", type: "video" },
+        ],
+        quiz: { id: "hu505-q3", title: "Multi-Cam Quiz", questions: 12, passingScore: 85 },
+      },
+      {
+        id: "hu505-m4",
+        title: "Broadcast Applications",
+        lessons: [
+          { id: "hu505-l9", title: "Live Streaming Setup", duration: "30 min", type: "video" },
+          { id: "hu505-l10", title: "Sports & Event Coverage", duration: "28 min", type: "video" },
+        ],
+        quiz: { id: "hu505-q4", title: "Broadcast Quiz", questions: 10, passingScore: 85 },
+      },
+      {
+        id: "hu505-m5",
+        title: "Pro Projects",
+        lessons: [
+          { id: "hu505-l11", title: "Multi-Camera Event", duration: "90 min", type: "practice" },
+          { id: "hu505-l12", title: "Live Stream Production", duration: "75 min", type: "practice" },
+          { id: "hu505-l13", title: "Documentary Feature Prep", duration: "80 min", type: "practice" },
+          { id: "hu505-l14", title: "Ecosystem Integration Project", duration: "100 min", type: "practice" },
+        ],
+      },
+    ],
+    finalExam: { id: "hu505-final", title: "Final Exam: Sony Ecosystem", questions: 50, passingScore: 80 },
   },
 ];
 
