@@ -37,6 +37,7 @@ interface CreateCommentData {
   what_could_improve?: string;
   actionable_suggestion?: string;
   media_urls?: string[];
+  mentioned_user_ids?: string[];
 }
 
 export function useCommunityComments(postId: string | null) {
@@ -167,6 +168,26 @@ export function useCommunityComments(postId: string | null) {
         .single();
 
       if (error) throw error;
+
+      // Create mention notifications
+      if (data.mentioned_user_ids && data.mentioned_user_ids.length > 0) {
+        const notifications = data.mentioned_user_ids
+          .filter(id => id !== user.id)
+          .map(userId => ({
+            user_id: userId,
+            sender_id: user.id,
+            type: 'mention',
+            reference_type: 'comment',
+            reference_id: comment.id,
+            post_id: data.post_id,
+            content_preview: data.content.slice(0, 100),
+          }));
+
+        if (notifications.length > 0) {
+          await supabase.from('notifications').insert(notifications);
+        }
+      }
+
       return comment;
     },
     onSuccess: () => {
