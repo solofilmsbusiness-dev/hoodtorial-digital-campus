@@ -4,3 +4,5 @@ export { CommentThread } from "./CommentThread";
 export { CritiqueCommentForm } from "./CritiqueCommentForm";
 export { CommunityGuidelines } from "./CommunityGuidelines";
 export { PostDetail } from "./PostDetail";
+export { ImageUploader } from "./ImageUploader";
+export { ImageGallery } from "./ImageGallery";
