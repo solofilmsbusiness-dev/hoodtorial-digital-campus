@@ -4,6 +4,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { useQuizResults } from "@/hooks/useQuizResults";
 import { useUserProgress } from "@/hooks/useUserProgress";
+import { useAssessmentResults } from "@/hooks/useAssessmentResults";
+import { courses } from "@/data/courses";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +17,9 @@ import {
   Settings, 
   ChevronRight,
   Award,
-  Clock
+  Clock,
+  Sparkles,
+  RotateCcw
 } from "lucide-react";
 
 export default function StudentCenter() {
@@ -23,6 +27,7 @@ export default function StudentCenter() {
   const { profile, loading: profileLoading } = useProfile();
   const { results } = useQuizResults();
   const { getTotalCredits, getCompletedCourses } = useUserProgress();
+  const { latestResult, hasCompletedAssessment } = useAssessmentResults();
 
   const totalCredits = getTotalCredits();
   const completedCourses = getCompletedCourses();
@@ -30,6 +35,12 @@ export default function StudentCenter() {
   const requiredCredits = 60;
   const requiredCourses = 12;
   const requiredQuizzes = 12;
+
+  // Get recommended courses from assessment
+  const recommendedCourseDetails = latestResult?.recommended_courses
+    .map((code) => courses.find((c) => c.code === code))
+    .filter(Boolean)
+    .slice(0, 3) || [];
 
   const getInitials = (name?: string | null) => {
     if (!name) return user?.email?.charAt(0).toUpperCase() || "S";
@@ -194,6 +205,19 @@ export default function StudentCenter() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
+                  {!hasCompletedAssessment && (
+                    <Link 
+                      to="/assessment" 
+                      className="flex items-center justify-between p-4 bg-primary/10 rounded-lg border-2 border-primary hover:bg-primary/20 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Sparkles className="h-5 w-5 text-primary" />
+                        <span className="font-bold text-primary">Take Entry Assessment</span>
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-primary" />
+                    </Link>
+                  )}
+
                   <Link 
                     to="/academics" 
                     className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border hover:border-primary transition-colors"
@@ -226,8 +250,53 @@ export default function StudentCenter() {
                     </div>
                     <ChevronRight className="h-5 w-5 text-muted-foreground" />
                   </Link>
+
+                  {hasCompletedAssessment && (
+                    <Link 
+                      to="/assessment" 
+                      className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border hover:border-primary transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <RotateCcw className="h-5 w-5 text-muted-foreground" />
+                        <span className="font-bold">Retake Assessment</span>
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    </Link>
+                  )}
                 </CardContent>
               </Card>
+
+              {/* Recommended Courses */}
+              {hasCompletedAssessment && recommendedCourseDetails.length > 0 && (
+                <Card className="card-urban">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-primary" />
+                      Recommended For You
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {recommendedCourseDetails.map((course) => (
+                      <Link
+                        key={course!.code}
+                        to={`/course/${course!.code}`}
+                        className="block p-3 bg-muted/30 rounded-lg border border-border hover:border-primary transition-colors"
+                      >
+                        <p className="font-bold text-sm">{course!.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {course!.department} • {course!.level}
+                        </p>
+                      </Link>
+                    ))}
+                    <Link 
+                      to="/academics" 
+                      className="block text-center text-primary font-bold text-sm hover:underline pt-2"
+                    >
+                      View All Courses →
+                    </Link>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Degree Progress */}
               <Card className="card-urban">
