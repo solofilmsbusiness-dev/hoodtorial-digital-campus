@@ -5,22 +5,25 @@ import { Sparkles, User } from "lucide-react";
 interface ChatMessageProps {
   role: "user" | "assistant";
   content: string;
+  isNew?: boolean;
 }
 
-export function ChatMessage({ role, content }: ChatMessageProps) {
+export function ChatMessage({ role, content, isNew = false }: ChatMessageProps) {
   const isUser = role === "user";
 
   return (
     <div
       className={cn(
         "flex gap-3 p-3 rounded-lg",
-        isUser ? "flex-row-reverse" : "flex-row"
+        isUser ? "flex-row-reverse" : "flex-row",
+        isNew && (isUser ? "animate-slide-in-right" : "animate-pop-in")
       )}
     >
       <div
         className={cn(
-          "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center",
-          isUser ? "bg-primary text-primary-foreground" : "bg-muted"
+          "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-transform",
+          isUser ? "bg-primary text-primary-foreground" : "bg-muted",
+          isNew && !isUser && "animate-scale-up"
         )}
       >
         {isUser ? <User className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
