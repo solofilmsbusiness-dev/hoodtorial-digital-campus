@@ -1,92 +1,250 @@
 
 
-# Test Login Implementation
+# Entry Assessment Test Implementation
 
 ## Overview
-Simplify the login process for testing by adding quick "Test Login" functionality and redirecting users to create/complete their profile after signing in.
+Create a comprehensive onboarding assessment that evaluates new students' existing knowledge across filmmaking disciplines and their areas of interest. Based on results, the system will recommend personalized course paths.
 
 ---
 
-## What Changes
+## Flow Structure
 
-### Auth Page Updates
-- Add a prominent "Test Login" button below the regular login form
-- Pre-fill test credentials (test@example.com / 1234)
-- One-click login for faster testing
+```text
+Step 1: Interest Selection
+- Student selects 2-3 areas they want to focus on
+- Options: Cinematography, Post-Production, Directing, Production, Photography, Camera Systems
 
-### Login Flow Changes
-- After successful login, check if the user has completed their profile
-- If profile is incomplete (missing display name), redirect to `/student/profile` instead of `/student`
-- Show a "Complete Your Profile" message on first login
+Step 2: Experience Level
+- Complete beginner, hobbyist, semi-professional, professional
 
-### Password Validation
-- Reduce minimum password requirement from 6 characters to 4 for testing
-- Change from "Password must be at least 6 characters" to "Password must be at least 4 characters"
+Step 3: Knowledge Assessment (25-30 questions)
+- Questions from each department based on selected interests
+- Mix of beginner to intermediate difficulty
+- Adaptive weighting based on interest selections
+
+Step 4: Results & Recommendations
+- Score breakdown by department
+- Personalized course recommendations
+- Suggested starting path
+```
 
 ---
 
-## Technical Details
+## What Will Be Built
 
-### Files to Modify
+### New Page: Entry Assessment
+**Route:** `/assessment`
 
-**src/pages/Auth.tsx**
-- Add "Test Login" button that auto-fills email: `test@example.com` and password: `1234`
-- Update password validation from `min(6)` to `min(4)`
-- After successful sign-in, fetch the user's profile to check completion status
-- Redirect to `/student/profile` if profile is incomplete, otherwise `/student`
+A multi-step assessment wizard with:
+- Interest selection cards for each department
+- Experience level selector
+- Timed quiz section with progress tracking
+- Results dashboard with department scores
+- Recommended courses list with "Enroll" buttons
 
-**src/contexts/AuthContext.tsx**
-- Add a helper function to check if profile is complete
-- Return profile data along with auth state (optional enhancement)
+### Assessment Quiz Questions
+**New File:** `src/data/quizzes/assessment.ts`
 
-### Test Login Button
-A styled button that says "Test Login" with visual distinction from the main form, placed below the toggle between Sign In/Sign Up.
+- 50+ placement questions across all departments
+- Mix of difficulties to gauge knowledge level
+- Questions tagged by department and difficulty
 
-### Profile Completion Check
-After login, query the `profiles` table to check if `display_name` is set. If not, the user needs to complete their profile setup.
+### Database Table: Assessment Results
+Store completed assessments with:
+- User ID
+- Selected interests (array)
+- Experience level
+- Scores per department
+- Recommended courses
+- Completion timestamp
+
+### Integration Points
+- After sign-up, redirect new users to `/assessment`
+- Link from Student Center for retaking
+- Course recommendations shown on dashboard
 
 ---
 
 ## User Experience
 
-```text
-Current Flow:
-1. Go to /auth
-2. Enter email
-3. Enter password (min 6 chars)
-4. Click Sign In
-5. Redirect to /student
+### Step 1: Welcome & Interests
+Large visual cards for each department (Cinematography, Post-Production, Directing, Production, Photography, Camera Systems). Students select 2-3 that interest them most. Each card shows the department icon, name, and brief tagline.
 
-New Flow (Test Mode):
-1. Go to /auth
-2. Click "Test Login" button
-3. Auto-fills test@example.com / 1234
-4. Click Sign In (or auto-submits)
-5. Check if profile complete
-6. Redirect to /student/profile if incomplete
-7. User fills out profile
-8. Navigate to /student
+### Step 2: Experience Level
+Four options presented as styled cards:
+- **Complete Beginner** - Never touched a camera
+- **Hobbyist** - Made videos for fun
+- **Semi-Professional** - Paid work experience
+- **Professional** - Full-time filmmaker
 
+### Step 3: Assessment Questions
+- 25-30 questions total
+- 5-6 questions per selected interest area
+- Progress bar showing completion
+- Timer tracking time taken
+- Questions weighted by interests
+
+### Step 4: Results Dashboard
+- Overall readiness score (percentage)
+- Radar chart showing strengths per department
+- Top 3-5 recommended courses with brief descriptions
+- "Start Your Journey" button leading to first recommended course
+- Option to retake assessment
+
+---
+
+## Technical Implementation
+
+### Files to Create
+
+**src/pages/Assessment.tsx**
+- Multi-step wizard component
+- State management for steps, answers, and timing
+- Interest selection with checkbox-style cards
+- Quiz player adapted for assessment format
+- Results view with recommendations engine
+
+**src/data/quizzes/assessment.ts**
+- 50+ assessment questions across departments
+- Structure: `{ id, question, options, correctAnswer, department, difficulty }`
+- Beginner and intermediate level questions
+
+**src/hooks/useAssessmentResults.ts**
+- Fetch user's assessment history
+- Save new assessment results
+- Calculate recommendations based on scores
+
+**src/components/assessment/InterestCard.tsx**
+- Selectable card component for department interests
+- Shows icon, name, tagline
+- Visual selected state
+
+**src/components/assessment/ResultsChart.tsx**
+- Radar/bar chart showing department scores
+- Visual representation of strengths/weaknesses
+
+### Files to Modify
+
+**src/App.tsx**
+- Add route for `/assessment`
+
+**src/pages/Auth.tsx**
+- After sign-up success, redirect to `/assessment` instead of `/student/profile`
+- Check if user has completed assessment
+
+**src/pages/StudentCenter.tsx**
+- Show recommended courses section if assessment completed
+- Add "Retake Assessment" link
+
+### Database Migration
+
+New table: `assessment_results`
+```sql
+CREATE TABLE assessment_results (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  interests TEXT[] NOT NULL,
+  experience_level TEXT NOT NULL,
+  department_scores JSONB NOT NULL,
+  recommended_courses TEXT[] NOT NULL,
+  total_score INTEGER NOT NULL,
+  time_taken_seconds INTEGER,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  completed_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- RLS Policies
+ALTER TABLE assessment_results ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own results"
+  ON assessment_results FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own results"
+  ON assessment_results FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
 ```
+
+### Recommendation Algorithm
+
+```text
+1. Score each department based on correct answers
+2. Weight scores by selected interests (1.5x multiplier)
+3. Filter courses by:
+   - Departments matching interests
+   - Difficulty level based on scores
+4. Rank courses by relevance score
+5. Return top 5-7 recommendations
+```
+
+**Score thresholds:**
+- 0-40%: Recommend beginner courses
+- 41-70%: Recommend beginner + some intermediate
+- 71-100%: Skip beginner, start with intermediate
+
+---
+
+## Question Distribution
+
+### Assessment Questions (50 total)
+
+**Cinematography (10 questions)**
+- Frame rates and resolution (beginner)
+- Composition rules (beginner)
+- Camera movement techniques (intermediate)
+- Lens selection psychology (intermediate)
+
+**Post-Production (8 questions)**
+- Basic editing cuts (beginner)
+- Timeline workflow (beginner)
+- Color grading basics (intermediate)
+- Sound design principles (intermediate)
+
+**Directing (8 questions)**
+- Story structure fundamentals (beginner)
+- Working with actors (beginner)
+- Shot planning (intermediate)
+- Visual storytelling (intermediate)
+
+**Production (8 questions)**
+- Pre-production basics (beginner)
+- Budgeting concepts (beginner)
+- Scheduling (intermediate)
+- Team management (intermediate)
+
+**Photography (8 questions)**
+- Exposure triangle (beginner)
+- Composition (beginner)
+- Lighting basics (intermediate)
+- Portrait techniques (intermediate)
+
+**Camera Systems (8 questions)**
+- Camera types (beginner)
+- Codec basics (beginner)
+- Log profiles (intermediate)
+- Lens adaptation (intermediate)
 
 ---
 
 ## Visual Design
 
-The Test Login button will be styled distinctly:
-- Positioned below the sign in/sign up toggle
-- Outlined style with a different color (e.g., amber/gold)
-- Icon indicating it's for testing (e.g., beaker or test tube)
-- Clear label: "Quick Test Login"
+### Interest Selection Cards
+- 2-column grid on mobile, 3-column on desktop
+- Department icon prominently displayed
+- Checkbox indicator when selected
+- Border highlight on selection (department color)
+- Minimum 2, maximum 3 selections enforced
 
----
+### Quiz Interface
+- Clean, focused question display
+- Large answer buttons
+- Progress bar at top
+- Question counter
+- Subtle timer display
 
-## Implementation Steps
-
-1. Update password validation to allow 4 character minimum
-2. Add Test Login button to Auth page
-3. Create pre-filled test credentials handler
-4. Add profile completion check after login
-5. Update redirect logic to go to profile page if incomplete
-6. Ensure auto-confirm is enabled in auth settings for smooth testing
+### Results Dashboard
+- Celebratory header with overall score
+- Department breakdown bars or radar chart
+- Course recommendation cards with thumbnails
+- Clear call-to-action buttons
 
