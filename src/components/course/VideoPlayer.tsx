@@ -1,11 +1,71 @@
 import { Play, Volume2, Maximize, Settings } from "lucide-react";
 import type { Lesson } from "@/data/courses";
+import { getVideoType, getYouTubeId, getVimeoId, getYouTubeEmbedUrl, getVimeoEmbedUrl } from "@/lib/videoUtils";
 
 interface VideoPlayerProps {
   lesson: Lesson;
+  videoUrl?: string | null;
 }
 
-export function VideoPlayer({ lesson }: VideoPlayerProps) {
+export function VideoPlayer({ lesson, videoUrl }: VideoPlayerProps) {
+  const url = videoUrl || (lesson as unknown as { video_url?: string }).video_url;
+  const videoType = getVideoType(url);
+
+  // YouTube embed
+  if (videoType === 'youtube' && url) {
+    const videoId = getYouTubeId(url);
+    if (videoId) {
+      return (
+        <div className="relative w-full aspect-video bg-background border-2 border-border overflow-hidden">
+          <iframe
+            src={getYouTubeEmbedUrl(videoId)}
+            className="absolute inset-0 w-full h-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            title={lesson.title}
+          />
+        </div>
+      );
+    }
+  }
+
+  // Vimeo embed
+  if (videoType === 'vimeo' && url) {
+    const videoId = getVimeoId(url);
+    if (videoId) {
+      return (
+        <div className="relative w-full aspect-video bg-background border-2 border-border overflow-hidden">
+          <iframe
+            src={getVimeoEmbedUrl(videoId)}
+            className="absolute inset-0 w-full h-full"
+            allow="autoplay; fullscreen; picture-in-picture"
+            allowFullScreen
+            title={lesson.title}
+          />
+        </div>
+      );
+    }
+  }
+
+  // Direct video file
+  if (videoType === 'direct' && url) {
+    return (
+      <div className="relative w-full aspect-video bg-background border-2 border-border overflow-hidden">
+        <video
+          src={url}
+          className="absolute inset-0 w-full h-full"
+          controls
+          controlsList="nodownload"
+          playsInline
+        >
+          <source src={url} />
+          Your browser does not support the video tag.
+        </video>
+      </div>
+    );
+  }
+
+  // Placeholder for lessons without video
   return (
     <div className="relative w-full aspect-video bg-background border-2 border-border overflow-hidden">
       {/* Video placeholder with gradient */}

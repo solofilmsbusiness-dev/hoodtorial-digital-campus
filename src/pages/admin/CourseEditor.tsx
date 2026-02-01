@@ -13,12 +13,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Save, Plus, Trash2, GripVertical } from "lucide-react";
+import { ArrowLeft, Save, Plus } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { courses as staticCourses, departments } from "@/data/courses";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
+import { useAdminCourseContent } from "@/hooks/useAdminCourseContent";
+import { ModuleEditor } from "@/components/admin/ModuleEditor";
 
 interface CourseForm {
   code: string;
@@ -30,6 +32,136 @@ interface CourseForm {
   duration: string;
   is_published: boolean;
   is_locked: boolean;
+}
+
+// Separate component to handle modules section
+function ModulesSection({ courseId }: { courseId: string }) {
+  const [newModuleTitle, setNewModuleTitle] = useState("");
+  const [showAddModule, setShowAddModule] = useState(false);
+
+  const {
+    modules,
+    isLoading,
+    addModule,
+    updateModule,
+    deleteModule,
+    addLesson,
+    updateLesson,
+    deleteLesson,
+    reorderModules,
+    reorderLessons,
+  } = useAdminCourseContent(courseId);
+
+  const handleAddModule = () => {
+    if (newModuleTitle.trim()) {
+      addModule.mutate(newModuleTitle.trim());
+      setNewModuleTitle("");
+      setShowAddModule(false);
+    }
+  };
+
+  const handleMoveModule = (id: string, direction: "up" | "down") => {
+    const index = modules.findIndex((m) => m.id === id);
+    if (
+      (direction === "up" && index === 0) ||
+      (direction === "down" && index === modules.length - 1)
+    ) {
+      return;
+    }
+    const newOrder = [...modules.map((m) => m.id)];
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    [newOrder[index], newOrder[targetIndex]] = [newOrder[targetIndex], newOrder[index]];
+    reorderModules.mutate(newOrder);
+  };
+
+  const handleMoveLesson = (moduleId: string, lessonId: string, direction: "up" | "down") => {
+    const module = modules.find((m) => m.id === moduleId);
+    if (!module) return;
+    
+    const lessonIds = module.lessons.map((l) => l.id);
+    const index = lessonIds.indexOf(lessonId);
+    
+    if (
+      (direction === "up" && index === 0) ||
+      (direction === "down" && index === lessonIds.length - 1)
+    ) {
+      return;
+    }
+    
+    const newOrder = [...lessonIds];
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    [newOrder[index], newOrder[targetIndex]] = [newOrder[targetIndex], newOrder[index]];
+    reorderLessons.mutate({ moduleId, orderedIds: newOrder });
+  };
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>Modules & Lessons</CardTitle>
+        {!showAddModule && (
+          <Button onClick={() => setShowAddModule(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Module
+          </Button>
+        )}
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {showAddModule && (
+          <div className="flex items-center gap-2 p-4 border border-dashed border-border">
+            <Input
+              placeholder="Module title..."
+              value={newModuleTitle}
+              onChange={(e) => setNewModuleTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAddModule();
+                if (e.key === "Escape") setShowAddModule(false);
+              }}
+              autoFocus
+            />
+            <Button onClick={handleAddModule} disabled={!newModuleTitle.trim()}>
+              Add
+            </Button>
+            <Button variant="ghost" onClick={() => setShowAddModule(false)}>
+              Cancel
+            </Button>
+          </div>
+        )}
+
+        {isLoading ? (
+          <div className="text-center py-8 text-muted-foreground">
+            Loading modules...
+          </div>
+        ) : modules.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <p>No modules yet. Add your first module to get started.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {modules.map((module, index) => (
+              <ModuleEditor
+                key={module.id}
+                module={module}
+                index={index}
+                totalModules={modules.length}
+                onUpdateTitle={(id, title) => updateModule.mutate({ id, title })}
+                onDelete={(id) => deleteModule.mutate(id)}
+                onMoveUp={(id) => handleMoveModule(id, "up")}
+                onMoveDown={(id) => handleMoveModule(id, "down")}
+                onAddLesson={(moduleId, lesson) => 
+                  addLesson.mutate({ module_id: moduleId, ...lesson })
+                }
+                onUpdateLesson={(id, updates) => updateLesson.mutate({ id, ...updates })}
+                onDeleteLesson={(id) => deleteLesson.mutate(id)}
+                onMoveLessonUp={(moduleId, lessonId) => handleMoveLesson(moduleId, lessonId, "up")}
+                onMoveLessonDown={(moduleId, lessonId) => handleMoveLesson(moduleId, lessonId, "down")}
+                isPending={addLesson.isPending || updateLesson.isPending}
+              />
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function CourseEditor() {
@@ -326,22 +458,9 @@ export default function CourseEditor() {
           </div>
         </form>
 
-        {/* Modules Section - Coming Soon */}
-        {!isNew && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Modules & Lessons</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                <p>Module and lesson management coming soon...</p>
-                <Button variant="outline" className="mt-4" disabled>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Module
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Modules Section */}
+        {!isNew && dbCourse && (
+          <ModulesSection courseId={dbCourse.id} />
         )}
       </div>
     </AdminLayout>
