@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import { CommunityComment } from "@/hooks/useCommunityComments";
 import { useAuth } from "@/contexts/AuthContext";
+import { ImageGallery } from "./ImageGallery";
 
 interface CommentThreadProps {
   comments: CommunityComment[];
@@ -135,6 +136,11 @@ function CommentItem({ comment, onLike, onReply, onDelete, depth = 0 }: CommentI
           {/* Regular content */}
           {!hasStructuredFeedback && (
             <p className="text-sm text-foreground mb-2">{comment.content}</p>
+          )}
+
+          {/* Comment images */}
+          {comment.media_urls && comment.media_urls.length > 0 && (
+            <ImageGallery images={comment.media_urls} className="mb-3 max-w-md" />
           )}
 
           {/* Actions */}

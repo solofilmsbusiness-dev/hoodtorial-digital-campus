@@ -90,6 +90,7 @@ export type Database = {
           id: string
           is_highlighted: boolean
           is_instructor_comment: boolean
+          media_urls: string[] | null
           parent_comment_id: string | null
           post_id: string
           updated_at: string
@@ -104,6 +105,7 @@ export type Database = {
           id?: string
           is_highlighted?: boolean
           is_instructor_comment?: boolean
+          media_urls?: string[] | null
           parent_comment_id?: string | null
           post_id: string
           updated_at?: string
@@ -118,6 +120,7 @@ export type Database = {
           id?: string
           is_highlighted?: boolean
           is_instructor_comment?: boolean
+          media_urls?: string[] | null
           parent_comment_id?: string | null
           post_id?: string
           updated_at?: string
