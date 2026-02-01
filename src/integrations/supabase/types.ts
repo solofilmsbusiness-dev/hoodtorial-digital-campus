@@ -53,6 +53,143 @@ export type Database = {
         }
         Relationships: []
       }
+      comment_likes: {
+        Row: {
+          comment_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comment_likes_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "community_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_comments: {
+        Row: {
+          actionable_suggestion: string | null
+          content: string
+          created_at: string
+          id: string
+          is_highlighted: boolean
+          is_instructor_comment: boolean
+          parent_comment_id: string | null
+          post_id: string
+          updated_at: string
+          user_id: string
+          what_could_improve: string | null
+          what_works: string | null
+        }
+        Insert: {
+          actionable_suggestion?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          is_highlighted?: boolean
+          is_instructor_comment?: boolean
+          parent_comment_id?: string | null
+          post_id: string
+          updated_at?: string
+          user_id: string
+          what_could_improve?: string | null
+          what_works?: string | null
+        }
+        Update: {
+          actionable_suggestion?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          is_highlighted?: boolean
+          is_instructor_comment?: boolean
+          parent_comment_id?: string | null
+          post_id?: string
+          updated_at?: string
+          user_id?: string
+          what_could_improve?: string | null
+          what_works?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_comments_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "community_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_posts: {
+        Row: {
+          category: Database["public"]["Enums"]["post_category"]
+          content: string
+          course_code: string | null
+          created_at: string
+          id: string
+          is_highlighted: boolean
+          is_pinned: boolean
+          is_project_post: boolean
+          media_urls: string[] | null
+          title: string
+          updated_at: string
+          user_id: string
+          video_url: string | null
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["post_category"]
+          content: string
+          course_code?: string | null
+          created_at?: string
+          id?: string
+          is_highlighted?: boolean
+          is_pinned?: boolean
+          is_project_post?: boolean
+          media_urls?: string[] | null
+          title: string
+          updated_at?: string
+          user_id: string
+          video_url?: string | null
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["post_category"]
+          content?: string
+          course_code?: string | null
+          created_at?: string
+          id?: string
+          is_highlighted?: boolean
+          is_pinned?: boolean
+          is_project_post?: boolean
+          media_urls?: string[] | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          video_url?: string | null
+        }
+        Relationships: []
+      }
       courses: {
         Row: {
           code: string
@@ -215,6 +352,64 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_follows: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_follows_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_likes: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_likes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
             referencedColumns: ["id"]
           },
         ]
@@ -396,10 +591,17 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_enrolled_student: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "moderator" | "student"
       membership_tier: "freshman" | "sophomore" | "graduate"
+      post_category:
+        | "general"
+        | "course_discussion"
+        | "project_submission"
+        | "feedback_critique"
+        | "announcement"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -529,6 +731,13 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "moderator", "student"],
       membership_tier: ["freshman", "sophomore", "graduate"],
+      post_category: [
+        "general",
+        "course_discussion",
+        "project_submission",
+        "feedback_critique",
+        "announcement",
+      ],
     },
   },
 } as const

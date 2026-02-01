@@ -20,6 +20,7 @@ import StudentProfile from "./pages/StudentProfile";
 import StudentGrades from "./pages/StudentGrades";
 import Assessment from "./pages/Assessment";
 import Shop from "./pages/Shop";
+import Community from "./pages/Community";
 import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import CourseManager from "./pages/admin/CourseManager";
@@ -45,6 +46,11 @@ const App = () => (
             <Route path="/faculty" element={<Faculty />} />
             <Route path="/about" element={<About />} />
             <Route path="/shop" element={<Shop />} />
+            <Route path="/community" element={
+              <ProtectedRoute>
+                <Community />
+              </ProtectedRoute>
+            } />
             <Route path="/auth" element={<Auth />} />
             <Route path="/assessment" element={
               <ProtectedRoute>

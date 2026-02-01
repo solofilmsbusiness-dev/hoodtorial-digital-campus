@@ -23,7 +23,8 @@ import {
   RotateCcw,
   Layers,
   CheckCircle2,
-  Play
+  Play,
+  Users
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -296,6 +297,17 @@ export default function StudentCenter() {
                       <ChevronRight className="h-5 w-5 text-primary" />
                     </Link>
                   )}
+
+                  <Link 
+                    to="/community" 
+                    className="flex items-center justify-between p-4 bg-accent/10 rounded-lg border border-accent/30 hover:border-accent transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Users className="h-5 w-5 text-accent" />
+                      <span className="font-bold">Student Community</span>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-accent" />
+                  </Link>
 
                   <Link 
                     to="/academics" 
