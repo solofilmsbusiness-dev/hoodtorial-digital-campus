@@ -13,10 +13,10 @@ interface ChatPanelProps {
 }
 
 const quickSuggestions = [
-  "How do I start learning?",
-  "What is color grading?",
-  "Recommend a course",
-  "Explain the rule of thirds",
+  "Where do I start?",
+  "What's color grading about?",
+  "Put me on to a course",
+  "Break down rule of thirds",
 ];
 
 export function ChatPanel({ onClose }: ChatPanelProps) {
@@ -95,9 +95,9 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
               <Sparkles className="w-8 h-8 text-primary" />
             </div>
-            <h4 className="font-semibold mb-2">Welcome to Hoodtorial AI</h4>
+            <h4 className="font-semibold mb-2">Yo, What's Good! 🎬</h4>
             <p className="text-sm text-muted-foreground mb-4">
-              Ask me anything about filmmaking, cinematography, or navigating the platform!
+              I'm your film plug. Ask me anything - camera game, editing tips, or how to navigate the school. Let's get it!
             </p>
             <div className="flex flex-wrap gap-2 justify-center">
               {quickSuggestions.map((suggestion) => (
@@ -124,7 +124,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
                   <Loader2 className="w-4 h-4 animate-spin" />
                 </div>
                 <div className="bg-muted rounded-lg px-4 py-2">
-                  <span className="text-sm text-muted-foreground">Thinking...</span>
+                  <span className="text-sm text-muted-foreground">Cooking up a response...</span>
                 </div>
               </div>
             )}
@@ -139,7 +139,7 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about film or the platform..."
+            placeholder="Drop your question..."
             disabled={isLoading}
             className="flex-1"
           />
