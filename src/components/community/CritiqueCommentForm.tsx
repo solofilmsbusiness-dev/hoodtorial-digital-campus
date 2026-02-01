@@ -6,7 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Lightbulb, Send } from "lucide-react";
 import { ImageUploader } from "./ImageUploader";
+import { MentionInput } from "./MentionInput";
 import { useCommunityUploads } from "@/hooks/useCommunityUploads";
+import { useMentions } from "@/hooks/useMentions";
 
 interface CritiqueCommentFormProps {
   postId: string;
@@ -17,6 +19,7 @@ interface CritiqueCommentFormProps {
     what_could_improve?: string;
     actionable_suggestion?: string;
     media_urls?: string[];
+    mentioned_user_ids?: string[];
   }) => void;
   isSubmitting: boolean;
 }
@@ -35,27 +38,37 @@ export function CritiqueCommentForm({
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   
   const { uploadImages, isUploading, uploadProgress } = useCommunityUploads();
+  const { parseMentions } = useMentions();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (useStructuredFeedback) {
       if (!whatWorks.trim() && !whatCouldImprove.trim() && !suggestion.trim()) return;
+      
+      const fullContent = `Structured Feedback:\n\nWhat Works: ${whatWorks}\n\nWhat Could Improve: ${whatCouldImprove}\n\nSuggestion: ${suggestion}`;
+      const mentionedUserIds = parseMentions(fullContent);
+      
       onSubmit({
-        content: `Structured Feedback:\n\nWhat Works: ${whatWorks}\n\nWhat Could Improve: ${whatCouldImprove}\n\nSuggestion: ${suggestion}`,
+        content: fullContent,
         what_works: whatWorks.trim() || undefined,
         what_could_improve: whatCouldImprove.trim() || undefined,
         actionable_suggestion: suggestion.trim() || undefined,
         media_urls: mediaUrls.length > 0 ? mediaUrls : undefined,
+        mentioned_user_ids: mentionedUserIds.length > 0 ? mentionedUserIds : undefined,
       });
       setWhatWorks("");
       setWhatCouldImprove("");
       setSuggestion("");
     } else {
       if (!content.trim()) return;
+      
+      const mentionedUserIds = parseMentions(content);
+      
       onSubmit({ 
         content: content.trim(),
         media_urls: mediaUrls.length > 0 ? mediaUrls : undefined,
+        mentioned_user_ids: mentionedUserIds.length > 0 ? mentionedUserIds : undefined,
       });
       setContent("");
     }
@@ -131,10 +144,10 @@ export function CritiqueCommentForm({
             </div>
           ) : (
             <div className="space-y-2">
-              <Textarea
-                placeholder="Share your thoughts, feedback, or questions..."
+              <MentionInput
+                placeholder="Share your thoughts, feedback, or questions... Use @username to mention someone"
                 value={content}
-                onChange={(e) => setContent(e.target.value)}
+                onChange={setContent}
                 rows={3}
               />
             </div>

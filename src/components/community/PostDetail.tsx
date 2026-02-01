@@ -61,6 +61,7 @@ export function PostDetail({ post, onBack, onLike, onFollow }: PostDetailProps) 
     what_could_improve?: string;
     actionable_suggestion?: string;
     media_urls?: string[];
+    mentioned_user_ids?: string[];
   }) => {
     createComment.mutate({
       post_id: post.id,
@@ -69,6 +70,7 @@ export function PostDetail({ post, onBack, onLike, onFollow }: PostDetailProps) 
       what_could_improve: data.what_could_improve,
       actionable_suggestion: data.actionable_suggestion,
       media_urls: data.media_urls,
+      mentioned_user_ids: data.mentioned_user_ids,
     });
   };
 

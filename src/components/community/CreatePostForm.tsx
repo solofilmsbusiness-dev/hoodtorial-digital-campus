@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -16,7 +15,9 @@ import { PenSquare, X, Link as LinkIcon } from "lucide-react";
 import { PostCategory } from "@/hooks/useCommunityPosts";
 import { courses } from "@/data/courses";
 import { ImageUploader } from "./ImageUploader";
+import { MentionInput } from "./MentionInput";
 import { useCommunityUploads } from "@/hooks/useCommunityUploads";
+import { useMentions } from "@/hooks/useMentions";
 
 interface CreatePostFormProps {
   onSubmit: (data: {
@@ -27,6 +28,7 @@ interface CreatePostFormProps {
     is_project_post?: boolean;
     video_url?: string;
     media_urls?: string[];
+    mentioned_user_ids?: string[];
   }) => void;
   onCancel: () => void;
   isSubmitting: boolean;
@@ -42,10 +44,14 @@ export function CreatePostForm({ onSubmit, onCancel, isSubmitting }: CreatePostF
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   
   const { uploadImages, isUploading, uploadProgress } = useCommunityUploads();
+  const { parseMentions } = useMentions();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !content.trim()) return;
+
+    // Parse mentions from content
+    const mentionedUserIds = parseMentions(content);
 
     onSubmit({
       title: title.trim(),
@@ -55,6 +61,7 @@ export function CreatePostForm({ onSubmit, onCancel, isSubmitting }: CreatePostF
       is_project_post: isProjectPost,
       video_url: videoUrl || undefined,
       media_urls: mediaUrls.length > 0 ? mediaUrls : undefined,
+      mentioned_user_ids: mentionedUserIds.length > 0 ? mentionedUserIds : undefined,
     });
   };
 
@@ -123,13 +130,12 @@ export function CreatePostForm({ onSubmit, onCancel, isSubmitting }: CreatePostF
 
           <div className="space-y-2">
             <Label htmlFor="content">Content</Label>
-            <Textarea
+            <MentionInput
               id="content"
-              placeholder="Share your thoughts, questions, or work..."
+              placeholder="Share your thoughts, questions, or work... Use @username to mention someone"
               value={content}
-              onChange={(e) => setContent(e.target.value)}
+              onChange={setContent}
               rows={6}
-              required
             />
           </div>
 

@@ -39,6 +39,7 @@ interface CreatePostData {
   is_project_post?: boolean;
   media_urls?: string[];
   video_url?: string;
+  mentioned_user_ids?: string[];
 }
 
 export function useCommunityPosts(filters?: {
@@ -165,6 +166,26 @@ export function useCommunityPosts(filters?: {
         .single();
 
       if (error) throw error;
+
+      // Create mention notifications
+      if (data.mentioned_user_ids && data.mentioned_user_ids.length > 0) {
+        const notifications = data.mentioned_user_ids
+          .filter(id => id !== user.id)
+          .map(userId => ({
+            user_id: userId,
+            sender_id: user.id,
+            type: 'mention',
+            reference_type: 'post',
+            reference_id: post.id,
+            post_id: post.id,
+            content_preview: data.content.slice(0, 100),
+          }));
+
+        if (notifications.length > 0) {
+          await supabase.from('notifications').insert(notifications);
+        }
+      }
+
       return post;
     },
     onSuccess: () => {

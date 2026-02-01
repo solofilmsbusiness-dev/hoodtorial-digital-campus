@@ -359,6 +359,45 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          content_preview: string | null
+          created_at: string
+          id: string
+          is_read: boolean
+          post_id: string | null
+          reference_id: string
+          reference_type: string
+          sender_id: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          content_preview?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          post_id?: string | null
+          reference_id: string
+          reference_type: string
+          sender_id: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          content_preview?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          post_id?: string | null
+          reference_id?: string
+          reference_type?: string
+          sender_id?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       post_follows: {
         Row: {
           created_at: string
