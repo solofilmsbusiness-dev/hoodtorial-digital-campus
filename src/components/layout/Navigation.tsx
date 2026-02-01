@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Menu, X, User, LogOut, Shield } from "lucide-react";
+import { Menu, X, User, LogOut, Shield, Users } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
@@ -82,6 +82,12 @@ export function Navigation() {
                       Student Center
                     </Link>
                   </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/community" className="flex items-center gap-2 cursor-pointer">
+                      <Users className="h-4 w-4" />
+                      Community
+                    </Link>
+                  </DropdownMenuItem>
                   {isAdmin && (
                     <DropdownMenuItem asChild>
                       <Link to="/admin" className="flex items-center gap-2 cursor-pointer">
@@ -147,6 +153,13 @@ export function Navigation() {
                     className="text-lg font-bold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide py-2"
                   >
                     Student Center
+                  </Link>
+                  <Link 
+                    to="/community" 
+                    onClick={() => setIsOpen(false)}
+                    className="text-lg font-bold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide py-2"
+                  >
+                    Community
                   </Link>
                   {isAdmin && (
                     <Link 
