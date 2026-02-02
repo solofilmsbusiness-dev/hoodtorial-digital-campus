@@ -22,6 +22,7 @@ import Assessment from "./pages/Assessment";
 import Shop from "./pages/Shop";
 import Community from "./pages/Community";
 import NotFound from "./pages/NotFound";
+import SkillTree from "./pages/SkillTree";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import CourseManager from "./pages/admin/CourseManager";
 import CourseEditor from "./pages/admin/CourseEditor";
@@ -41,6 +42,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/degrees" element={<Degrees />} />
+            <Route path="/skill-tree/:path" element={<SkillTree />} />
             <Route path="/academics" element={<Academics />} />
             <Route path="/course/:code" element={<CourseDetail />} />
             <Route path="/enrollment" element={<Enrollment />} />
