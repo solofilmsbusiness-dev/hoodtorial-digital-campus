@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useUserProgress } from "@/hooks/useUserProgress";
 import { courses, departments } from "@/data/courses";
-import type { SkillNodeData, NodeStatus } from "@/components/skill-tree/SkillNode";
+import type { SkillNodeData, NodeStatus } from "@/components/skill-tree/SkillNodeHex";
 
 export type DegreePath = "associate" | "bachelor" | "certificate";
 
