@@ -66,65 +66,83 @@ const pathConfigs: Record<DegreePath, PathConfig> = {
   },
 };
 
-// Generate skill tree layout positions
+// Generate skill tree layout positions - organized by department for visual clarity
 function generateNodePositions(courseCodes: string[], hasMilestones: boolean, hasCapstone: boolean): Map<string, { x: number; y: number }> {
   const positions = new Map<string, { x: number; y: number }>();
-  const totalCourses = courseCodes.length;
   
-  // Create a tree-like structure
-  // Row 1: Foundation courses (first 2-3)
-  // Row 2: Core courses
-  // Row 3: Advanced courses
-  // Row 4: Milestones/Projects
+  // Group courses by their level (100, 200, 300 series)
+  const level100: string[] = [];
+  const level200: string[] = [];
+  const level300: string[] = [];
+  
+  courseCodes.forEach((code) => {
+    const levelMatch = code.match(/HU-(\d)/);
+    if (levelMatch) {
+      const level = parseInt(levelMatch[1]);
+      if (level === 1) level100.push(code);
+      else if (level === 2) level200.push(code);
+      else if (level === 3) level300.push(code);
+    }
+  });
+
+  // Position nodes in a clear grid layout
+  // Row 1: Level 100 courses (foundation)
+  // Row 2: Level 200 courses (intermediate)
+  // Row 3: Level 300 courses (advanced)
+  // Row 4: Milestones and Projects
   // Row 5: Capstone
 
-  const rows: string[][] = [];
-  
-  if (totalCourses <= 3) {
-    rows.push(courseCodes);
-  } else if (totalCourses <= 6) {
-    rows.push(courseCodes.slice(0, 2));
-    rows.push(courseCodes.slice(2, 4));
-    if (courseCodes.length > 4) rows.push(courseCodes.slice(4));
-  } else {
-    // For larger trees (bachelor's)
-    rows.push(courseCodes.slice(0, 2));  // Foundation
-    rows.push(courseCodes.slice(2, 5));  // Early core
-    rows.push(courseCodes.slice(5, 8));  // Mid core
-    rows.push(courseCodes.slice(8, 11)); // Advanced
-    if (courseCodes.length > 11) rows.push(courseCodes.slice(11)); // Expert
-  }
+  const rowY = {
+    level100: 15,
+    level200: 35,
+    level300: 55,
+    milestones: 75,
+    capstone: 90,
+  };
 
-  const rowCount = rows.length + (hasMilestones ? 1 : 0) + (hasCapstone ? 1 : 0);
-  const verticalSpacing = 80 / (rowCount + 1);
+  // Position level 100 courses
+  level100.forEach((code, index) => {
+    const spacing = 80 / (level100.length + 1);
+    positions.set(code, {
+      x: 10 + spacing * (index + 1),
+      y: rowY.level100,
+    });
+  });
 
-  rows.forEach((row, rowIndex) => {
-    const horizontalSpacing = 80 / (row.length + 1);
-    row.forEach((code, colIndex) => {
-      positions.set(code, {
-        x: 10 + horizontalSpacing * (colIndex + 1),
-        y: 10 + verticalSpacing * (rowIndex + 1),
-      });
+  // Position level 200 courses
+  level200.forEach((code, index) => {
+    const spacing = 80 / (level200.length + 1);
+    positions.set(code, {
+      x: 10 + spacing * (index + 1),
+      y: rowY.level200,
+    });
+  });
+
+  // Position level 300 courses
+  level300.forEach((code, index) => {
+    const spacing = 80 / (level300.length + 1);
+    positions.set(code, {
+      x: 10 + spacing * (index + 1),
+      y: rowY.level300,
     });
   });
 
   // Add milestone positions
   if (hasMilestones) {
-    const milestoneY = 10 + verticalSpacing * (rows.length + 1);
-    positions.set("scenario-exam-1", { x: 30, y: milestoneY });
-    positions.set("scenario-exam-2", { x: 50, y: milestoneY });
-    positions.set("scenario-exam-3", { x: 70, y: milestoneY });
-    positions.set("project-1", { x: 20, y: milestoneY + 8 });
-    positions.set("project-2", { x: 40, y: milestoneY + 8 });
-    positions.set("project-3", { x: 60, y: milestoneY + 8 });
-    positions.set("project-4", { x: 80, y: milestoneY + 8 });
-    positions.set("project-5", { x: 35, y: milestoneY + 16 });
-    positions.set("project-6", { x: 65, y: milestoneY + 16 });
+    positions.set("scenario-exam-1", { x: 25, y: rowY.milestones });
+    positions.set("scenario-exam-2", { x: 50, y: rowY.milestones });
+    positions.set("scenario-exam-3", { x: 75, y: rowY.milestones });
+    positions.set("project-1", { x: 15, y: rowY.milestones + 8 });
+    positions.set("project-2", { x: 30, y: rowY.milestones + 8 });
+    positions.set("project-3", { x: 45, y: rowY.milestones + 8 });
+    positions.set("project-4", { x: 60, y: rowY.milestones + 8 });
+    positions.set("project-5", { x: 75, y: rowY.milestones + 8 });
+    positions.set("project-6", { x: 90, y: rowY.milestones + 8 });
   }
 
   // Add capstone position
   if (hasCapstone) {
-    positions.set("capstone-film", { x: 50, y: 90 });
+    positions.set("capstone-film", { x: 50, y: rowY.capstone });
   }
 
   return positions;
