@@ -27,6 +27,7 @@ export function SkillTreeView({ nodes, connections }: SkillTreeViewProps) {
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [lastPinchDistance, setLastPinchDistance] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const nodeMap = useMemo(() => {
@@ -94,30 +95,60 @@ export function SkillTreeView({ nodes, connections }: SkillTreeViewProps) {
     setIsDragging(false);
   }, []);
 
-  // Touch support for mobile
+  // Helper to calculate distance between two touch points
+  const getTouchDistance = useCallback((touches: React.TouchList): number => {
+    const [touch1, touch2] = [touches[0], touches[1]];
+    const dx = touch1.clientX - touch2.clientX;
+    const dy = touch1.clientY - touch2.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }, []);
+
+  // Touch support for mobile - pan and pinch-to-zoom
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (e.touches.length === 1) {
+      // Single touch - start panning
       const touch = e.touches[0];
       setIsDragging(true);
       setDragStart({
         x: touch.clientX - position.x,
         y: touch.clientY - position.y,
       });
+      setLastPinchDistance(null);
+    } else if (e.touches.length === 2) {
+      // Two fingers - start pinch-to-zoom
+      e.preventDefault();
+      setIsDragging(false);
+      setLastPinchDistance(getTouchDistance(e.touches));
     }
-  }, [position]);
+  }, [position, getTouchDistance]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!isDragging || e.touches.length !== 1) return;
-    
-    const touch = e.touches[0];
-    setPosition({
-      x: touch.clientX - dragStart.x,
-      y: touch.clientY - dragStart.y,
-    });
-  }, [isDragging, dragStart]);
+    if (e.touches.length === 1 && isDragging) {
+      // Single touch - panning
+      const touch = e.touches[0];
+      setPosition({
+        x: touch.clientX - dragStart.x,
+        y: touch.clientY - dragStart.y,
+      });
+    } else if (e.touches.length === 2 && lastPinchDistance !== null) {
+      // Two fingers - pinch-to-zoom
+      e.preventDefault();
+      const currentDistance = getTouchDistance(e.touches);
+      const delta = currentDistance - lastPinchDistance;
+      const zoomSensitivity = 0.005;
+      
+      setScale((prev) => {
+        const newScale = prev + delta * zoomSensitivity;
+        return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newScale));
+      });
+      
+      setLastPinchDistance(currentDistance);
+    }
+  }, [isDragging, dragStart, lastPinchDistance, getTouchDistance]);
 
   const handleTouchEnd = useCallback(() => {
     setIsDragging(false);
+    setLastPinchDistance(null);
   }, []);
 
   return (
@@ -264,6 +295,7 @@ export function SkillTreeView({ nodes, connections }: SkillTreeViewProps) {
           <div className="text-[10px] text-muted-foreground">
             <span className="block">Scroll to zoom</span>
             <span className="block">Drag to pan</span>
+            <span className="block">Pinch to zoom (touch)</span>
           </div>
         </div>
       </motion.div>
