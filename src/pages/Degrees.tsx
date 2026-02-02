@@ -15,6 +15,7 @@ const degreePrograms = [
       "2 projects",
     ],
     color: "accent",
+    path: "associate",
   },
   {
     name: "Bachelor of Film",
@@ -30,6 +31,7 @@ const degreePrograms = [
     ],
     color: "primary",
     featured: true,
+    path: "bachelor",
   },
   {
     name: "Certificate",
@@ -42,6 +44,7 @@ const degreePrograms = [
       "1 project",
     ],
     color: "neon-purple",
+    path: "certificate",
   },
 ];
 
@@ -142,7 +145,7 @@ const Degrees = () => {
               </div>
 
               <Link 
-                to="/enroll" 
+                to={`/skill-tree/${program.path}`}
                 className={program.featured ? "btn-brutal w-full text-center" : "border-2 border-border hover:border-primary hover:bg-primary hover:text-primary-foreground font-bold uppercase tracking-wide py-4 text-center transition-all duration-300"}
               >
                 Start This Path
@@ -282,7 +285,7 @@ const Degrees = () => {
           </div>
 
           <div className="text-center mt-12">
-            <Link to="/enroll" className="btn-brutal inline-flex animate-glow-pulse">
+            <Link to="/skill-tree/bachelor" className="btn-brutal inline-flex animate-glow-pulse">
               Start Your Degree
               <ArrowRight className="ml-2 h-5 w-5" />
             </Link>
