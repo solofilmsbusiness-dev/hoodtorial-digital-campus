@@ -1,195 +1,129 @@
 
-# Skill Tree Redesign: Fun & Interactive Experience
+# Fix Skill Tree Layout Clipping Issues
 
-## Overview
+## Problem Analysis
 
-A complete visual overhaul of the skill tree system, transforming it from a basic grid layout into an immersive, game-inspired progression map. The new design will feel like a cinematic journey through filmmaking mastery, with animated pathways, glowing nodes, particle effects, and department-themed visual lanes.
+The skill tree nodes and labels are being cut off due to several issues:
 
-## Design Concept
+1. **Hexagonal clip-path** - The `.hex-node` CSS class clips content outside the hexagon shape, cutting off:
+   - Skill Points badges (positioned outside the node bounds)
+   - Course code badges (positioned below nodes)
+   - Hover tooltips
 
-The redesigned skill tree draws inspiration from RPG skill trees and metro/transit maps, creating a visually stunning "Film Academy Universe" where each department is a distinct visual lane with its own color identity. Students will feel like they're navigating a neon-lit cityscape of knowledge.
+2. **Node structure issue** - All node content (badges, labels) is inside the clipped button element when they need to be outside or use overflow handling.
+
+3. **Level indicators positioning** - The "100", "200", "300" level numbers may not align correctly with node rows.
+
+4. **Canvas overflow** - The SVG and container may not properly handle elements that extend beyond their bounds.
+
+---
+
+## Solution
+
+### 1. Restructure SkillNodeHex Component
+
+Change the component structure so badges and labels are NOT affected by the hexagon clip-path:
 
 ```text
-+------------------------------------------------------------------+
-|                     SKILL TREE HEADER                            |
-|  [Back] Bachelor of Film         SP: 120/850   Credits: 12/60    |
-|  ================ Progress Bar (20%) ================            |
-+------------------------------------------------------------------+
-|                                                                   |
-|  CINEMATOGRAPHY LANE (Gold)     POST-PRODUCTION LANE (Purple)    |
-|  ~~~~~~~~~~~~~~~~~~~~~~~~       ~~~~~~~~~~~~~~~~~~~~~~~~~~       |
-|       [101]----[102]                  [103]----[104]             |
-|          \        \                      \        \              |
-|           [201]    \                      [202]    \             |
-|              \      \                        \      \            |
-|               [301]--+------------------------[302]-+            |
-|                       \                             /            |
-|  DIRECTING LANE        \     PRODUCTION LANE       /             |
-|  ~~~~~~~~~~~~~~         \    ~~~~~~~~~~~~~~~      /              |
-|      [105]               \       [106]           /               |
-|         \                 \         \           /                |
-|          [203]             \        [204]      /                 |
-|             \               \          \      /                  |
-|              [303]           \         [304] /                   |
-|                  \            \           \ /                    |
-|                   +-----------[CAPSTONE]---+                     |
-|                                  [*]                             |
-+------------------------------------------------------------------+
+BEFORE (clipped):
++----------------------------------+
+| <button clip-path=hex>           |
+|   [icon]                         |
+|   [SP badge - CLIPPED!]          |
+|   [course code - CLIPPED!]       |
+| </button>                        |
++----------------------------------+
+
+AFTER (fixed):
++----------------------------------+
+| <div wrapper>                    |
+|   <button clip-path=hex>         |
+|     [icon only]                  |
+|   </button>                      |
+|   [SP badge - visible]           |
+|   [course code - visible]        |
+|   [tooltip - visible]            |
+| </div>                           |
++----------------------------------+
 ```
 
-## Technical Implementation
+### 2. Remove Clip-Path from Main Button
 
-### 1. New SkillNode Component (Complete Redesign)
+Instead of using `clip-path` on the entire button (which clips children), apply the hexagon shape using:
+- A nested `<div>` inside with the clip-path for the visual shape
+- Keep badges and labels as siblings outside the clipped area
 
-**Visual Features:**
-- Hexagonal shape for courses, circular for milestones, star-burst for capstone
-- Department-specific color gradients and glow effects
-- Animated inner ring showing course progress
-- Floating skill point badges with bounce animation
-- Title labels that appear on hover with glass-morphism effect
-- Particle trail effect when node unlocks
+### 3. Add Overflow Handling
 
-**Status States:**
-- **Locked**: Grayscale, slight blur, chain-link overlay icon
-- **Available**: Pulsing glow, "ready" indicator animation
-- **In Progress**: Animated progress ring, partial fill
-- **Completed**: Full color, checkmark stamp, earned XP sparkle
+Ensure the canvas container allows content to overflow visibly:
+- Add `overflow: visible` to the node positioning wrapper
+- Update SVG to use `style={{ overflow: "visible" }}` (already present but verify)
 
-### 2. Connection Pathways (SVG-Based Animated Paths)
+### 4. Fix Level Indicators in DepartmentLane
 
-**Visual Features:**
-- Curved bezier paths instead of straight lines
-- Animated "energy flow" effect using stroke-dashoffset
-- Gradient strokes matching department colors
-- Glowing dots that travel along completed paths
-- Dimmed paths for locked connections
+Adjust the Y-positioning formula to match actual node positions:
+- Current: `80 + level * 160 + 80` = 160, 320, 480
+- Node positions: `headerOffset (80) + level * levelHeight (160) + levelHeight/2 (80)` = 160, 320, 480
+- These should match, but verify alignment and ensure text is not cut off by lane background
 
-### 3. Layout Engine (Department Lanes)
+---
 
-**Structure:**
-- Organize nodes into vertical department "lanes"
-- Each lane has its own background gradient strip
-- Courses flow downward with branching connections
-- Cross-department connections create visual bridges
+## Files to Modify
 
-**Spacing:**
-- Fixed vertical spacing between levels (100, 200, 300 series)
-- Department lanes with consistent horizontal gaps
-- Special treatment for capstone at the bottom center
+| File | Changes |
+|------|---------|
+| `src/components/skill-tree/SkillNodeHex.tsx` | Restructure to wrap button with outer div; move badges outside clipped element |
+| `src/index.css` | Optionally adjust hex-node class or add utility classes for overflow |
 
-### 4. Interactive Container
+---
 
-**Features:**
-- Smooth zoom with momentum (0.5x to 2.5x)
-- Inertial panning with rubber-band edges
-- Minimap in corner showing viewport position
-- Click-to-focus on any node
-- Keyboard navigation (arrow keys)
-- Double-click to zoom to node
+## Detailed Changes
 
-### 5. Enhanced Header
+### SkillNodeHex.tsx Restructure
 
-**New Stats Display:**
-- Animated skill point counter with level indicator
-- XP bar that fills with particle effects
-- Department completion badges (color-coded)
-- Current "rank" based on progress
+1. Wrap the entire node in an outer `<div>` that handles absolute positioning
+2. Move the button's outer styling (position, transform) to the wrapper
+3. Keep the hex clip-path only on the inner visual container
+4. Place SP badge, course code badge, and tooltip as siblings of the clipped element
 
-### 6. Node Detail Panel (Slide-In Modal)
-
-**Redesigned Features:**
-- Full-width bottom sheet on mobile
-- Side panel on desktop with parallax background
-- Course thumbnail/icon display
-- Animated stats counters
-- Prerequisites shown as mini skill tree
-- "Start Course" button with loading state
-
-## Files to Create/Modify
-
-| File | Action | Purpose |
-|------|--------|---------|
-| `src/components/skill-tree/SkillNodeHex.tsx` | Create | New hexagonal node component with all visual states |
-| `src/components/skill-tree/SkillPathway.tsx` | Create | SVG-based animated connection paths |
-| `src/components/skill-tree/SkillTreeCanvas.tsx` | Create | New main container with department lanes |
-| `src/components/skill-tree/SkillTreeMinimap.tsx` | Create | Corner minimap for navigation |
-| `src/components/skill-tree/SkillTreeStats.tsx` | Create | Animated header stats component |
-| `src/components/skill-tree/DepartmentLane.tsx` | Create | Visual lane background for each department |
-| `src/components/skill-tree/NodeDetailSheet.tsx` | Create | Redesigned detail panel |
-| `src/hooks/useSkillTreeLayout.ts` | Create | New layout algorithm for department lanes |
-| `src/components/skill-tree/SkillTreeView.tsx` | Replace | Completely rewritten with new components |
-| `src/components/skill-tree/SkillNode.tsx` | Delete | Replaced by SkillNodeHex |
-| `src/components/skill-tree/SkillTreeConnector.tsx` | Delete | Replaced by SkillPathway |
-| `src/components/skill-tree/SkillNodeDetail.tsx` | Delete | Replaced by NodeDetailSheet |
-| `src/hooks/useSkillTree.ts` | Modify | Add department grouping to node data |
-| `src/index.css` | Modify | Add new animations and glow effects |
-
-## Technical Details
-
-### Department Lane Layout Algorithm
+### Key Structure Change
 
 ```typescript
-// Each department gets a vertical lane
-const departmentOrder = [
-  "cinematography",    // Lane 1 (Gold)
-  "post-production",   // Lane 2 (Purple)  
-  "directing",         // Lane 3 (Cyan)
-  "production"         // Lane 4 (Pink)
-];
-
-// Courses positioned by:
-// x = laneIndex * laneWidth + laneOffset
-// y = courseLevel * levelHeight + headerOffset
+// Outer wrapper (handles positioning, NOT clipped)
+<div className="absolute" style={{ left, top, transform: "translate(-50%, -50%)" }}>
+  
+  // Inner button with hex shape (clipped, just the visual)
+  <motion.button className="hex-node ...">
+    [icon content]
+  </motion.button>
+  
+  // Badges OUTSIDE the clip (visible)
+  <div className="absolute -top-1 -right-1">SP Badge</div>
+  <div className="absolute -bottom-6">Course Code</div>
+  <div className="absolute top-full">Tooltip</div>
+  
+</div>
 ```
 
-### Animation Keyframes
+### Additional CSS Adjustment
 
-New CSS animations for:
-- `@keyframes node-pulse` - Breathing glow for available nodes
-- `@keyframes path-flow` - Energy traveling along connections
-- `@keyframes unlock-burst` - Particle explosion on unlock
-- `@keyframes sp-pop` - Skill point badge bounce
-- `@keyframes progress-ring` - Circular progress animation
-
-### SVG Path Generation
-
-Curved connections using quadratic bezier curves:
-```typescript
-// Path from node A to node B with curve
-const midX = (fromX + toX) / 2;
-const midY = (fromY + toY) / 2;
-const controlY = midY - 30; // Curve upward
-
-return `M ${fromX} ${fromY} Q ${midX} ${controlY} ${toX} ${toY}`;
+Add to the wrapper to ensure visible overflow:
+```css
+.skill-node-wrapper {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 ```
 
-## Visual Polish
+---
 
-### Color System by Department
+## Expected Outcome
 
-| Department | Primary | Glow | Lane BG |
-|------------|---------|------|---------|
-| Cinematography | Gold (#D4AF37) | Gold/30% | Gold/5% |
-| Post-Production | Purple (#A855F7) | Purple/30% | Purple/5% |
-| Directing | Cyan (#00E5CC) | Cyan/30% | Cyan/5% |
-| Production | Pink (#FF66B2) | Pink/30% | Pink/5% |
-
-### Node Size Hierarchy
-
-- Regular courses: 64x64px (mobile), 80x80px (desktop)
-- Milestone exams: 72x72px (mobile), 88x88px (desktop)
-- Capstone: 96x96px (mobile), 120x120px (desktop)
-
-## Implementation Order
-
-1. Create new layout hook with department grouping
-2. Build SkillNodeHex component with all visual states
-3. Build SkillPathway SVG component
-4. Create DepartmentLane background component
-5. Build SkillTreeCanvas container
-6. Add SkillTreeMinimap
-7. Create NodeDetailSheet
-8. Create SkillTreeStats header
-9. Wire everything together in SkillTreeView
-10. Add CSS animations to index.css
-11. Clean up old components
+After these changes:
+- Skill Point badges (30, 40, 50 SP) will be fully visible in the top-right corner
+- Course codes (HU-101, HU-102, etc.) will show below each node
+- Hover tooltips will display without clipping
+- Level indicators (100, 200, 300) will be properly aligned and visible
+- The overall tree layout remains unchanged
