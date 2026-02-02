@@ -20,7 +20,7 @@ import { courses as staticCourses, departments } from "@/data/courses";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import { useAdminCourseContent } from "@/hooks/useAdminCourseContent";
-import { ModuleEditor } from "@/components/admin/ModuleEditor";
+import { SortableModuleList } from "@/components/admin/SortableModuleList";
 
 interface CourseForm {
   code: string;
@@ -60,39 +60,6 @@ function ModulesSection({ courseId }: { courseId: string }) {
     }
   };
 
-  const handleMoveModule = (id: string, direction: "up" | "down") => {
-    const index = modules.findIndex((m) => m.id === id);
-    if (
-      (direction === "up" && index === 0) ||
-      (direction === "down" && index === modules.length - 1)
-    ) {
-      return;
-    }
-    const newOrder = [...modules.map((m) => m.id)];
-    const targetIndex = direction === "up" ? index - 1 : index + 1;
-    [newOrder[index], newOrder[targetIndex]] = [newOrder[targetIndex], newOrder[index]];
-    reorderModules.mutate(newOrder);
-  };
-
-  const handleMoveLesson = (moduleId: string, lessonId: string, direction: "up" | "down") => {
-    const module = modules.find((m) => m.id === moduleId);
-    if (!module) return;
-    
-    const lessonIds = module.lessons.map((l) => l.id);
-    const index = lessonIds.indexOf(lessonId);
-    
-    if (
-      (direction === "up" && index === 0) ||
-      (direction === "down" && index === lessonIds.length - 1)
-    ) {
-      return;
-    }
-    
-    const newOrder = [...lessonIds];
-    const targetIndex = direction === "up" ? index - 1 : index + 1;
-    [newOrder[index], newOrder[targetIndex]] = [newOrder[targetIndex], newOrder[index]];
-    reorderLessons.mutate({ moduleId, orderedIds: newOrder });
-  };
 
   return (
     <Card>
@@ -136,28 +103,21 @@ function ModulesSection({ courseId }: { courseId: string }) {
             <p>No modules yet. Add your first module to get started.</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {modules.map((module, index) => (
-              <ModuleEditor
-                key={module.id}
-                module={module}
-                index={index}
-                totalModules={modules.length}
-                onUpdateTitle={(id, title) => updateModule.mutate({ id, title })}
-                onDelete={(id) => deleteModule.mutate(id)}
-                onMoveUp={(id) => handleMoveModule(id, "up")}
-                onMoveDown={(id) => handleMoveModule(id, "down")}
-                onAddLesson={(moduleId, lesson) => 
-                  addLesson.mutate({ module_id: moduleId, ...lesson })
-                }
-                onUpdateLesson={(id, updates) => updateLesson.mutate({ id, ...updates })}
-                onDeleteLesson={(id) => deleteLesson.mutate(id)}
-                onMoveLessonUp={(moduleId, lessonId) => handleMoveLesson(moduleId, lessonId, "up")}
-                onMoveLessonDown={(moduleId, lessonId) => handleMoveLesson(moduleId, lessonId, "down")}
-                isPending={addLesson.isPending || updateLesson.isPending}
-              />
-            ))}
-          </div>
+          <SortableModuleList
+            modules={modules}
+            onUpdateTitle={(id, title) => updateModule.mutate({ id, title })}
+            onDelete={(id) => deleteModule.mutate(id)}
+            onReorderModules={(orderedIds) => reorderModules.mutate(orderedIds)}
+            onAddLesson={(moduleId, lesson) =>
+              addLesson.mutate({ module_id: moduleId, ...lesson })
+            }
+            onUpdateLesson={(id, updates) => updateLesson.mutate({ id, ...updates })}
+            onDeleteLesson={(id) => deleteLesson.mutate(id)}
+            onReorderLessons={(moduleId, orderedIds) =>
+              reorderLessons.mutate({ moduleId, orderedIds })
+            }
+            isPending={addLesson.isPending || updateLesson.isPending}
+          />
         )}
       </CardContent>
     </Card>
