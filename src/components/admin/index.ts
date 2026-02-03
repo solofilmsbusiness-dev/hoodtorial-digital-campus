@@ -10,3 +10,7 @@ export { QuestionDialog } from "./QuestionDialog";
 export { QuestionManager } from "./QuestionManager";
 export { QuizSection } from "./QuizSection";
 export { GenerateQuestionsDialog } from "./GenerateQuestionsDialog";
+export { CommandPalette } from "./CommandPalette";
+export { ActivityFeed } from "./ActivityFeed";
+export { AdminNotifications } from "./AdminNotifications";
+export { PendingItemsCard } from "./PendingItemsCard";
