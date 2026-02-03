@@ -1,160 +1,204 @@
 
-# Enhanced Admin Course Manager
+# Admin Student Management: Quiz Reset and Course Management
 
 ## Overview
-Add search, level filtering, and improved toggle controls to the admin course manager page for easier course discovery and quick status management.
+Add administrative capabilities to reset quiz results, manage student enrollments, and view detailed question-by-question quiz performance in the Student Detail Sheet.
 
 ---
 
-## Current State
-The existing CourseManager page has:
-- Basic table with columns: Code, Title, Department, Level, Credits, Published (switch), Locked (switch), Actions
-- No search functionality
-- No filtering by level or department
-- Toggles are small switches in table cells - not very prominent
+## Current Limitations
+- Quiz results only store aggregate scores (pass/fail, score percentage) - individual answers are NOT saved
+- Admins cannot reset or delete quiz results for students
+- Admins cannot remove student enrollments
+- No visibility into which specific questions students got right or wrong
 
 ---
 
-## Proposed Enhancements
+## Implementation Plan
 
-### 1. Add Search and Filter Bar
-Add a filter bar above the table with:
-- **Search input**: Filter by course code, title, or department
-- **Level filter dropdown**: All Levels / Beginner / Intermediate / Advanced
-- **Status filter dropdown**: All / Published / Coming Soon (locked) / Hidden (unpublished)
-- **Department filter dropdown**: All Departments / Cinematography / Post-Production / etc.
+### Phase 1: Database Changes
 
-### 2. Improve Toggle Visibility
-Replace the small switches in table cells with more prominent toggle buttons:
-- **Published status**: Badge-style toggle (green "Published" / gray "Hidden")
-- **Coming Soon status**: Badge-style toggle (amber "Coming Soon" / transparent when not set)
-- Click to toggle - more intuitive than small switches
+**New table: `quiz_answers`**
+Store individual question responses for each quiz attempt:
 
-### 3. Quick Stats Header
-Add summary stats showing:
-- Total courses
-- Published count
-- Coming Soon count  
-- Hidden count
+```sql
+CREATE TABLE public.quiz_answers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  quiz_result_id UUID REFERENCES public.quiz_results(id) ON DELETE CASCADE NOT NULL,
+  question_id TEXT NOT NULL,
+  selected_answer INTEGER NOT NULL,
+  is_correct BOOLEAN NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
 
----
+-- RLS: Users can view their own, admins can view all
+ALTER TABLE public.quiz_answers ENABLE ROW LEVEL SECURITY;
 
-## UI Wireframe
+CREATE POLICY "Users can view own quiz answers"
+  ON public.quiz_answers FOR SELECT
+  TO authenticated
+  USING (
+    quiz_result_id IN (
+      SELECT id FROM public.quiz_results WHERE user_id = auth.uid()
+    )
+  );
 
-```text
-+------------------------------------------------------------------+
-| COURSE MANAGER                           24 total | 20 pub | 2 CS |
-+------------------------------------------------------------------+
-| [Search courses...    ] [Level ▾] [Status ▾] [Dept ▾] [+ Add]    |
-+------------------------------------------------------------------+
-| CODE    | TITLE                | DEPT  | LEVEL  | STATUS         |
-|---------|----------------------|-------|--------|----------------|
-| HU-101  | iPhone Cinematography| Cine  | Begin  | [Published] [ ]|
-| HU-102  | Lighting for Mobile  | Cine  | Begin  | [Published] [ ]|
-| HU-201  | Advanced Camera Move | Cine  | Inter  | [ Hidden ] [CS]|
-| HU-301  | Cinematic Lens Lang  | Cine  | Adv    | [Published] [ ]|
-+------------------------------------------------------------------+
+CREATE POLICY "Admins can view all quiz answers"
+  ON public.quiz_answers FOR SELECT
+  TO authenticated
+  USING (public.has_role(auth.uid(), 'admin'));
 
-Legend: [Published] = green badge, [Hidden] = gray badge
-        [CS] = Coming Soon amber badge, [ ] = empty/not coming soon
+CREATE POLICY "Users can insert own quiz answers"
+  ON public.quiz_answers FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    quiz_result_id IN (
+      SELECT id FROM public.quiz_results WHERE user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Admins can delete quiz answers"
+  ON public.quiz_answers FOR DELETE
+  TO authenticated
+  USING (public.has_role(auth.uid(), 'admin'));
+```
+
+**Add delete policies to existing tables:**
+```sql
+-- Allow admins to delete quiz results
+CREATE POLICY "Admins can delete quiz results"
+  ON public.quiz_results FOR DELETE
+  TO authenticated
+  USING (public.has_role(auth.uid(), 'admin'));
+
+-- Allow admins to delete enrollments
+CREATE POLICY "Admins can delete enrollments"
+  ON public.enrollments FOR DELETE
+  TO authenticated
+  USING (public.has_role(auth.uid(), 'admin'));
 ```
 
 ---
 
-## Implementation Details
+### Phase 2: Update Quiz Player to Save Answers
 
-### New Component: CourseFilters
-Create a filter component similar to `StudentFilters`:
+**Modify: `src/hooks/useQuizResults.ts`**
+Add function to save individual answers after quiz completion.
+
+**Modify: `src/components/course/QuizPlayer.tsx`**
+After quiz submission, save each answer with:
+- question_id
+- selected_answer index
+- is_correct boolean
+
+---
+
+### Phase 3: Enhanced Student Detail Sheet
+
+**Modify: `src/hooks/useAdminStudents.ts`**
+Add new interface and data fetching for detailed quiz results:
 
 ```typescript
-interface CourseFiltersProps {
-  searchQuery: string;
-  onSearchChange: (value: string) => void;
-  levelFilter: "all" | "Beginner" | "Intermediate" | "Advanced";
-  onLevelChange: (value: LevelFilter) => void;
-  statusFilter: "all" | "published" | "coming-soon" | "hidden";
-  onStatusChange: (value: StatusFilter) => void;
-  departmentFilter: string;
-  onDepartmentChange: (value: string) => void;
+interface QuizResultDetail {
+  id: string;
+  quizId: string;
+  quizTitle: string;
+  courseCode: string;
+  score: number;
+  totalQuestions: number;
+  passed: boolean;
+  attemptNumber: number;
+  createdAt: string;
+  answers: Array<{
+    questionId: string;
+    questionText: string;
+    options: string[];
+    selectedAnswer: number;
+    correctAnswer: number;
+    isCorrect: boolean;
+  }>;
 }
 ```
 
-### Status Toggle Badges
-Replace switches with clickable badge components:
+**Modify: `src/components/admin/StudentDetailSheet.tsx`**
+Add three new sections:
+
+1. **Enrolled Courses with Actions**
+   - Each course shows a delete/unenroll button
+   - Confirmation dialog before deletion
+   
+2. **Quiz Results with Actions**
+   - Expandable list showing each quiz attempt
+   - Reset button to delete specific quiz results
+   - "Reset All" button to clear all quiz results for student
+   
+3. **Question-by-Question Breakdown**
+   - Expandable section within each quiz result
+   - Shows each question with student's answer vs correct answer
+   - Visual indicators (green check / red X)
+
+---
+
+### UI Wireframe for Enhanced Student Detail Sheet
 
 ```text
-Published Badge:
-- Green background when published
-- Gray background when hidden
-- Click toggles is_published
++------------------------------------------+
+| ENROLLED COURSES (3)                     |
++------------------------------------------+
+| HU-202: Color Grading          [Active]  |
+|   Enrolled: Jan 15             [Remove]  |
++------------------------------------------+
+| HU-303: Advanced Directing     [Active]  |
+|   Enrolled: Jan 20             [Remove]  |
++------------------------------------------+
 
-Coming Soon Badge:
-- Amber/orange when is_locked = true
-- Transparent/outline when is_locked = false
-- Click toggles is_locked
-```
-
-### Filter Logic
-```typescript
-const filteredCourses = courses.filter((course) => {
-  // Search filter
-  const matchesSearch = !searchQuery || 
-    course.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    course.department_id.toLowerCase().includes(searchQuery.toLowerCase());
-  
-  // Level filter
-  const matchesLevel = levelFilter === "all" || course.level === levelFilter;
-  
-  // Status filter
-  const matchesStatus = 
-    statusFilter === "all" ||
-    (statusFilter === "published" && course.is_published && !course.is_locked) ||
-    (statusFilter === "coming-soon" && course.is_locked) ||
-    (statusFilter === "hidden" && !course.is_published);
-  
-  // Department filter
-  const matchesDept = departmentFilter === "all" || course.department_id === departmentFilter;
-  
-  return matchesSearch && matchesLevel && matchesStatus && matchesDept;
-});
++------------------------------------------+
+| QUIZ RESULTS                  [Reset All]|
++------------------------------------------+
+| HU-202 Quiz 1 - 80% PASSED     [▼][Reset]|
+| └─ Question Breakdown:                   |
+|    [✓] Q1: What is color temperature...  |
+|    [✗] Q2: Which tool creates a mask...  |
+|        Your answer: B. Pen Tool          |
+|        Correct: C. Shapes Tool           |
+|    [✓] Q3: Log footage preserves...      |
+|    [✓] Q4: A LUT is used for...          |
+|    [✗] Q5: Color wheels affect...        |
++------------------------------------------+
+| HU-202 Final - 70% FAILED      [▼][Reset]|
++------------------------------------------+
 ```
 
 ---
 
-## Files to Modify
+## Files to Create/Modify
 
 | File | Action | Description |
 |------|--------|-------------|
-| `src/components/admin/CourseFilters.tsx` | Create | New filter component for courses |
-| `src/pages/admin/CourseManager.tsx` | Major Edit | Add filters, stats header, badge toggles |
-| `src/components/admin/index.ts` | Edit | Export CourseFilters |
+| `supabase/migrations/xxx.sql` | Create | Add quiz_answers table and admin delete policies |
+| `src/hooks/useQuizResults.ts` | Modify | Add saveQuizAnswers function |
+| `src/components/course/QuizPlayer.tsx` | Modify | Save answers on quiz completion |
+| `src/hooks/useAdminStudents.ts` | Modify | Add detailed quiz results fetching |
+| `src/components/admin/StudentDetailSheet.tsx` | Major Edit | Add course/quiz management and answer breakdown |
 
 ---
 
-## Toggle Badge Design
+## Admin Actions Summary
 
-**Published Toggle:**
-```text
-ON:  [●  Published] - bg-green-600 text-white
-OFF: [○  Hidden   ] - bg-muted text-muted-foreground
-```
-
-**Coming Soon Toggle:**
-```text
-ON:  [🔒 Coming Soon] - bg-amber-600 text-white
-OFF: [  —  ]          - invisible/empty
-```
-
-Both badges are clickable buttons that toggle on click.
+| Action | Description | Confirmation Required |
+|--------|-------------|----------------------|
+| Remove Enrollment | Delete enrollment record, keeps progress | Yes |
+| Reset Quiz | Delete specific quiz result and answers | Yes |
+| Reset All Quizzes | Delete all quiz results for student | Yes (with warning) |
 
 ---
 
-## Summary
-This enhancement provides:
-1. Quick search by course code, title, or department
-2. Easy filtering by level (Beginner/Intermediate/Advanced)
-3. Status filtering (Published/Coming Soon/Hidden)
-4. Department filtering
-5. Prominent, easy-to-use toggle badges for visibility status
-6. At-a-glance stats in the header
+## Technical Considerations
+
+1. **Quiz questions are static**: Questions are defined in `src/data/quizzes/*.ts` files, so we can join saved answer data with static question data to display the breakdown
+
+2. **Cascade deletes**: quiz_answers will cascade delete when quiz_results are deleted
+
+3. **Historical data**: Existing quiz results won't have answer breakdowns - only new attempts will have detailed data
+
+4. **Performance**: Fetch detailed quiz answers only when expanding a specific result, not on initial load
