@@ -37,6 +37,7 @@ export interface Course {
   duration: string;
   modules: Module[];
   finalExam?: Quiz;
+  intro_video_url?: string | null;
 }
 
 export interface Department {
