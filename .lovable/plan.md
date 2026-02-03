@@ -1,161 +1,167 @@
 
-# Enforcing Content Completion Requirements
 
-## Problem Statement
-Currently, students can mark lessons complete by clicking a button without actually watching videos. The progression system has the logic to track video progress, but the video player doesn't report watch time back to the system.
+# Admin Test Mode for Courses
 
-## Current State Analysis
-- **Database**: Already has `watch_percentage`, `watched_seconds`, `video_duration_seconds` columns in `user_progress` table
-- **Hook Logic**: `useLessonProgress.ts` has `updateWatchProgress()` function and 90% threshold logic
-- **Video Player**: Does NOT track playback time - just displays embedded videos
-- **Quiz System**: Already properly enforces completion (must pass to proceed)
-- **Manual Override**: "Mark Complete" button allows bypassing video watching
+## Overview
+Add an admin-only toggle in the admin dashboard that enables "Test Mode" for the current admin user. When enabled, this bypasses all content completion requirements, allowing admins to instantly access and complete any video lesson or quiz without watching videos or answering questions correctly.
 
-## Solution Architecture
+## How It Works
+
+When Test Mode is active for an admin:
+- All videos are treated as 100% watched (bypass 90% requirement)
+- All lessons show as unlocked regardless of progression
+- Quizzes can be instantly passed without answering questions
+- All content becomes accessible for testing the course flow
 
 ```text
-Video Playback → Track Time → Update Progress → Auto-Complete at 90%
-                     ↓
-                Database stores:
-                - watched_seconds
-                - video_duration_seconds  
-                - watch_percentage
-                - completed (auto-set at 90%)
+Admin Dashboard → Toggle "Test Mode" ON
+        ↓
+useLessonProgress hook checks if admin + test mode enabled
+        ↓
+Returns all content as unlocked, videos as complete
+        ↓
+Admin can freely navigate and test entire course
 ```
 
 ---
 
 ## Implementation Steps
 
-### Step 1: Create Video Progress Tracker Component
-**New file: `src/components/course/VideoProgressTracker.tsx`**
+### Step 1: Create Test Mode Context
+**New file: `src/contexts/TestModeContext.tsx`**
 
-A wrapper component that tracks video playback:
-- For **direct video files (.mp4)**: Use HTML5 video events (`timeupdate`, `durationchange`, `ended`)
-- For **YouTube/Vimeo**: Use their respective Player APIs via postMessage
-- Reports progress every 5 seconds to avoid excessive database writes
-- Shows visual progress indicator below video
+A React context to manage test mode state:
+- `isTestModeEnabled`: Boolean indicating if test mode is active
+- `toggleTestMode`: Function to enable/disable
+- Persists to localStorage for session continuity
+- Only available to users with admin role
 
-### Step 2: Update VideoPlayer Component
-**Edit: `src/components/course/VideoPlayer.tsx`**
+### Step 2: Add Test Mode Toggle to Admin Dashboard
+**Edit: `src/pages/admin/AdminDashboard.tsx`**
 
-- Accept new props: `onProgress`, `onComplete`, `lessonId`
-- For direct videos: Add event listeners for `timeupdate` and `loadedmetadata`
-- For YouTube: Use YouTube IFrame API to get `getCurrentTime()` and `getDuration()`
-- For Vimeo: Use Vimeo Player SDK to track progress
-- Call `onProgress(watchedSeconds, durationSeconds)` periodically
+Add a new card section for "Testing Tools":
+- Toggle switch for "Enable Test Mode"
+- Visual indicator when test mode is active
+- Warning text explaining what test mode does
+- Option to auto-pass quizzes
 
-### Step 3: Create Video Progress Hook
-**New file: `src/hooks/useVideoProgress.ts`**
+### Step 3: Create Custom Hook for Test Mode
+**New file: `src/hooks/useTestMode.ts`**
 
-Manages video progress state and persistence:
-- Debounces progress updates (every 5 seconds)
-- Loads initial progress from database on mount
-- Calculates completion percentage
-- Auto-triggers completion when 90% watched
-- Provides resume position for continuing where user left off
+Provides easy access to test mode state:
+- `isTestModeEnabled`: Current state
+- `canUseTestMode`: Checks if user is admin
+- `toggleTestMode`: Enable/disable function
+- `bypassVideoProgress`: Returns 100% for videos when enabled
+- `bypassQuizCheck`: Returns passed=true when enabled
 
-### Step 4: Update CourseDetail Page
+### Step 4: Update Lesson Progress Hook
+**Edit: `src/hooks/useLessonProgress.ts`**
+
+Modify the `isContentUnlocked` function:
+- Check if test mode is enabled for admin
+- If enabled, always return `true` for unlocked
+- Add bypass for `isLessonCompleted` check
+- Add bypass for quiz passing requirements
+
+### Step 5: Update Video Progress Hook
+**Edit: `src/hooks/useVideoProgress.ts`**
+
+When test mode is active:
+- Report `watchPercentage` as 100%
+- Set `isCompleted` to true immediately
+- Skip database progress tracking in test mode
+
+### Step 6: Update Quiz Results Hook
+**Edit: `src/hooks/useQuizResults.ts`**
+
+Add test mode bypass:
+- Allow instant quiz completion
+- Skip attempt count limits
+- Mark quiz as passed immediately
+
+### Step 7: Add Quick Complete Button
 **Edit: `src/pages/CourseDetail.tsx`**
 
-- Remove or modify "Mark Complete" button behavior
-- For video lessons: Button shows watch progress percentage
-- Button only enabled when 90%+ watched OR lesson type is not video
-- For reading/practice lessons: Keep manual completion available
-- Pass progress handlers to VideoPlayer
+When test mode is active:
+- Show "Quick Complete" button for videos
+- Show "Auto-Pass Quiz" button for quizzes
+- Visual indicator that test mode is active
 
-### Step 5: Update LockedLessonCard Display
-**Edit: `src/components/course/LockedLessonCard.tsx`**
+### Step 8: Add Visual Test Mode Indicator
+**New file: `src/components/admin/TestModeBanner.tsx`**
 
-- Already accepts `watchPercentage` prop (currently unused)
-- Ensure progress bar displays correctly for in-progress videos
-- Show "X% watched" indicator for partial completion
+A persistent banner shown when test mode is active:
+- Displayed at top of course pages
+- Shows "TEST MODE ACTIVE" warning
+- Quick toggle to disable
+- Makes it clear this is not normal student view
 
-### Step 6: Add Visual Progress Overlay to Video
-**Edit: `src/components/course/VideoPlayer.tsx`**
+### Step 9: Wrap App with Test Mode Provider
+**Edit: `src/App.tsx`**
 
-Add UI elements:
-- Progress bar at bottom of video showing watch completion
-- "Resume from X:XX" indicator if returning to partially watched video
-- Checkmark overlay when 90%+ complete
+Add the TestModeContext provider to the app:
+- Placed inside AuthProvider
+- Available throughout the application
 
 ---
 
 ## Technical Details
 
-### Video Progress Tracking Strategy
-
-**Direct Video (.mp4, .webm):**
+### Test Mode State Structure
 ```typescript
-// Use native video element events
-videoRef.current.addEventListener('timeupdate', () => {
-  const watched = videoRef.current.currentTime;
-  const duration = videoRef.current.duration;
-  onProgress(watched, duration);
-});
+interface TestModeState {
+  enabled: boolean;
+  autoPassQuizzes: boolean;
+  bypassVideoProgress: boolean;
+}
 ```
 
-**YouTube (via postMessage API):**
+### LocalStorage Key
 ```typescript
-// Listen for YouTube player state changes
-window.addEventListener('message', (e) => {
-  if (e.data.event === 'infoDelivery') {
-    const { currentTime, duration } = e.data.info;
-    onProgress(currentTime, duration);
-  }
-});
+const TEST_MODE_KEY = "hu-admin-test-mode";
 ```
 
-**Vimeo (via Vimeo Player SDK):**
+### Admin Check in Hooks
 ```typescript
-// Use @vimeo/player package
-const player = new Player(iframeRef);
-player.on('timeupdate', (data) => {
-  onProgress(data.seconds, data.duration);
-});
+const { isAdmin } = useAdminAuth();
+const { isTestModeEnabled } = useTestMode();
+
+// In isContentUnlocked:
+if (isAdmin && isTestModeEnabled) {
+  return true; // All content unlocked
+}
 ```
-
-### Completion Requirements by Lesson Type
-
-| Lesson Type | Completion Requirement |
-|-------------|------------------------|
-| Video | 90%+ of video watched |
-| Reading | Manual "Mark Complete" click |
-| Practice | Manual "Mark Complete" click |
-| Quiz | Must pass (existing logic) |
-
-### Database Update Frequency
-- Progress saved every 5 seconds during playback
-- Final save on video pause/end
-- Debounced to prevent excessive writes
 
 ---
 
 ## Files to Create
-1. `src/hooks/useVideoProgress.ts` - Video progress state management
-2. `src/components/course/VideoProgressTracker.tsx` - Progress tracking wrapper
+1. `src/contexts/TestModeContext.tsx` - Context provider for test mode state
+2. `src/hooks/useTestMode.ts` - Hook for accessing test mode
+3. `src/components/admin/TestModeBanner.tsx` - Visual indicator banner
 
 ## Files to Modify
-1. `src/components/course/VideoPlayer.tsx` - Add progress tracking events
-2. `src/pages/CourseDetail.tsx` - Connect progress system, update "Mark Complete" logic
-3. `src/components/course/LockedLessonCard.tsx` - Ensure progress display works
-
-## Dependencies to Consider
-- May need to add `@vimeo/player` package for Vimeo tracking
-- YouTube tracking works via postMessage (no package needed)
+1. `src/pages/admin/AdminDashboard.tsx` - Add test mode toggle UI
+2. `src/hooks/useLessonProgress.ts` - Add bypass logic for content unlocking
+3. `src/hooks/useVideoProgress.ts` - Add bypass for video completion
+4. `src/hooks/useQuizResults.ts` - Add bypass for quiz completion
+5. `src/pages/CourseDetail.tsx` - Add quick complete buttons
+6. `src/App.tsx` - Add TestModeContext provider
+7. `src/components/admin/index.ts` - Export new banner component
 
 ---
 
-## User Experience Flow
+## Security Considerations
+- Test mode only activates for users with verified admin role (via `has_role` RPC)
+- State stored in localStorage but checked server-side on each action
+- Test mode does not affect database records unless explicitly saving
+- Other users cannot see or activate test mode
+- Admin role is verified via database function, not client-side
 
-1. **Student opens lesson** → Video loads, resumes from last position if applicable
-2. **Student watches video** → Progress bar fills up, percentage updates in sidebar
-3. **At 90% watched** → Lesson auto-marked complete, next content unlocks
-4. **For non-video lessons** → "Mark Complete" button available immediately
-5. **For quizzes** → Must pass to unlock next module (existing behavior)
+## User Experience
+- Clear visual indicator when test mode is active
+- Easy toggle from admin dashboard
+- Persistent across page refreshes
+- Non-intrusive for normal admin work
+- One-click access to any content
 
-## Edge Cases Handled
-- Seeking/skipping: Track actual watched time, not just current position
-- Browser refresh: Resume from last saved position
-- Slow connection: Debounced saves prevent data loss
-- Multiple devices: Latest progress wins
