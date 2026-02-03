@@ -1,300 +1,228 @@
 
-# Enhanced Assessment System with Progressive Difficulty & Smart Recommendations
+# Enhanced Assessment Results: Answer Review & Better Visualization
 
 ## Overview
 
-This enhancement will transform the entry assessment into a more comprehensive evaluation tool that:
-1. Expands the question bank with 150+ questions across 3 difficulty levels
-2. Uses AI to dynamically generate questions tailored to each student's interests
-3. Implements adaptive difficulty progression (easy → medium → hard)
-4. Creates realistic, personalized course recommendations that build a clear learning roadmap
+Add the ability for students to review their incorrect answers after completing the assessment, along with an improved, more visually engaging results chart. This will provide valuable learning feedback and make the results more impactful.
 
-## Current Limitations
+## Current State Analysis
 
-| Issue | Current State | Proposed Solution |
-|-------|---------------|-------------------|
-| Limited variety | ~50 questions total | 150+ questions with AI generation option |
-| No difficulty range | Only beginner/intermediate | Add beginner/intermediate/advanced tiers |
-| Flat recommendations | Simple list of 7 courses | Structured roadmap with phases |
-| No personalization depth | Basic interest matching | Score-per-department + experience-weighted |
-| No progression path | Random course order | Ordered pathway: Foundation → Core → Advanced |
+**What exists:**
+- Assessment completes and shows a radar chart of department scores
+- Final results display: total score, roadmap, and recommended courses
+- No ability to review individual questions or see which answers were wrong
+- Basic RadarChart visualization using recharts
 
-## Implementation Strategy
+**What's missing:**
+- Answer review mode (like QuizPlayer has in its "review" state)
+- Explanations for why answers were correct/incorrect
+- More engaging chart visualization with additional metrics
+- Breakdown of performance by difficulty level
 
-### Part 1: Expanded Question Bank with Three Difficulty Tiers
+## Features to Add
 
-**New Question Structure:**
-```typescript
-interface AssessmentQuestion {
-  id: string;
-  question: string;
-  options: string[];
-  correctAnswer: number;
-  department: string;
-  difficulty: "beginner" | "intermediate" | "advanced"; // Add advanced tier
-}
-```
+### 1. Answer Review Mode
+Students can click "Review Answers" to see:
+- Each question they answered
+- Their selected answer (highlighted in red if wrong)
+- The correct answer (highlighted in green)
+- An explanation of why the answer is correct
+- Navigation to move between questions
+- Filter to show only incorrect answers
 
-**Question Distribution per Department (25 questions each = 150 total):**
-- 10 Beginner questions (foundational concepts, terminology)
-- 10 Intermediate questions (application, techniques)  
-- 5 Advanced questions (professional scenarios, nuanced choices)
+### 2. Enhanced Results Chart
+Replace the basic radar chart with a more comprehensive visualization:
+- **Radial bar chart** showing department scores with color-coded performance levels
+- **Difficulty breakdown** showing performance at beginner/intermediate/advanced levels
+- **Score badges** highlighting strongest and weakest areas
+- **Animated transitions** for a more engaging reveal
 
-### Part 2: Smart Question Selection Algorithm
+### 3. Question Explanations
+Add explanations to assessment questions to provide learning value when reviewing answers.
 
-Instead of random selection, implement progressive difficulty:
+## Implementation Plan
 
-```
-Assessment Flow:
-1. Start with 2 EASY questions per selected department
-2. Based on performance, branch:
-   - Got both right → 2 MEDIUM + 1 HARD
-   - Got 1 right → 2 MEDIUM + 1 EASY  
-   - Got 0 right → 2 EASY + 1 MEDIUM
-3. This gives 5-6 questions per department with adaptive difficulty
-```
-
-This ensures the assessment gauges actual skill level rather than just random topic knowledge.
-
-### Part 3: Enhanced Recommendation Engine
-
-**Current Algorithm Issues:**
-- Treats all interests equally regardless of score
-- Doesn't sequence courses logically
-- Ignores prerequisite relationships
-
-**New Algorithm:**
-
-```typescript
-interface LearningRoadmap {
-  phases: {
-    name: string; // "Foundation", "Core Skills", "Specialization"
-    courses: Course[];
-    estimatedDuration: string;
-  }[];
-  primaryFocus: string; // Best-scoring interest
-  secondaryFocus: string; // Second-best interest
-  improvementAreas: string[]; // Low-scoring departments
-}
-```
-
-**Recommendation Logic:**
-
-1. **Identify Strengths & Weaknesses**
-   - Calculate per-department percentage score
-   - Weight by question difficulty (advanced questions worth more)
-   
-2. **Determine Starting Level per Department**
-   - Score 0-30%: Start at Beginner level
-   - Score 31-60%: Can skip some Beginner, start Beginner-Intermediate
-   - Score 61-85%: Start at Intermediate
-   - Score 86-100%: Start at Intermediate-Advanced
-
-3. **Build Phased Roadmap**
-   - **Phase 1 (Foundation)**: Fill skill gaps in selected interests (1-2 Beginner courses)
-   - **Phase 2 (Core Skills)**: Intermediate courses in strongest areas (2-3 courses)
-   - **Phase 3 (Specialization)**: Advanced courses for professional growth (1-2 courses)
-
-4. **Consider Experience Level**
-   - Beginner: Emphasize Phase 1, limit Phase 3
-   - Hobbyist: Balanced phases
-   - Semi-Pro: Reduce Phase 1, expand Phase 2-3
-   - Professional: Skip Phase 1, focus on Phase 2-3 gaps
-
-### Part 4: New Questions Content (Sample Additions)
-
-**Cinematography - Adding Advanced Questions:**
-```typescript
-{
-  id: "cine-adv-1",
-  question: "When shooting anamorphic, which technique helps minimize breathing artifacts during focus pulls?",
-  options: [
-    "Using wider apertures",
-    "Stopping down and using longer focal lengths",
-    "Increasing shutter speed",
-    "Shooting at higher frame rates"
-  ],
-  correctAnswer: 1,
-  department: "cinematography",
-  difficulty: "advanced"
-}
-```
-
-**Post-Production - Adding Variety:**
-```typescript
-{
-  id: "post-adv-1", 
-  question: "When conforming from an offline edit to DaVinci Resolve, what's the most reliable method for complex timelines?",
-  options: [
-    "AAF export",
-    "XML with relink",
-    "EDL with CDL sidecars",
-    "Direct project import"
-  ],
-  correctAnswer: 1,
-  department: "post-production",
-  difficulty: "advanced"
-}
-```
-
-### Part 5: Updated Results Visualization
-
-**New Results Screen Features:**
-1. **Skill Radar Chart** - Already exists, enhanced with difficulty breakdown
-2. **Roadmap Timeline** - Visual pathway showing course sequence
-3. **Estimated Completion Time** - Based on course durations
-4. **Quick Wins** - Short courses to build momentum
-
-## Files to Modify
+### Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/data/quizzes/assessment.ts` | Add 100+ new questions with "advanced" difficulty tier |
-| `src/hooks/useAssessmentResults.ts` | Rewrite `calculateRecommendations()` with phased roadmap logic |
-| `src/pages/Assessment.tsx` | Implement adaptive question selection algorithm |
-| `src/components/assessment/RoadmapDisplay.tsx` | NEW: Visual roadmap component |
-| `src/components/assessment/index.ts` | Export new component |
+| `src/data/quizzes/assessment.ts` | Add `explanation` field to questions |
+| `src/pages/Assessment.tsx` | Add review mode state, store shuffled questions for review, add "Review Answers" button |
+| `src/components/assessment/ResultsChart.tsx` | Complete redesign with enhanced visuals |
+| `src/components/assessment/AnswerReview.tsx` | NEW: Component for reviewing individual answers |
+| `src/components/assessment/DifficultyBreakdown.tsx` | NEW: Chart showing performance by difficulty |
+| `src/components/assessment/index.ts` | Export new components |
 
-## Detailed Changes
+## Detailed Implementation
 
 ### Assessment.tsx Changes
 
+Add new state to track review mode:
+
 ```typescript
-// New: Adaptive question selection
-const selectQuestionsAdaptively = (
-  allQuestions: AssessmentQuestion[],
-  interests: string[]
-): AssessmentQuestion[] => {
-  const selected: AssessmentQuestion[] = [];
-  
-  interests.forEach(dept => {
-    const deptQuestions = allQuestions.filter(q => q.department === dept);
-    const beginner = shuffleArray(deptQuestions.filter(q => q.difficulty === "beginner"));
-    const intermediate = shuffleArray(deptQuestions.filter(q => q.difficulty === "intermediate"));
-    const advanced = shuffleArray(deptQuestions.filter(q => q.difficulty === "advanced"));
-    
-    // Progressive selection: 2 easy, 2-3 medium, 1 hard per department
-    selected.push(...beginner.slice(0, 2));
-    selected.push(...intermediate.slice(0, 3));
-    selected.push(...advanced.slice(0, 1));
-  });
-  
-  return shuffleArray(selected);
+type Step = "welcome" | "interests" | "experience" | "quiz" | "results" | "review" | "expired";
+
+// Store the shuffled questions after quiz completes for review
+const [completedQuestions, setCompletedQuestions] = useState<ShuffledAssessmentQuestion[]>([]);
+const [reviewIndex, setReviewIndex] = useState(0);
+const [showOnlyIncorrect, setShowOnlyIncorrect] = useState(false);
+
+// On finish quiz, save the questions for later review
+const handleFinishQuiz = async () => {
+  setCompletedQuestions([...shuffledQuestions]); // Store for review
+  // ... existing save logic
+  setStep("results");
 };
 ```
 
-### useAssessmentResults.ts Changes
+Add "Review Answers" button to results screen:
 
 ```typescript
-interface RoadmapPhase {
-  name: string;
-  description: string;
-  courses: string[]; // course codes
-  estimatedWeeks: number;
-}
-
-interface LearningRoadmap {
-  phases: RoadmapPhase[];
-  totalWeeks: number;
-  primaryStrength: string;
-  areasToImprove: string[];
-}
-
-const calculateRoadmap = (
-  departmentScores: Record<string, number>,
-  interests: string[],
-  experienceLevel: string
-): LearningRoadmap => {
-  // 1. Rank departments by score
-  const ranked = Object.entries(departmentScores)
-    .sort((a, b) => b[1] - a[1]);
-  
-  const primaryStrength = ranked[0]?.[0] || interests[0];
-  const areasToImprove = ranked
-    .filter(([_, score]) => score < 50)
-    .map(([dept]) => dept);
-  
-  // 2. Build phases based on scores and experience
-  const phases: RoadmapPhase[] = [];
-  
-  // Phase 1: Foundation (if needed)
-  if (experienceLevel !== "professional") {
-    const foundationCourses = interests
-      .filter(dept => departmentScores[dept] < 60)
-      .flatMap(dept => 
-        courses
-          .filter(c => c.departmentId === dept && c.level === "Beginner")
-          .slice(0, 1)
-          .map(c => c.code)
-      );
-    
-    if (foundationCourses.length > 0) {
-      phases.push({
-        name: "Foundation",
-        description: "Build core fundamentals",
-        courses: foundationCourses,
-        estimatedWeeks: foundationCourses.length * 4
-      });
-    }
-  }
-  
-  // Phase 2: Core Development
-  const coreCourses = interests
-    .flatMap(dept => 
-      courses
-        .filter(c => c.departmentId === dept && c.level === "Intermediate")
-        .slice(0, 1)
-        .map(c => c.code)
-    );
-  
-  phases.push({
-    name: "Core Skills",
-    description: "Develop professional techniques",
-    courses: coreCourses,
-    estimatedWeeks: coreCourses.length * 5
-  });
-  
-  // Phase 3: Specialization (for stronger students)
-  if (Object.values(departmentScores).some(s => s > 70)) {
-    const advancedCourses = [primaryStrength]
-      .flatMap(dept =>
-        courses
-          .filter(c => c.departmentId === dept && c.level === "Advanced")
-          .slice(0, 1)
-          .map(c => c.code)
-      );
-    
-    if (advancedCourses.length > 0) {
-      phases.push({
-        name: "Specialization",
-        description: "Master advanced concepts",
-        courses: advancedCourses,
-        estimatedWeeks: advancedCourses.length * 5
-      });
-    }
-  }
-  
-  return {
-    phases,
-    totalWeeks: phases.reduce((sum, p) => sum + p.estimatedWeeks, 0),
-    primaryStrength,
-    areasToImprove
-  };
-};
+<Button variant="outline" onClick={() => { setReviewIndex(0); setStep("review"); }}>
+  Review Your Answers
+</Button>
 ```
 
-## Expected Outcomes
+### Enhanced ResultsChart Component
 
-1. **Better Assessment Accuracy**: 3 difficulty levels ensure proper skill evaluation
-2. **Personalized Roadmaps**: Students see a clear path, not just a list
-3. **Realistic Recommendations**: Course suggestions match actual skill gaps
-4. **Improved Engagement**: Students understand WHY courses are recommended
-5. **Skill Tree Integration**: Roadmap can feed into the existing skill tree visualization
+Replace the basic radar chart with a more comprehensive design:
+
+```text
++--------------------------------------------------+
+|               Your Assessment Results            |
++--------------------------------------------------+
+|                                                  |
+|   [Radial Progress Bars - One per Department]    |
+|                                                  |
+|   Cinematography     ████████████░░  78%         |
+|   Post-Production    █████████░░░░░  60%         |
+|   Directing          ████████████████  95%       |
+|                                                  |
+|   +-------------+  +-------------+               |
+|   | Strongest   |  | Focus Area  |               |
+|   | Directing   |  | Post-Prod   |               |
+|   | 95%         |  | 60%         |               |
+|   +-------------+  +-------------+               |
+|                                                  |
+|   Difficulty Breakdown:                          |
+|   Beginner:     ████████████████  90%            |
+|   Intermediate: ██████████░░░░░  65%             |
+|   Advanced:     ████░░░░░░░░░░░  40%             |
+|                                                  |
++--------------------------------------------------+
+```
+
+Key chart features:
+- Horizontal animated progress bars per department
+- Color coding: green (>75%), yellow (50-75%), red (<50%)
+- Badge cards for "Strongest Area" and "Needs Work"
+- Stacked bar chart for difficulty breakdown
+- Smooth animations on load using framer-motion
+
+### AnswerReview Component
+
+A dedicated component for stepping through answered questions:
+
+```text
++--------------------------------------------------+
+|  Review: Question 3 of 18    [Only Incorrect ✓]  |
++--------------------------------------------------+
+|  CINEMATOGRAPHY - INTERMEDIATE                   |
+|                                                  |
+|  What is the purpose of a gimbal stabilizer?     |
+|                                                  |
+|  A. To add motion blur                           |
+|  B. To eliminate unwanted camera shake  ✓ CORRECT|
+|  C. To zoom in smoothly               ✗ YOUR ANS |
+|  D. To adjust exposure                           |
+|                                                  |
+|  +--------------------------------------------+  |
+|  | EXPLANATION                               |  |
+|  | A gimbal uses motors and sensors to keep  |  |
+|  | the camera level and eliminate shake...   |  |
+|  +--------------------------------------------+  |
+|                                                  |
+|  [← Previous]              [Next →]              |
+|                    [Back to Results]             |
++--------------------------------------------------+
+```
+
+Features:
+- Shows question text with department and difficulty badge
+- Highlights correct answer in green with checkmark
+- Highlights user's incorrect answer in red with X
+- Shows explanation below
+- Toggle to filter only incorrect answers
+- Navigation between questions
+- "Back to Results" button
+
+### Question Explanations
+
+Add explanations to assessment questions (sample):
+
+```typescript
+{
+  id: "cine-i2",
+  question: "What is the purpose of a gimbal stabilizer?",
+  options: ["To add motion blur", "To eliminate unwanted camera shake", "To zoom in smoothly", "To adjust exposure"],
+  correctAnswer: 1,
+  department: "cinematography",
+  difficulty: "intermediate",
+  explanation: "A gimbal stabilizer uses motorized brushless motors and sensors (accelerometers/gyroscopes) to detect and counteract unwanted camera movement, keeping shots smooth and stable even while the operator is walking or moving."
+}
+```
+
+### DifficultyBreakdown Component
+
+A small component showing performance across difficulty levels:
+
+```typescript
+interface DifficultyBreakdownProps {
+  questions: ShuffledAssessmentQuestion[];
+  answers: Record<string, number>;
+}
+
+// Calculate scores per difficulty tier
+const beginnerScore = calculateScoreForDifficulty("beginner");
+const intermediateScore = calculateScoreForDifficulty("intermediate");
+const advancedScore = calculateScoreForDifficulty("advanced");
+```
+
+Visual design:
+- Three horizontal bars with labels
+- Animated fill on mount
+- Tooltips showing "X of Y correct"
+
+## User Flow
+
+1. Student completes assessment
+2. Results screen shows:
+   - Overall score with trophy icon
+   - Enhanced department breakdown chart
+   - Difficulty breakdown showing beginner/intermediate/advanced performance
+   - "Strongest Area" and "Focus Area" badges
+   - Learning roadmap
+   - "Review Your Answers" button
+3. Clicking "Review Your Answers":
+   - Shows first question with answer feedback
+   - Toggle to show only incorrect answers
+   - Navigate through all questions
+   - Each shows explanation
+   - "Back to Results" returns to summary
 
 ## Technical Notes
 
-- Question bank expansion adds ~100 new questions (can use AI generation edge function for more)
-- Roadmap calculation happens client-side for instant results
-- Backward compatible with existing assessment_results table structure
-- The `recommended_courses` field will store ordered course codes (phases flattened)
+1. **State preservation**: Store `shuffledQuestions` and `answers` when quiz finishes so they're available for review
+2. **Explanation data**: Add explanations incrementally - not all 150+ questions need explanations immediately, prioritize incorrect-answer learning value
+3. **Performance**: Use React.memo for AnswerReview and chart components
+4. **Accessibility**: Proper focus management when entering/exiting review mode
+5. **Mobile**: Ensure review mode works well on small screens with swipe navigation
 
+## Question Explanation Strategy
+
+Given 150+ questions, we'll add explanations in phases:
+- Phase 1: Add explanations to advanced questions (most educational value)
+- Phase 2: Add explanations to intermediate questions
+- Phase 3: Complete beginner explanations
+
+Initial implementation will include explanations for ~50 key questions, with the review UI gracefully handling questions without explanations (simply not showing the explanation box).
