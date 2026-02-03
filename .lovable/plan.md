@@ -1,124 +1,112 @@
 
-# Fix Course Edit Button & Clarify Video Link Support
+# Enable Editing of Pre-existing Static Course Content
 
-## Issues Identified
+## Problem Summary
 
-### Issue 1: Can't Click Edit Button for Some Courses
+When you edit pre-existing courses like "iPhone Cinematography" (HU-101), the modules/lessons/quizzes don't appear in the editor. This happens because:
 
-**Root Cause**: One course in the database ("Intro To Drone Cinematography") has an empty course code (`code: ""`). When clicking the edit pencil button for this course:
+1. The course metadata exists in the database (title, code, credits, etc.)
+2. But the content (modules, lessons, quizzes) only exists in static code files
+3. The Course Editor only shows database content, not static content
 
-1. The Link navigates to `/admin/courses/${course.code}`
-2. With an empty code, this becomes `/admin/courses/`
-3. This URL matches the **CourseManager** route (`/admin/courses`) instead of the **CourseEditor** route (`/admin/courses/:code`)
-4. Result: The page "refreshes" to CourseManager instead of opening the editor
+Currently: Database has the course record, but 0 modules. The static file has 4 modules with 8 lessons and quizzes.
 
-**Evidence from database query:**
-```
-id: 1b5c84d1-e921-4c1c-8c8e-b23731a47a90
-code: ""  <-- EMPTY!
-title: "Intro To Drone Cinematography"
-```
+## Solution
 
-**Fix**: Two-pronged approach:
-1. Fix the existing data - update the empty code to a valid code
-2. Add validation in the UI to prevent editing courses with empty codes
-
-### Issue 2: Adding Video Links to Courses
-
-**Current State**: Video links ARE already supported for **lessons**:
-- When creating/editing a lesson in the LessonDialog
-- Select type "Video" 
-- A "Video URL" field appears that supports YouTube, Vimeo, and direct .mp4/.webm URLs
-- A live preview of the video is shown
-
-**Potential Confusion**: The user may be expecting:
-- A course-level intro/promo video (not currently supported)
-- Or they may not realize the video URL field appears only when the lesson type is "video"
-
----
+Add an "Import Static Content" feature that copies static modules, lessons, and quizzes into the database when editing a pre-existing course. This is a one-time migration per course.
 
 ## Implementation Plan
 
-### Phase 1: Fix Empty Course Code Issue
+### 1. Create Import Function in Course Editor
 
-**Database Fix**: Update the course with empty code to have a valid code
-```sql
-UPDATE courses SET code = 'CIN-DRONE' WHERE id = '1b5c84d1-e921-4c1c-8c8e-b23731a47a90' AND code = '';
-```
+**File:** `src/pages/admin/CourseEditor.tsx`
 
-### Phase 2: Prevent Future Empty Code Issues
-
-**File**: `src/pages/admin/CourseManager.tsx`
-
-Add a check before rendering the edit link. If the course has an empty code, show a warning or disable the edit button:
+Add logic to detect when a course has static content but no database modules, then provide an import button:
 
 ```typescript
-// In the table row for each course
-{course.code ? (
-  <Button variant="ghost" size="icon" asChild>
-    <Link to={`/admin/courses/${course.code}`}>
-      <Pencil className="h-4 w-4" />
-    </Link>
-  </Button>
-) : (
-  <Button 
-    variant="ghost" 
-    size="icon" 
-    disabled 
-    title="Course has no code - cannot edit"
-  >
-    <Pencil className="h-4 w-4" />
-  </Button>
-)}
+// Inside ModulesSection component or CourseEditor
+const staticCourse = staticCourses.find(c => c.code === courseCode);
+const hasStaticContent = staticCourse && staticCourse.modules.length > 0;
+const hasDbModules = modules.length > 0;
+
+// Show import option when static content exists but DB is empty
+if (hasStaticContent && !hasDbModules) {
+  return (
+    <Card>
+      <CardContent className="py-8 text-center">
+        <p>This course has pre-built content that needs to be imported to the database before you can edit it.</p>
+        <Button onClick={handleImportStaticContent}>
+          Import Existing Content
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
 ```
 
-### Phase 3: Add Course-Level Promo Video (Optional Enhancement)
+### 2. Implement Import Logic
 
-If a course-level intro/promo video is desired:
+Create a mutation that:
+1. Reads the static course modules from `courses.ts`
+2. Inserts each module into the `modules` table
+3. Inserts each lesson into the `lessons` table
+4. Inserts each quiz into the `quizzes` table
+5. Inserts each quiz question into the `quiz_questions` table
 
-**Database Migration**: Add `intro_video_url` column to courses table
-```sql
-ALTER TABLE courses ADD COLUMN intro_video_url text;
+### 3. Quiz Questions Source
+
+For importing quizzes, we need to pull questions from the quiz data files. The static quizzes reference question banks in:
+- `src/data/quizzes/cinematography.ts`
+- `src/data/quizzes/directing.ts`
+- `src/data/quizzes/production.ts`
+- `src/data/quizzes/post-production.ts`
+
+We'll need to map quiz IDs to their question sets during import.
+
+### 4. Add Import Hook
+
+**File:** `src/hooks/useImportStaticCourse.ts` (new)
+
+```typescript
+export function useImportStaticCourse(courseId: string, courseCode: string) {
+  // 1. Find static course by code
+  // 2. Import modules with sort_order
+  // 3. Import lessons under each module
+  // 4. Import quizzes under each module
+  // 5. Import quiz questions
+  // 6. Invalidate queries to refresh UI
+}
 ```
 
-**File**: `src/pages/admin/CourseEditor.tsx`
+### 5. Update Course Editor UI
 
-Add a new field in the Course Details card:
-- Input for intro/promo video URL
-- Preview similar to the LessonDialog video preview
+**File:** `src/pages/admin/CourseEditor.tsx`
 
-**File**: `src/pages/CourseDetail.tsx`
+- Pass `courseCode` to `ModulesSection`
+- Add import button when static content is detected but no DB modules exist
+- Show loading state during import
+- After import, the normal module editor appears with all content editable
 
-Display the intro video at the top of the course page before the modules.
-
----
-
-## Files Summary
+## File Changes Summary
 
 | File | Changes |
 |------|---------|
-| Database | Fix empty code: `UPDATE courses SET code = 'CIN-DRONE' WHERE code = ''` |
-| `src/pages/admin/CourseManager.tsx` | Add guard for empty course codes on edit button |
-| `src/pages/admin/CourseEditor.tsx` | (Optional) Add intro video URL field |
-
----
-
-## Clarification: Video Links for Lessons
-
-Video links are already supported in the lesson editor. To add a video to a lesson:
-
-1. Go to Course Editor > Modules section
-2. Add or edit a lesson
-3. Change the lesson "Type" dropdown to "Video"
-4. The "Video URL" field will appear
-5. Paste a YouTube, Vimeo, or direct video URL
-6. A preview will show automatically
-
----
+| `src/hooks/useImportStaticCourse.ts` | New hook to handle static-to-database migration |
+| `src/pages/admin/CourseEditor.tsx` | Add import UI, pass course code to ModulesSection |
+| `src/data/quizzes/index.ts` | (May need) Export helper to get questions by quiz ID |
 
 ## Expected Outcome
 
-1. All courses will be editable (no empty code issues)
-2. Future courses cannot be saved without a valid code (already implemented via `canSave` validation)
-3. Clear understanding that video URLs are added at the lesson level
-4. (Optional) Course-level promo videos for marketing/intro purposes
+1. Admin opens Course Editor for "iPhone Cinematography" (HU-101)
+2. Sees message: "This course has pre-built content. Click to import."
+3. Clicks "Import Existing Content"
+4. All 4 modules, 8 lessons, and quizzes are copied to the database
+5. Admin can now edit, reorder, delete, and add new content
+6. Changes are saved to the database (static file unchanged)
+
+## Technical Notes
+
+- Import is one-time per course - once in DB, it stays there
+- Static content remains as fallback for courses not yet imported
+- Existing database content (if any) is preserved - import only adds new content
+- Quiz questions will be imported with their full data (question text, options, correct answer, explanation)
