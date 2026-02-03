@@ -9,6 +9,8 @@ export interface DbQuiz {
   title: string;
   passing_score: number;
   time_limit_minutes: number | null;
+  per_question_seconds: number | null;
+  use_per_question_timer: boolean;
   is_final_exam: boolean;
   sort_order: number;
   created_at: string;
@@ -93,12 +95,16 @@ export function useAdminQuizContent(moduleId?: string, courseId?: string) {
       title: string;
       passing_score?: number;
       time_limit_minutes?: number | null;
+      per_question_seconds?: number | null;
+      use_per_question_timer?: boolean;
       is_final_exam?: boolean;
     }) => {
       const insertData = {
         title: data.title,
         passing_score: data.passing_score ?? 80,
         time_limit_minutes: data.time_limit_minutes ?? null,
+        per_question_seconds: data.per_question_seconds ?? 60,
+        use_per_question_timer: data.use_per_question_timer ?? false,
         is_final_exam: moduleId ? false : true,
         sort_order: 0,
         module_id: moduleId || null,

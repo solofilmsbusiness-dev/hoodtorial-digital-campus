@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import type { DbQuiz } from "@/hooks/useAdminQuizContent";
 
 interface QuizDialogProps {
@@ -19,6 +20,8 @@ interface QuizDialogProps {
     title: string;
     passing_score: number;
     time_limit_minutes: number | null;
+    per_question_seconds: number | null;
+    use_per_question_timer: boolean;
   }) => void;
   isPending?: boolean;
 }
@@ -33,16 +36,22 @@ export function QuizDialog({
   const [title, setTitle] = useState("");
   const [passingScore, setPassingScore] = useState(80);
   const [timeLimit, setTimeLimit] = useState<string>("");
+  const [usePerQuestionTimer, setUsePerQuestionTimer] = useState(false);
+  const [perQuestionSeconds, setPerQuestionSeconds] = useState<string>("60");
 
   useEffect(() => {
     if (quiz) {
       setTitle(quiz.title);
       setPassingScore(quiz.passing_score);
       setTimeLimit(quiz.time_limit_minutes?.toString() || "");
+      setUsePerQuestionTimer(quiz.use_per_question_timer);
+      setPerQuestionSeconds(quiz.per_question_seconds?.toString() || "60");
     } else {
       setTitle("");
       setPassingScore(80);
       setTimeLimit("");
+      setUsePerQuestionTimer(false);
+      setPerQuestionSeconds("60");
     }
   }, [quiz, open]);
 
@@ -52,6 +61,8 @@ export function QuizDialog({
       title,
       passing_score: passingScore,
       time_limit_minutes: timeLimit ? parseInt(timeLimit, 10) : null,
+      per_question_seconds: usePerQuestionTimer ? parseInt(perQuestionSeconds, 10) || 60 : null,
+      use_per_question_timer: usePerQuestionTimer,
     });
   };
 
@@ -90,7 +101,7 @@ export function QuizDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="time-limit">Time Limit (minutes)</Label>
+              <Label htmlFor="time-limit">Total Time Limit (min)</Label>
               <Input
                 id="time-limit"
                 type="number"
@@ -98,8 +109,42 @@ export function QuizDialog({
                 value={timeLimit}
                 onChange={(e) => setTimeLimit(e.target.value)}
                 placeholder="No limit"
+                disabled={usePerQuestionTimer}
               />
             </div>
+          </div>
+
+          <div className="space-y-4 pt-2 border-t border-border">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Per-Question Timer</Label>
+                <p className="text-xs text-muted-foreground">
+                  Each question has its own countdown
+                </p>
+              </div>
+              <Switch
+                checked={usePerQuestionTimer}
+                onCheckedChange={setUsePerQuestionTimer}
+              />
+            </div>
+
+            {usePerQuestionTimer && (
+              <div className="space-y-2">
+                <Label htmlFor="per-question-seconds">Seconds Per Question</Label>
+                <Input
+                  id="per-question-seconds"
+                  type="number"
+                  min={10}
+                  max={600}
+                  value={perQuestionSeconds}
+                  onChange={(e) => setPerQuestionSeconds(e.target.value)}
+                  placeholder="60"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Questions auto-advance when time runs out
+                </p>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
