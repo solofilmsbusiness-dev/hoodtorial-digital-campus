@@ -1,98 +1,221 @@
 
-# Restrict Profile Data Access - Privacy Enhancement
+# Paid Access & 3-Day Trial Implementation
 
-## Problem
+## Overview
 
-The `profiles` table contains personal information that any enrolled student can query:
-- **Location** (city/country)
-- **Bio** (personal description)
-- **Camera gear** (equipment details)
-- **Social media URLs** (Instagram, YouTube, Twitter, TikTok)
+This plan implements paid access control for courses with a 3-day free trial. Users will only be able to access courses if they have an active subscription OR are within their trial period.
 
-The current RLS policy "Enrolled students can view profiles for mentions" allows any enrolled user to access ALL profile fields for ALL other users. This enables potential stalking, harassment, or unwanted contact.
+## Current State
 
-## Solution
-
-Create a database **view** that exposes only the minimal data needed for community features (display name and avatar), then update the RLS policies to:
-1. Allow users to see their own full profile
-2. Allow admins/moderators to see all profiles (for moderation)
-3. Restrict other enrolled students to only see the minimal public view
+- Profiles have a `membership_tier` field but no subscription status
+- No payment integration exists
+- Anyone with an account can enroll in courses
+- No trial tracking mechanism
 
 ## Database Changes
 
-### 1. Create Public Profile View
+### 1. Add Subscription Fields to Profiles Table
 
 ```sql
-CREATE VIEW public.profiles_public
-WITH (security_invoker=on) AS
-SELECT 
-  user_id,
-  display_name,
-  avatar_url
-FROM public.profiles;
+ALTER TABLE public.profiles
+ADD COLUMN subscription_status text DEFAULT 'trial'
+  CHECK (subscription_status IN ('trial', 'active', 'cancelled', 'expired')),
+ADD COLUMN trial_started_at timestamptz DEFAULT now(),
+ADD COLUMN trial_ends_at timestamptz DEFAULT (now() + interval '3 days'),
+ADD COLUMN subscription_started_at timestamptz,
+ADD COLUMN subscription_ends_at timestamptz;
 ```
 
-This view only exposes:
-- `user_id` - for matching/linking
-- `display_name` - for @mentions and author display
-- `avatar_url` - for avatars in comments/posts
+Fields:
+- `subscription_status`: Current state of the subscription
+- `trial_started_at`: When the user started their trial
+- `trial_ends_at`: When the trial expires (3 days after signup)
+- `subscription_started_at`: When paid subscription began
+- `subscription_ends_at`: When paid subscription expires
 
-### 2. Update RLS Policies
+### 2. Create Access Check Function
 
-**Remove the broad policy:**
 ```sql
-DROP POLICY "Enrolled students can view profiles for mentions" ON public.profiles;
+CREATE OR REPLACE FUNCTION public.has_paid_access(_user_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT CASE 
+    WHEN _user_id IS NULL THEN false
+    ELSE EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE user_id = _user_id
+      AND (
+        -- Active paid subscription
+        (subscription_status = 'active' AND (subscription_ends_at IS NULL OR subscription_ends_at > now()))
+        OR
+        -- Within trial period
+        (subscription_status = 'trial' AND trial_ends_at > now())
+      )
+    )
+  END
+$$;
 ```
 
-**Create granular policies:**
-```sql
--- Users can view their own full profile
-CREATE POLICY "Users can view own full profile"
-  ON public.profiles FOR SELECT
-  USING (auth.uid() = user_id);
+### 3. Update is_enrolled_student Function
 
--- Admins can view all profiles for moderation
-CREATE POLICY "Admins can view all profiles"
-  ON public.profiles FOR SELECT
-  USING (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'moderator'));
+Modify the existing function to also check for paid access:
+
+```sql
+CREATE OR REPLACE FUNCTION public.is_enrolled_student(_user_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT CASE 
+    WHEN _user_id IS NULL THEN false
+    ELSE (
+      -- Must have paid access (trial or subscription)
+      has_paid_access(_user_id)
+      AND
+      -- Must have at least one active enrollment
+      EXISTS (
+        SELECT 1 FROM public.enrollments
+        WHERE user_id = _user_id AND status = 'active'
+      )
+    )
+  END
+$$;
 ```
 
-### 3. Enable RLS on the View
+### 4. Update RLS on Enrollments Table
+
+Add policy to prevent enrollment without paid access:
 
 ```sql
-ALTER VIEW public.profiles_public SET (security_invoker = on);
+-- Drop existing insert policy if any
+DROP POLICY IF EXISTS "Users can enroll in courses" ON public.enrollments;
 
--- Anyone authenticated can read the limited public data
-CREATE POLICY "Enrolled students can view public profiles"
-  ON public.profiles_public FOR SELECT
-  USING (auth.uid() IS NOT NULL AND is_enrolled_student(auth.uid()));
+-- New insert policy requiring paid access
+CREATE POLICY "Users with paid access can enroll"
+  ON public.enrollments FOR INSERT
+  WITH CHECK (
+    auth.uid() = user_id 
+    AND has_paid_access(auth.uid())
+  );
 ```
 
 ## Frontend Changes
 
-Update four hooks to query from `profiles_public` instead of `profiles`:
+### 1. Create Subscription Hook
+
+New file: `src/hooks/useSubscription.ts`
+
+```typescript
+// Hook to manage subscription state and access checks
+export function useSubscription() {
+  // Fetches subscription status from profile
+  // Provides: isTrialing, isPaid, hasAccess, trialDaysRemaining
+  // Handles trial expiry warnings
+}
+```
+
+### 2. Create PaidRoute Component
+
+New file: `src/components/auth/PaidRoute.tsx`
+
+```typescript
+// Similar to ProtectedRoute but also checks for paid access
+// Redirects to /enrollment if no active subscription or trial
+```
+
+### 3. Update Course Pages
 
 | File | Change |
 |------|--------|
-| `src/hooks/useMentions.ts` | Change `.from('profiles')` to `.from('profiles_public')` |
-| `src/hooks/useCommunityPosts.ts` | Change `.from('profiles')` to `.from('profiles_public')` |
-| `src/hooks/useCommunityComments.ts` | Change `.from('profiles')` to `.from('profiles_public')` |
-| `src/hooks/useNotifications.ts` | Change `.from('profiles')` to `.from('profiles_public')` |
+| `src/App.tsx` | Wrap course-related routes with `PaidRoute` |
+| `src/pages/CourseDetail.tsx` | Show subscription required message if no access |
+| `src/pages/Academics.tsx` | Show upgrade banner for trial/non-paid users |
 
-**Note:** `useProfile.ts` continues to use `profiles` for the current user's own profile (editing their settings), and `useAllUsers.ts` is admin-only so it continues to use `profiles` directly.
+### 4. Add Trial Banner Component
 
-## Data Access After Fix
+New file: `src/components/subscription/TrialBanner.tsx`
 
-| User Type | Can Access |
-|-----------|------------|
-| Own profile | All fields (location, bio, social links, etc.) |
-| Other students' profiles | Only display_name and avatar_url |
-| Admins/Moderators | All fields for all users (moderation) |
-| Not enrolled | Nothing |
+Displays:
+- Trial days remaining for trial users
+- Upgrade prompt when trial is about to expire
+- Expired trial message with CTA to subscribe
 
-## Security Outcome
+### 5. Update Enrollment Flow
 
-- Students can still @mention each other and see names/avatars in community
-- Students cannot harvest personal data like locations or social media URLs
-- Users retain full control over viewing/editing their own profile
-- Admins retain oversight for moderation purposes
+| File | Change |
+|------|--------|
+| `src/hooks/useEnrollments.ts` | Check paid access before allowing enrollment |
+| `src/components/course/EnrollmentCard.tsx` | Show subscription required if no access |
+
+## User Experience Flow
+
+```text
+1. New User Signs Up
+   └── Profile created with subscription_status = 'trial'
+   └── trial_ends_at = now() + 3 days
+   
+2. During Trial (3 days)
+   └── Full access to all course content
+   └── Trial banner shows days remaining
+   
+3. Trial Expires
+   └── subscription_status remains 'trial'
+   └── trial_ends_at is in the past
+   └── has_paid_access() returns false
+   └── User redirected to /enrollment
+   
+4. User Subscribes
+   └── subscription_status = 'active'
+   └── subscription_started_at = now()
+   └── subscription_ends_at set based on plan
+```
+
+## Files to Create
+
+| File | Purpose |
+|------|---------|
+| `src/hooks/useSubscription.ts` | Subscription state management |
+| `src/components/auth/PaidRoute.tsx` | Route protection for paid content |
+| `src/components/subscription/TrialBanner.tsx` | Trial status display |
+| `src/components/subscription/SubscriptionGate.tsx` | Paywall component |
+| `supabase/migrations/xxx_add_subscription_fields.sql` | Database changes |
+
+## Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/App.tsx` | Add PaidRoute wrapper to course routes |
+| `src/pages/CourseDetail.tsx` | Add subscription check and paywall |
+| `src/pages/Academics.tsx` | Add trial/subscription banner |
+| `src/hooks/useEnrollments.ts` | Add paid access check |
+| `src/hooks/useProfile.ts` | Include subscription fields |
+
+## Future Payment Integration
+
+This plan prepares the data model for Stripe integration. When ready:
+
+1. Enable Stripe connector
+2. Create checkout flow
+3. Add webhook to update `subscription_status` and dates
+4. Handle subscription renewal and cancellation
+
+## Security Considerations
+
+- `has_paid_access()` uses `SECURITY DEFINER` to prevent RLS bypass
+- Enrollment RLS policy enforces paid access at database level
+- Trial dates are set server-side to prevent manipulation
+- Subscription status can only be updated by backend/admin
+
+## Technical Notes
+
+- Trial period is set to 3 days as requested
+- Trial starts automatically at profile creation
+- No payment method required for trial
+- Access is blocked immediately when trial expires
+- Admins/moderators bypass paid access checks for testing
