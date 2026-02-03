@@ -5,6 +5,7 @@ export interface AssessmentQuestion {
   correctAnswer: number;
   department: string;
   difficulty: "beginner" | "intermediate" | "advanced";
+  explanation?: string;
 }
 
 // ============================================
@@ -105,6 +106,7 @@ export const cinematographyQuestions: AssessmentQuestion[] = [
     correctAnswer: 2,
     department: "cinematography",
     difficulty: "intermediate",
+    explanation: "A dolly shot uses a wheeled platform (dolly) on tracks to create smooth camera movements. The camera can move toward, away from, or alongside subjects, creating a sense of depth and immersion different from a zoom.",
   },
   {
     id: "cine-i2",
@@ -113,6 +115,7 @@ export const cinematographyQuestions: AssessmentQuestion[] = [
     correctAnswer: 1,
     department: "cinematography",
     difficulty: "intermediate",
+    explanation: "A gimbal stabilizer uses motorized brushless motors and sensors (accelerometers/gyroscopes) to detect and counteract unwanted camera movement, keeping shots smooth and stable even while the operator is walking or moving.",
   },
   {
     id: "cine-i3",
@@ -121,6 +124,7 @@ export const cinematographyQuestions: AssessmentQuestion[] = [
     correctAnswer: 1,
     department: "cinematography",
     difficulty: "intermediate",
+    explanation: "Wide-angle lenses (typically 35mm or wider) exaggerate perspective, making objects appear farther apart and spaces look larger. They can create barrel distortion at the edges but are excellent for establishing shots and tight spaces.",
   },
   {
     id: "cine-i4",
@@ -129,6 +133,7 @@ export const cinematographyQuestions: AssessmentQuestion[] = [
     correctAnswer: 1,
     department: "cinematography",
     difficulty: "intermediate",
+    explanation: "Telephoto lenses compress perspective and flatten the background, creating a sense of distance and isolation. They're often used in thrillers and dramas to make subjects feel watched or separated from their environment.",
   },
   {
     id: "cine-i5",
@@ -137,6 +142,7 @@ export const cinematographyQuestions: AssessmentQuestion[] = [
     correctAnswer: 1,
     department: "cinematography",
     difficulty: "intermediate",
+    explanation: "Bokeh (from Japanese 'blur') refers to the aesthetic quality of the blur in out-of-focus parts of an image. It's affected by lens design and aperture shape, with circular apertures producing smoother, more pleasing bokeh.",
   },
   {
     id: "cine-i6",
@@ -145,6 +151,7 @@ export const cinematographyQuestions: AssessmentQuestion[] = [
     correctAnswer: 1,
     department: "cinematography",
     difficulty: "intermediate",
+    explanation: "A Dutch angle (or canted angle) tilts the camera on its roll axis, creating diagonal horizon lines. This technique conveys psychological unease, disorientation, or tension, and is commonly used in horror and thriller films.",
   },
   {
     id: "cine-i7",
@@ -153,6 +160,7 @@ export const cinematographyQuestions: AssessmentQuestion[] = [
     correctAnswer: 1,
     department: "cinematography",
     difficulty: "intermediate",
+    explanation: "Rack focus (or pull focus) is the technique of changing the focus plane during a shot to shift viewer attention from one subject to another. It's a powerful storytelling tool that directs the audience's gaze within the frame.",
   },
   {
     id: "cine-i8",
@@ -161,6 +169,7 @@ export const cinematographyQuestions: AssessmentQuestion[] = [
     correctAnswer: 1,
     department: "cinematography",
     difficulty: "intermediate",
+    explanation: "A crane shot uses a mechanical crane or jib arm to move the camera vertically and horizontally through space. It can create sweeping, dramatic movements that reveal locations or follow action from above.",
   },
   {
     id: "cine-i9",
@@ -169,6 +178,7 @@ export const cinematographyQuestions: AssessmentQuestion[] = [
     correctAnswer: 1,
     department: "cinematography",
     difficulty: "intermediate",
+    explanation: "Motivated camera movement is movement that has a narrative purpose—following a character, revealing information, or expressing emotion. It feels natural because there's a reason for the camera to move, rather than moving arbitrarily.",
   },
   {
     id: "cine-i10",
@@ -177,6 +187,7 @@ export const cinematographyQuestions: AssessmentQuestion[] = [
     correctAnswer: 1,
     department: "cinematography",
     difficulty: "intermediate",
+    explanation: "Negative space is the empty or unoccupied area in a composition surrounding the main subject. Using negative space effectively can create feelings of isolation, emphasize the subject, or add breathing room to the frame.",
   },
   // ADVANCED (5)
   {
@@ -186,6 +197,7 @@ export const cinematographyQuestions: AssessmentQuestion[] = [
     correctAnswer: 1,
     department: "cinematography",
     difficulty: "advanced",
+    explanation: "Anamorphic lenses often exhibit 'breathing' (image size change during focus pulls). Stopping down increases depth of field, requiring less focus travel, while longer focal lengths have less noticeable breathing characteristics.",
   },
   {
     id: "cine-a2",
@@ -194,6 +206,7 @@ export const cinematographyQuestions: AssessmentQuestion[] = [
     correctAnswer: 1,
     department: "cinematography",
     difficulty: "advanced",
+    explanation: "The dolly zoom (or 'Vertigo effect') combines dollying with zooming in opposite directions, keeping subject size constant while the background appears to shift. It creates a disorienting effect that conveys realization, fear, or psychological shift.",
   },
   {
     id: "cine-a3",
@@ -202,6 +215,7 @@ export const cinematographyQuestions: AssessmentQuestion[] = [
     correctAnswer: 1,
     department: "cinematography",
     difficulty: "advanced",
+    explanation: "Single-take sequences require precise choreography of actors, camera operators, focus pullers, and lighting. Every element must work in sync since there are no editing opportunities to fix mistakes.",
   },
   {
     id: "cine-a4",
@@ -210,6 +224,7 @@ export const cinematographyQuestions: AssessmentQuestion[] = [
     correctAnswer: 1,
     department: "cinematography",
     difficulty: "advanced",
+    explanation: "Chiaroscuro (Italian for 'light-dark') is a high-contrast lighting technique originating in Renaissance painting. It uses dramatic shadows and highlights to create depth, mood, and visual drama in film noir and dramatic cinematography.",
   },
   {
     id: "cine-a5",
@@ -218,6 +233,7 @@ export const cinematographyQuestions: AssessmentQuestion[] = [
     correctAnswer: 1,
     department: "cinematography",
     difficulty: "advanced",
+    explanation: "Crop factor is the ratio of a 35mm full-frame sensor's diagonal to the camera sensor's diagonal. A smaller sensor 'crops' the image, effectively multiplying the focal length (e.g., APS-C with 1.5x crop makes a 50mm lens act like a 75mm).",
   },
 ];
 
@@ -395,6 +411,7 @@ export const postProductionQuestions: AssessmentQuestion[] = [
     correctAnswer: 1,
     department: "post-production",
     difficulty: "advanced",
+    explanation: "XML (Final Cut Pro XML or Premiere Pro XML) preserves the most metadata and complex timeline information. The relink workflow allows matching to original camera files while maintaining cuts, transitions, and effects references.",
   },
   {
     id: "post-a2",
@@ -403,6 +420,7 @@ export const postProductionQuestions: AssessmentQuestion[] = [
     correctAnswer: 1,
     department: "post-production",
     difficulty: "advanced",
+    explanation: "Parallel compression (or New York compression) blends heavily compressed audio with the original uncompressed signal. This preserves dynamics and transients while adding power and consistency to the sound.",
   },
   {
     id: "post-a3",
@@ -411,6 +429,7 @@ export const postProductionQuestions: AssessmentQuestion[] = [
     correctAnswer: 1,
     department: "post-production",
     difficulty: "advanced",
+    explanation: "ACES (Academy Color Encoding System) is an industry-standard color management framework developed by the Academy. It provides a consistent color pipeline from camera to display, preserving maximum dynamic range and color accuracy.",
   },
   {
     id: "post-a4",
@@ -419,6 +438,7 @@ export const postProductionQuestions: AssessmentQuestion[] = [
     correctAnswer: 1,
     department: "post-production",
     difficulty: "advanced",
+    explanation: "Secondary color correction involves isolating and adjusting specific colors or areas in an image (using qualifiers, masks, or windows) without affecting the rest of the frame. This allows precise adjustments like skin tone correction or sky enhancement.",
   },
   {
     id: "post-a5",
@@ -427,6 +447,7 @@ export const postProductionQuestions: AssessmentQuestion[] = [
     correctAnswer: 1,
     department: "post-production",
     difficulty: "advanced",
+    explanation: "LUFS (Loudness Units relative to Full Scale) is a standard for measuring perceived loudness. Different platforms (Netflix, YouTube, Spotify) have specific LUFS targets to ensure consistent playback volume across all content.",
   },
 ];
 

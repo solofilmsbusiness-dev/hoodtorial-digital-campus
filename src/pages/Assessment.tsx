@@ -1,11 +1,19 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Clock, Trophy, AlertTriangle, Shuffle } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock, Trophy, AlertTriangle, Shuffle, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageLayout } from "@/components/layout";
-import { InterestCard, ExperienceCard, ResultsChart, ScoreComparison, RoadmapDisplay } from "@/components/assessment";
+import { 
+  InterestCard, 
+  ExperienceCard, 
+  ResultsChart, 
+  ScoreComparison, 
+  RoadmapDisplay,
+  AnswerReview,
+  DifficultyBreakdown,
+} from "@/components/assessment";
 import {
   assessmentQuestions,
   departmentInfo,
@@ -24,11 +32,13 @@ import {
   type ShuffledQuestion 
 } from "@/lib/quizUtils";
 
-type Step = "welcome" | "interests" | "experience" | "quiz" | "results" | "expired";
+type Step = "welcome" | "interests" | "experience" | "quiz" | "results" | "review" | "expired";
 
-// Extend ShuffledQuestion for assessment (includes department)
+// Extend ShuffledQuestion for assessment (includes department and difficulty)
 interface ShuffledAssessmentQuestion extends ShuffledQuestion {
   department: string;
+  difficulty?: "beginner" | "intermediate" | "advanced";
+  explanation?: string;
 }
 
 export default function Assessment() {
@@ -46,6 +56,13 @@ export default function Assessment() {
   const [saving, setSaving] = useState(false);
   const [isRetaking, setIsRetaking] = useState(false);
   const [shuffledQuestions, setShuffledQuestions] = useState<ShuffledAssessmentQuestion[]>([]);
+  
+  // Review mode state
+  const [completedQuestions, setCompletedQuestions] = useState<ShuffledAssessmentQuestion[]>([]);
+  const [completedAnswers, setCompletedAnswers] = useState<Record<string, number>>({});
+  const [reviewIndex, setReviewIndex] = useState(0);
+  const [showOnlyIncorrect, setShowOnlyIncorrect] = useState(false);
+  
   const [finalResults, setFinalResults] = useState<{
     departmentScores: Record<string, number>;
     totalScore: number;
@@ -96,6 +113,8 @@ export default function Assessment() {
       return {
         ...shuffled,
         department: q.department,
+        difficulty: q.difficulty,
+        explanation: q.explanation,
       };
     });
     
@@ -212,6 +231,10 @@ export default function Assessment() {
     const { departmentScores, totalScore } = calculateResults();
     const elapsedTime = Math.round((Date.now() - startTime) / 1000);
 
+    // Store questions and answers for review mode
+    setCompletedQuestions([...shuffledQuestions]);
+    setCompletedAnswers({ ...answers });
+
     setSaving(true);
 
     const { data, error } = await saveAssessmentResult({
@@ -236,6 +259,13 @@ export default function Assessment() {
       roadmap,
     });
     setStep("results");
+  };
+  
+  // Handle entering review mode
+  const handleReviewAnswers = () => {
+    setReviewIndex(0);
+    setShowOnlyIncorrect(false);
+    setStep("review");
   };
 
   const isTimeWarning = remainingTime > 0 && remainingTime <= 120; // 2 minutes warning
@@ -713,8 +743,16 @@ export default function Assessment() {
                 <CardHeader>
                   <CardTitle>Your Strengths by Department</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-8">
                   <ResultsChart scores={finalResults.departmentScores} />
+                  
+                  {/* Difficulty Breakdown */}
+                  {completedQuestions.length > 0 && (
+                    <DifficultyBreakdown
+                      questions={completedQuestions}
+                      answers={completedAnswers}
+                    />
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -754,8 +792,18 @@ export default function Assessment() {
                 Start Your Journey
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
+              {completedQuestions.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={handleReviewAnswers}
+                >
+                  <BookOpen className="mr-2 w-5 h-5" />
+                  Review Your Answers
+                </Button>
+              )}
               <Button
-                variant="outline"
+                variant="ghost"
                 size="lg"
                 onClick={() => navigate("/student")}
               >
@@ -763,6 +811,19 @@ export default function Assessment() {
               </Button>
             </div>
           </div>
+        )}
+
+        {/* Review Step */}
+        {step === "review" && completedQuestions.length > 0 && (
+          <AnswerReview
+            questions={completedQuestions}
+            answers={completedAnswers}
+            currentIndex={reviewIndex}
+            showOnlyIncorrect={showOnlyIncorrect}
+            onIndexChange={setReviewIndex}
+            onToggleIncorrect={setShowOnlyIncorrect}
+            onBackToResults={() => setStep("results")}
+          />
         )}
       </div>
     </PageLayout>
