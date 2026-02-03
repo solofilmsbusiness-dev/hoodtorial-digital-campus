@@ -1,113 +1,184 @@
 
-# Fix: Course Actions 404 and Student Detail Sheet Glitching
 
-## Problem 1: Course Actions Causing 404
+# Add Document Upload for Reading Lessons
 
-**Root Cause**: In `CourseManager.tsx`, the "View" button links to `/course/${course.code}`. When navigating, if the course code is missing or empty, it results in `/course/` which triggers the NotFound page.
+## Overview
 
-The issue is that when clicking "View" for a course that exists in static data but not yet in the database, the course object's `code` might be working, but the actual problem is that the route `/course/:code` expects the CourseDetail page to find the course via `getCourseByCode()` which only searches static data. New courses created in admin exist only in the database and are not found.
+When creating or editing a "reading" type lesson, admins should be able to upload a PDF or document file that students can read. Currently, reading lessons only support text content via a textarea. This enhancement adds document upload capability.
 
-**Fix**: Update CourseManager to check if a course exists before navigation, or show a toast for courses not yet viewable.
+## Current State
 
----
-
-## Problem 2: StudentDetailSheet Infinite Re-render Loop
-
-**Root Cause**: The `fetchQuizResultsWithAnswers` function in `useAdminQuizManagement.ts` is not memoized with `useCallback`. This causes:
-
-1. Every render of `StudentDetailSheet` gets a new function reference
-2. The `useEffect` depends on this function
-3. Effect runs, sets state, triggers re-render
-4. New function reference, effect runs again... infinite loop!
-
-This explains the "glitching and flashing" behavior.
-
-**Fix**: Wrap `fetchQuizResultsWithAnswers` in `useCallback` to maintain a stable reference.
-
----
+- **LessonDialog.tsx**: For "reading" type lessons, shows only a textarea for markdown content
+- **lessons table**: Has `content` (text) and `video_url` fields, but no dedicated document URL field
+- **Storage**: Buckets exist for `community-uploads` and `avatars`, but not for lesson documents
+- **VideoPlayer.tsx**: Currently only handles video lessons; reading lessons show a placeholder
 
 ## Implementation Plan
 
-### File 1: `src/hooks/useAdminQuizManagement.ts`
+### 1. Database: Add `document_url` Column to Lessons Table
 
-**Change**: Wrap `fetchQuizResultsWithAnswers` function in `useCallback` to prevent infinite re-renders.
+Add a new column to store the uploaded document URL:
 
-Before:
+| Column | Type | Default | Description |
+|--------|------|---------|-------------|
+| document_url | text | null | URL to uploaded PDF/document |
+
+This keeps the existing `content` field for text/markdown, while `document_url` stores the file.
+
+### 2. Storage: Create `lesson-documents` Bucket
+
+Create a new storage bucket for lesson documents:
+- **Bucket name**: `lesson-documents`
+- **Public**: Yes (students need to view/download)
+- **Allowed MIME types**: application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document
+- **File size limit**: 20MB
+
+RLS policies will allow:
+- Authenticated admins to upload/delete
+- Anyone to view (public bucket)
+
+### 3. New Hook: `useLessonDocumentUpload`
+
+Create a hook similar to `useCommunityUploads` for lesson document uploads:
+- Upload document to `lesson-documents` bucket
+- Return public URL
+- Handle progress and errors
+- Delete document capability
+
+### 4. Update LessonDialog Component
+
+Modify the dialog for "reading" type lessons to include:
+- **Document upload section** with drag-and-drop
+- **Preview of uploaded document** (show filename + PDF icon)
+- **Option to remove uploaded document**
+- Keep the existing markdown textarea for supplementary text content
+- Show document preview/download link when document exists
+
+Visual layout for reading lessons:
+```
++----------------------------------+
+|  Upload Document (PDF, DOCX)     |
+|  [ Drag & drop or click ]        |
++----------------------------------+
+|  [PDF icon] document.pdf  [X]    |  <- When uploaded
++----------------------------------+
+|  Additional Content (optional)   |
+|  [Markdown textarea]             |
++----------------------------------+
+```
+
+### 5. Update DbLesson Interface
+
+Add `document_url` field to the TypeScript interface in `useAdminCourseContent.ts`:
 ```typescript
-const fetchQuizResultsWithAnswers = async (userId: string) => { ... }
+export interface DbLesson {
+  // ... existing fields
+  document_url: string | null;
+}
 ```
 
-After:
+### 6. Update Lesson Save/Update Logic
+
+Modify the `onSave` handler in LessonDialog to include `document_url`:
 ```typescript
-const fetchQuizResultsWithAnswers = useCallback(async (userId: string) => { ... }, []);
+onSave({
+  title,
+  type,
+  duration,
+  document_url: documentUrl,  // NEW
+  content,
+  description,
+});
 ```
 
-Also wrap the delete functions with `useCallback` for consistency and performance.
+### 7. Student View: Display Document Reader
 
-### File 2: `src/pages/admin/CourseManager.tsx`
+Update `VideoPlayer.tsx` or create a new `DocumentViewer.tsx` component to:
+- Render PDF in an iframe or embedded viewer
+- Provide download link for non-PDF documents
+- Show the markdown content below the document if provided
 
-**Change**: Add safety check for empty course codes and provide better navigation feedback.
+## Files to Create/Modify
 
-Current:
-```tsx
-<Link to={`/course/${course.code}`}>
-```
+| File | Action | Description |
+|------|--------|-------------|
+| `supabase/migrations/` | Create | Add `document_url` column + create storage bucket |
+| `src/hooks/useLessonDocumentUpload.ts` | Create | Upload hook for lesson documents |
+| `src/components/admin/LessonDialog.tsx` | Modify | Add document upload UI for reading lessons |
+| `src/hooks/useAdminCourseContent.ts` | Modify | Add `document_url` to DbLesson interface and mutations |
+| `src/components/course/DocumentViewer.tsx` | Create | Component to display documents for students |
+| `src/components/course/VideoPlayer.tsx` | Modify | Handle reading lessons with document_url |
 
-Improved:
-- Check if the course code is valid before rendering the link
-- For newly created admin courses that don't exist in static data, show a different action (preview not available) or navigate to the editor instead
+## User Experience
 
----
+**Admin Flow**:
+1. Go to Course Editor > Add Lesson
+2. Select "Reading" as type
+3. Click "Upload Document" or drag-and-drop a PDF
+4. See upload progress and preview
+5. Optionally add supplementary markdown text
+6. Save lesson
+
+**Student Flow**:
+1. Navigate to reading lesson
+2. See embedded PDF viewer or download link
+3. Read the document
+4. Any supplementary markdown content appears below
+5. Mark lesson complete when done
 
 ## Technical Details
 
-### useCallback Fix
+### Storage Bucket SQL
+
+```sql
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'lesson-documents',
+  'lesson-documents',
+  true,
+  20971520,  -- 20MB
+  ARRAY['application/pdf', 'application/msword', 
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+);
+```
+
+### RLS Policy for Uploads (Admin Only)
+
+```sql
+CREATE POLICY "Admins can upload lesson documents"
+ON storage.objects FOR INSERT
+WITH CHECK (
+  bucket_id = 'lesson-documents' AND
+  EXISTS (SELECT 1 FROM profiles WHERE user_id = auth.uid() AND membership_tier = 'admin')
+);
+```
+
+### Document Upload Hook Structure
 
 ```typescript
-import { useState, useCallback } from "react";  // Add useCallback import
+export function useLessonDocumentUpload() {
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
-// Wrap the function
-const fetchQuizResultsWithAnswers = useCallback(async (userId: string): Promise<QuizResultDetail[]> => {
-  // ... existing implementation
-}, []);  // Empty dependency array - function doesn't depend on external values
+  const uploadDocument = async (file: File): Promise<string | null> => {
+    // Upload to lesson-documents bucket
+    // Return public URL
+  };
+
+  const deleteDocument = async (url: string): Promise<boolean> => {
+    // Remove from storage
+  };
+
+  return { uploadDocument, deleteDocument, isUploading, uploadProgress };
+}
 ```
-
-### CourseManager Link Safety
-
-Option A - Disable view for courses not in static catalog:
-```tsx
-{staticCourses.some(s => s.code === course.code) ? (
-  <Button variant="ghost" size="icon" asChild>
-    <Link to={`/course/${course.code}`}>
-      <Eye className="h-4 w-4" />
-    </Link>
-  </Button>
-) : (
-  <Button variant="ghost" size="icon" disabled title="Preview not available">
-    <Eye className="h-4 w-4 opacity-50" />
-  </Button>
-)}
-```
-
-Option B - Always link but let CourseDetail handle it gracefully (current behavior is fine since CourseDetail shows "Course Not Found")
-
-Recommended: Option A for better UX - admin knows immediately if preview is available.
-
----
-
-## Files to Modify
-
-| File | Change |
-|------|--------|
-| `src/hooks/useAdminQuizManagement.ts` | Wrap async functions in `useCallback` to prevent infinite re-renders |
-| `src/pages/admin/CourseManager.tsx` | Add visual indicator for courses without preview |
-
----
 
 ## Summary
 
-This fix addresses:
-1. **Infinite re-render loop** - The main cause of "glitching and flashing" when viewing student details
-2. **404 confusion** - Better UX for admin when viewing courses not yet in the public catalog
+This feature adds document upload capability for reading lessons:
+1. New `document_url` database column
+2. New `lesson-documents` storage bucket
+3. Upload UI in admin LessonDialog
+4. Document viewer for students
+5. Maintains backward compatibility with existing text-based reading lessons
 
-The key insight is that the `useEffect` in StudentDetailSheet depends on `fetchQuizResultsWithAnswers`, and without `useCallback`, that function gets a new identity on every render, causing the effect to re-run continuously.
