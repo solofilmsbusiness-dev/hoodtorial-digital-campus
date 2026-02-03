@@ -37,8 +37,11 @@ interface CourseForm {
   intro_video_url: string;
 }
 
+import { useImportStaticCourse } from "@/hooks/useImportStaticCourse";
+import { Download } from "lucide-react";
+
 // Separate component to handle modules section
-function ModulesSection({ courseId }: { courseId: string }) {
+function ModulesSection({ courseId, courseCode }: { courseId: string; courseCode: string }) {
   const [newModuleTitle, setNewModuleTitle] = useState("");
   const [showAddModule, setShowAddModule] = useState(false);
 
@@ -55,6 +58,13 @@ function ModulesSection({ courseId }: { courseId: string }) {
     reorderLessons,
   } = useAdminCourseContent(courseId);
 
+  const {
+    importContent,
+    isImporting,
+    hasStaticContent,
+    staticModuleCount,
+  } = useImportStaticCourse(courseId, courseCode);
+
   const handleAddModule = () => {
     if (newModuleTitle.trim()) {
       addModule.mutate(newModuleTitle.trim());
@@ -62,6 +72,26 @@ function ModulesSection({ courseId }: { courseId: string }) {
       setShowAddModule(false);
     }
   };
+
+  // Show import UI when static content exists but no DB modules
+  if (!isLoading && modules.length === 0 && hasStaticContent) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Import Course Content</CardTitle>
+        </CardHeader>
+        <CardContent className="py-8 text-center space-y-4">
+          <p className="text-muted-foreground">
+            This course has {staticModuleCount} pre-built modules with lessons and quizzes that need to be imported to the database before you can edit them.
+          </p>
+          <Button onClick={() => importContent()} disabled={isImporting}>
+            <Download className="h-4 w-4 mr-2" />
+            {isImporting ? "Importing..." : "Import Existing Content"}
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
 
   return (
@@ -465,7 +495,7 @@ export default function CourseEditor() {
 
         {/* Modules Section */}
         {!isNew && dbCourse && (
-          <ModulesSection courseId={dbCourse.id} />
+          <ModulesSection courseId={dbCourse.id} courseCode={dbCourse.code} />
         )}
 
         {/* Prompt to save before adding modules */}
