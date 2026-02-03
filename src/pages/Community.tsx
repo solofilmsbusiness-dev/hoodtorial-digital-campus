@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PageLayout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -15,21 +14,29 @@ import {
   Search, 
   Users,
   MessageSquare,
-  FolderOpen,
-  Megaphone,
-  Lightbulb,
-  BookOpen
+  Plus,
+  Filter,
+  X
 } from "lucide-react";
 import { 
   PostCard, 
   CreatePostForm, 
   PostDetail,
-  CommunityGuidelines 
+  CommunityGuidelines,
+  DailyChallengeCard,
+  FeedGrid,
+  ViewToggle,
+  StreakBadge,
+  Leaderboard,
 } from "@/components/community";
+import { ViewMode } from "@/components/community/ViewToggle";
 import { useCommunityPosts, PostCategory, CommunityPost } from "@/hooks/useCommunityPosts";
+import { useDailyChallenges } from "@/hooks/useDailyChallenges";
+import { useChallengeStreak } from "@/hooks/useChallengeStreak";
 import { useEnrollments } from "@/hooks/useEnrollments";
 import { courses } from "@/data/courses";
 import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function Community() {
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -38,9 +45,26 @@ export default function Community() {
   const [courseFilter, setCourseFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showGuidelines, setShowGuidelines] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [showFilters, setShowFilters] = useState(false);
+  const [isSubmittingChallenge, setIsSubmittingChallenge] = useState(false);
 
   const { activeEnrollments } = useEnrollments();
   const hasActiveEnrollment = activeEnrollments.length > 0;
+
+  const { 
+    todaysChallenge, 
+    hasSubmittedToday, 
+    submitChallenge,
+    isLoading: isChallengeLoading 
+  } = useDailyChallenges();
+
+  const { streakData, checkStreakBonuses } = useChallengeStreak();
+
+  // Check for streak bonuses on load
+  useEffect(() => {
+    checkStreakBonuses();
+  }, [streakData.currentStreak]);
 
   const { 
     posts, 
@@ -50,7 +74,12 @@ export default function Community() {
     toggleFollow,
     deletePost 
   } = useCommunityPosts(
-    categoryFilter !== "all" ? { category: categoryFilter } : undefined
+    categoryFilter !== "all" 
+      ? { 
+          category: categoryFilter,
+          following_only: viewMode === 'following'
+        } 
+      : { following_only: viewMode === 'following' }
   );
 
   // Filter posts by search and course
@@ -64,9 +93,57 @@ export default function Community() {
     return matchesSearch && matchesCourse;
   });
 
+  // Sort: prioritize posts with media for grid view
+  const sortedPosts = [...filteredPosts].sort((a, b) => {
+    // Pinned posts first
+    if (a.is_pinned && !b.is_pinned) return -1;
+    if (!a.is_pinned && b.is_pinned) return 1;
+    
+    // In grid mode, prioritize posts with media
+    if (viewMode === 'grid') {
+      const aHasMedia = a.media_urls.length > 0 || a.video_url;
+      const bHasMedia = b.media_urls.length > 0 || b.video_url;
+      if (aHasMedia && !bHasMedia) return -1;
+      if (!aHasMedia && bHasMedia) return 1;
+    }
+    
+    // Then by date
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+
   // Get enrolled course codes for filtering
   const enrolledCourseCodes = activeEnrollments.map(e => e.course_code);
   const enrolledCourses = courses.filter(c => enrolledCourseCodes.includes(c.code));
+
+  const handleChallengeSubmit = () => {
+    setIsSubmittingChallenge(true);
+    setShowCreateForm(true);
+  };
+
+  const handlePostSubmit = async (data: any) => {
+    if (isSubmittingChallenge && todaysChallenge) {
+      // Create post with challenge_id
+      createPost.mutate({
+        ...data,
+        challenge_id: todaysChallenge.id,
+      }, {
+        onSuccess: (post) => {
+          // Submit to challenge and award credits
+          submitChallenge.mutate({
+            challengeId: todaysChallenge.id,
+            postId: post.id,
+            creditsReward: todaysChallenge.credits_reward,
+          });
+          setShowCreateForm(false);
+          setIsSubmittingChallenge(false);
+        },
+      });
+    } else {
+      createPost.mutate(data, {
+        onSuccess: () => setShowCreateForm(false),
+      });
+    }
+  };
 
   if (!hasActiveEnrollment) {
     return (
@@ -108,61 +185,175 @@ export default function Community() {
 
   return (
     <PageLayout>
-      <div className="py-8 px-4">
+      <div className="py-6 px-4">
         <div className="container-wide">
-          {/* Header */}
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8">
-            <div>
-              <h1 className="heading-1 text-foreground mb-2">Student Community</h1>
-              <p className="text-muted-foreground">
-                Connect with peers, share projects, and give/receive professional feedback.
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setShowGuidelines(!showGuidelines)}
-              >
-                Guidelines
-              </Button>
-              <Button 
-                className="btn-brutal gap-2"
-                onClick={() => setShowCreateForm(true)}
-              >
-                <PenSquare className="h-4 w-4" />
-                New Post
-              </Button>
-            </div>
+          {/* Daily Challenge Card */}
+          <div className="mb-6">
+            <DailyChallengeCard
+              challenge={todaysChallenge}
+              hasSubmitted={hasSubmittedToday}
+              currentStreak={streakData.currentStreak}
+              onSubmit={handleChallengeSubmit}
+              isLoading={isChallengeLoading}
+            />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            {/* Sidebar */}
-            <div className="lg:col-span-1 space-y-6">
-              {/* Guidelines (collapsible on mobile) */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Sidebar - Hidden on mobile, shown on lg */}
+            <div className="hidden lg:block lg:col-span-1 space-y-6">
+              {/* Streak Badge */}
+              <StreakBadge
+                currentStreak={streakData.currentStreak}
+                longestStreak={streakData.longestStreak}
+                totalSubmissions={streakData.totalSubmissions}
+                variant="detailed"
+              />
+
+              {/* Leaderboard */}
+              <Leaderboard period="week" />
+
+              {/* Guidelines */}
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => setShowGuidelines(!showGuidelines)}
+              >
+                Community Guidelines
+              </Button>
               {showGuidelines && (
                 <CommunityGuidelines onClose={() => setShowGuidelines(false)} />
               )}
+            </div>
 
-              {/* Search */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search posts..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
+            {/* Main content */}
+            <div className="lg:col-span-3">
+              {/* Mobile Header with controls */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div className="flex items-center gap-3">
+                  <h1 className="text-xl font-bold text-foreground">Feed</h1>
+                  <StreakBadge
+                    currentStreak={streakData.currentStreak}
+                    longestStreak={streakData.longestStreak}
+                    totalSubmissions={streakData.totalSubmissions}
+                    variant="compact"
+                  />
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <ViewToggle value={viewMode} onChange={setViewMode} />
+                  
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="lg:hidden"
+                    onClick={() => setShowFilters(!showFilters)}
+                  >
+                    <Filter className="h-4 w-4" />
+                  </Button>
+
+                  <Button 
+                    className="btn-brutal gap-2"
+                    onClick={() => {
+                      setIsSubmittingChallenge(false);
+                      setShowCreateForm(true);
+                    }}
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span className="hidden sm:inline">Post</span>
+                  </Button>
+                </div>
               </div>
 
-              {/* Course filter */}
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-muted-foreground uppercase tracking-wide">
-                  Filter by Course
-                </label>
+              {/* Mobile filters */}
+              <AnimatePresence>
+                {showFilters && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden lg:hidden mb-4"
+                  >
+                    <div className="p-4 bg-muted/30 rounded-lg border border-border space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-bold text-sm">Filters</h3>
+                        <Button variant="ghost" size="icon" onClick={() => setShowFilters(false)}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search posts..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="pl-10"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <Select value={categoryFilter} onValueChange={(v) => setCategoryFilter(v as any)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Categories</SelectItem>
+                            <SelectItem value="general">General</SelectItem>
+                            <SelectItem value="course_discussion">Courses</SelectItem>
+                            <SelectItem value="project_submission">Projects</SelectItem>
+                            <SelectItem value="feedback_critique">Critique</SelectItem>
+                            <SelectItem value="announcement">News</SelectItem>
+                          </SelectContent>
+                        </Select>
+
+                        <Select value={courseFilter} onValueChange={setCourseFilter}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Course" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Courses</SelectItem>
+                            {enrolledCourses.map((course) => (
+                              <SelectItem key={course.code} value={course.code}>
+                                {course.code}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Desktop search & filters */}
+              <div className="hidden lg:flex items-center gap-3 mb-6">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search posts..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+
+                <Select value={categoryFilter} onValueChange={(v) => setCategoryFilter(v as any)}>
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    <SelectItem value="general">General</SelectItem>
+                    <SelectItem value="course_discussion">Courses</SelectItem>
+                    <SelectItem value="project_submission">Projects</SelectItem>
+                    <SelectItem value="feedback_critique">Critique</SelectItem>
+                    <SelectItem value="announcement">News</SelectItem>
+                  </SelectContent>
+                </Select>
+
                 <Select value={courseFilter} onValueChange={setCourseFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="All courses" />
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="Course" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Courses</SelectItem>
@@ -175,107 +366,85 @@ export default function Community() {
                 </Select>
               </div>
 
-              {/* Quick stats */}
-              <div className="p-4 bg-muted/30 rounded-lg border border-border space-y-3">
-                <h4 className="font-bold text-sm text-foreground">Your Activity</h4>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Active Courses</span>
-                  <span className="font-bold text-primary">{activeEnrollments.length}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Community Posts</span>
-                  <span className="font-bold">{posts.filter(p => p.user_id === posts[0]?.user_id).length}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Main content */}
-            <div className="lg:col-span-3">
               {/* Create post form */}
-              {showCreateForm && (
-                <CreatePostForm
-                  onSubmit={(data) => {
-                    createPost.mutate(data, {
-                      onSuccess: () => setShowCreateForm(false),
-                    });
-                  }}
-                  onCancel={() => setShowCreateForm(false)}
-                  isSubmitting={createPost.isPending}
+              <AnimatePresence>
+                {showCreateForm && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                  >
+                    <CreatePostForm
+                      onSubmit={handlePostSubmit}
+                      onCancel={() => {
+                        setShowCreateForm(false);
+                        setIsSubmittingChallenge(false);
+                      }}
+                      isSubmitting={createPost.isPending}
+                      challengeId={isSubmittingChallenge ? todaysChallenge?.id : undefined}
+                      challengeTitle={isSubmittingChallenge ? todaysChallenge?.title : undefined}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Posts */}
+              {isLoading ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <div className="animate-pulse">Loading posts...</div>
+                </div>
+              ) : sortedPosts.length === 0 ? (
+                <div className="text-center py-12">
+                  <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+                  <h3 className="font-bold text-foreground mb-2">No posts yet</h3>
+                  <p className="text-muted-foreground mb-4">
+                    {viewMode === 'following' 
+                      ? "You're not following any posts yet."
+                      : searchQuery 
+                        ? "No posts match your search."
+                        : "Be the first to start a discussion!"}
+                  </p>
+                  {!searchQuery && viewMode !== 'following' && (
+                    <Button 
+                      onClick={() => setShowCreateForm(true)}
+                      className="btn-brutal"
+                    >
+                      Create First Post
+                    </Button>
+                  )}
+                </div>
+              ) : viewMode === 'grid' || viewMode === 'following' ? (
+                <FeedGrid
+                  posts={sortedPosts}
+                  variant={viewMode === 'following' ? 'feed' : 'grid'}
+                  onLike={(postId) => toggleLike.mutate(postId)}
+                  onClick={(post) => setSelectedPost(post)}
+                />
+              ) : (
+                <FeedGrid
+                  posts={sortedPosts}
+                  variant="feed"
+                  onLike={(postId) => toggleLike.mutate(postId)}
+                  onClick={(post) => setSelectedPost(post)}
                 />
               )}
-
-              {/* Category tabs */}
-              <Tabs value={categoryFilter} onValueChange={(v) => setCategoryFilter(v as PostCategory | "all")}>
-                <TabsList className="w-full justify-start mb-6 bg-muted/30 p-1 overflow-x-auto flex-nowrap">
-                  <TabsTrigger value="all" className="gap-2">
-                    <MessageSquare className="h-4 w-4" />
-                    All
-                  </TabsTrigger>
-                  <TabsTrigger value="general" className="gap-2">
-                    <Users className="h-4 w-4" />
-                    General
-                  </TabsTrigger>
-                  <TabsTrigger value="course_discussion" className="gap-2">
-                    <BookOpen className="h-4 w-4" />
-                    Courses
-                  </TabsTrigger>
-                  <TabsTrigger value="project_submission" className="gap-2">
-                    <FolderOpen className="h-4 w-4" />
-                    Projects
-                  </TabsTrigger>
-                  <TabsTrigger value="feedback_critique" className="gap-2">
-                    <Lightbulb className="h-4 w-4" />
-                    Critique
-                  </TabsTrigger>
-                  <TabsTrigger value="announcement" className="gap-2">
-                    <Megaphone className="h-4 w-4" />
-                    News
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value={categoryFilter} className="mt-0">
-                  {isLoading ? (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <div className="animate-pulse">Loading posts...</div>
-                    </div>
-                  ) : filteredPosts.length === 0 ? (
-                    <div className="text-center py-12">
-                      <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                      <h3 className="font-bold text-foreground mb-2">No posts yet</h3>
-                      <p className="text-muted-foreground mb-4">
-                        {searchQuery 
-                          ? "No posts match your search."
-                          : "Be the first to start a discussion!"
-                        }
-                      </p>
-                      {!searchQuery && (
-                        <Button 
-                          onClick={() => setShowCreateForm(true)}
-                          className="btn-brutal"
-                        >
-                          Create First Post
-                        </Button>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {filteredPosts.map((post) => (
-                        <PostCard
-                          key={post.id}
-                          post={post}
-                          onLike={() => toggleLike.mutate(post.id)}
-                          onFollow={() => toggleFollow.mutate(post.id)}
-                          onDelete={() => deletePost.mutate(post.id)}
-                          onClick={() => setSelectedPost(post)}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </TabsContent>
-              </Tabs>
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Floating Action Button for mobile */}
+      <div className="fixed bottom-6 right-6 lg:hidden z-50">
+        <Button
+          size="lg"
+          className="btn-brutal h-14 w-14 rounded-full shadow-lg"
+          onClick={() => {
+            setIsSubmittingChallenge(false);
+            setShowCreateForm(true);
+          }}
+        >
+          <Plus className="h-6 w-6" />
+        </Button>
       </div>
     </PageLayout>
   );

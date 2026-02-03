@@ -20,6 +20,7 @@ export interface CommunityPost {
   is_highlighted: boolean;
   created_at: string;
   updated_at: string;
+  challenge_id: string | null;
   // Joined fields
   author?: {
     display_name: string | null;
@@ -40,12 +41,15 @@ interface CreatePostData {
   media_urls?: string[];
   video_url?: string;
   mentioned_user_ids?: string[];
+  challenge_id?: string;
 }
 
 export function useCommunityPosts(filters?: {
   category?: PostCategory;
   course_code?: string;
   sort_by?: 'recent' | 'popular';
+  challenge_only?: boolean;
+  following_only?: boolean;
 }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -64,6 +68,10 @@ export function useCommunityPosts(filters?: {
       }
       if (filters?.course_code) {
         query = query.eq('course_code', filters.course_code);
+      }
+      
+      if (filters?.challenge_only) {
+        query = query.not('challenge_id', 'is', null);
       }
 
       if (filters?.sort_by === 'popular') {
@@ -132,16 +140,24 @@ export function useCommunityPosts(filters?: {
         return acc;
       }, {} as Record<string, { display_name: string | null; avatar_url: string | null }>);
 
-      return postsData.map(post => ({
+      let enrichedPosts = postsData.map(post => ({
         ...post,
         category: post.category as PostCategory,
         media_urls: post.media_urls || [],
+        challenge_id: post.challenge_id || null,
         author: profilesMap[post.user_id] || { display_name: null, avatar_url: null },
         likes_count: likesCount[post.id] || 0,
         comments_count: commentsCount[post.id] || 0,
         user_has_liked: userLikes.includes(post.id),
         user_is_following: userFollows.includes(post.id),
       })) as CommunityPost[];
+
+      // Filter following only on client side
+      if (filters?.following_only) {
+        enrichedPosts = enrichedPosts.filter(p => p.user_is_following);
+      }
+
+      return enrichedPosts;
     },
     enabled: !!user,
   });
@@ -161,6 +177,7 @@ export function useCommunityPosts(filters?: {
           is_project_post: data.is_project_post || false,
           media_urls: data.media_urls || [],
           video_url: data.video_url || null,
+          challenge_id: data.challenge_id || null,
         })
         .select()
         .single();

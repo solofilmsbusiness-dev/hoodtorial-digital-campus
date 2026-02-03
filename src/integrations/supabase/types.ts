@@ -53,6 +53,51 @@ export type Database = {
         }
         Relationships: []
       }
+      challenge_submissions: {
+        Row: {
+          awarded_at: string | null
+          challenge_id: string
+          created_at: string
+          credits_awarded: number | null
+          id: string
+          post_id: string | null
+          user_id: string
+        }
+        Insert: {
+          awarded_at?: string | null
+          challenge_id: string
+          created_at?: string
+          credits_awarded?: number | null
+          id?: string
+          post_id?: string | null
+          user_id: string
+        }
+        Update: {
+          awarded_at?: string | null
+          challenge_id?: string
+          created_at?: string
+          credits_awarded?: number | null
+          id?: string
+          post_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_submissions_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "daily_challenges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "challenge_submissions_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comment_likes: {
         Row: {
           comment_id: string
@@ -148,6 +193,7 @@ export type Database = {
       community_posts: {
         Row: {
           category: Database["public"]["Enums"]["post_category"]
+          challenge_id: string | null
           content: string
           course_code: string | null
           created_at: string
@@ -163,6 +209,7 @@ export type Database = {
         }
         Insert: {
           category?: Database["public"]["Enums"]["post_category"]
+          challenge_id?: string | null
           content: string
           course_code?: string | null
           created_at?: string
@@ -178,6 +225,7 @@ export type Database = {
         }
         Update: {
           category?: Database["public"]["Enums"]["post_category"]
+          challenge_id?: string | null
           content?: string
           course_code?: string | null
           created_at?: string
@@ -191,7 +239,15 @@ export type Database = {
           user_id?: string
           video_url?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "community_posts_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "daily_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       courses: {
         Row: {
@@ -236,6 +292,51 @@ export type Database = {
           is_published?: boolean
           level?: string
           sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      daily_challenges: {
+        Row: {
+          active_date: string
+          category: string
+          created_at: string
+          created_by: string | null
+          credits_reward: number
+          description: string
+          difficulty: string
+          id: string
+          is_active: boolean
+          prompt: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          active_date: string
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          credits_reward?: number
+          description: string
+          difficulty?: string
+          id?: string
+          is_active?: boolean
+          prompt: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          active_date?: string
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          credits_reward?: number
+          description?: string
+          difficulty?: string
+          id?: string
+          is_active?: boolean
+          prompt?: string
           title?: string
           updated_at?: string
         }
