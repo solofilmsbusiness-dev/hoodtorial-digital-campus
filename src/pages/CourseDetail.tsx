@@ -67,6 +67,7 @@ const CourseDetail = () => {
     isContentUnlocked,
     isLessonCompleted,
     isQuizPassed,
+    isQuizActuallyPassed,
     getQuizAttempts,
     canAttemptQuiz,
     getModuleProgress,
@@ -495,6 +496,7 @@ const CourseDetail = () => {
                   }
                   isLessonCompleted={isLessonCompleted}
                   isQuizPassed={isQuizPassed}
+                  isQuizActuallyPassed={isQuizActuallyPassed}
                   getQuizAttempts={getQuizAttempts}
                   canAttemptQuiz={canAttemptQuiz}
                   moduleProgress={getModuleProgress(module)}
@@ -512,13 +514,13 @@ const CourseDetail = () => {
                     quiz={course.finalExam}
                     type="final"
                     isUnlocked={enrolled && isFinalExamUnlocked}
-                    isPassed={isQuizPassed(course.finalExam.id)}
+                    isPassed={isQuizActuallyPassed(course.finalExam.id)}
                     attemptCount={getQuizAttempts(course.finalExam.id)}
                     maxAttempts={3}
                     onClick={() => handleQuizClick(course.finalExam!)}
                   />
                   {/* Test Mode: Auto-pass final exam button */}
-                  {isTestModeEnabled && shouldAutoPassQuiz && !isQuizPassed(course.finalExam.id) && (
+                  {isTestModeEnabled && shouldAutoPassQuiz && !isQuizActuallyPassed(course.finalExam.id) && (
                     <button
                       onClick={() => handleInstantPassQuiz(course.finalExam!)}
                       className="mt-2 w-full flex items-center justify-center gap-2 py-2 px-4 bg-destructive/10 border border-destructive/30 text-destructive text-sm font-medium hover:bg-destructive/20 transition-colors"
