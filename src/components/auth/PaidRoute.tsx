@@ -4,6 +4,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { useAssessmentResults } from "@/hooks/useAssessmentResults";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useRef } from "react";
+import { useTestMode } from "@/hooks/useTestMode";
 
 interface PaidRouteProps {
   children: React.ReactNode;
@@ -13,6 +14,7 @@ export function PaidRoute({ children }: PaidRouteProps) {
   const { user, loading: authLoading } = useAuth();
   const { hasCompletedAssessment, loading: assessmentLoading } = useAssessmentResults();
   const { hasAccess, loading: subLoading } = useSubscription();
+  const { isTestModeEnabled, canUseTestMode } = useTestMode();
   const location = useLocation();
   const { toast } = useToast();
   const hasShownToast = useRef(false);
@@ -43,6 +45,11 @@ export function PaidRoute({ children }: PaidRouteProps) {
 
   if (!hasCompletedAssessment) {
     return <Navigate to="/assessment" state={{ from: location }} replace />;
+  }
+
+  // Test Mode: bypass subscription check for admins
+  if (canUseTestMode && isTestModeEnabled) {
+    return <>{children}</>;
   }
 
   if (!hasAccess) {

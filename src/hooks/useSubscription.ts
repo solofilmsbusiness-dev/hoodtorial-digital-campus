@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTestModeContext } from "@/contexts/TestModeContext";
 
 export type SubscriptionStatus = "trial" | "active" | "cancelled" | "expired";
 
@@ -14,6 +15,10 @@ interface SubscriptionState {
 
 export function useSubscription() {
   const { user } = useAuth();
+  // Use context directly to avoid circular dependency with useTestMode
+  const testModeContext = useTestModeContext();
+  const isTestModeEnabled = testModeContext.isTestModeEnabled;
+  
   const [subscription, setSubscription] = useState<SubscriptionState>({
     status: null,
     trialStartedAt: null,
@@ -84,8 +89,10 @@ export function useSubscription() {
   }, [subscription.status, subscription.subscriptionEndsAt]);
 
   const hasAccess = useMemo(() => {
+    // Test mode bypasses subscription check
+    if (isTestModeEnabled) return true;
     return isTrialing || isPaid;
-  }, [isTrialing, isPaid]);
+  }, [isTrialing, isPaid, isTestModeEnabled]);
 
   const trialDaysRemaining = useMemo(() => {
     if (!subscription.trialEndsAt) return 0;

@@ -75,7 +75,8 @@ const CourseDetail = () => {
   } = useLessonProgress(course);
 
   const enrollment = course ? getEnrollment(course.code) : undefined;
-  const enrolled = course ? isEnrolled(course.code) : false;
+  // Test mode: treat as enrolled for all courses
+  const enrolled = isTestModeEnabled || (course ? isEnrolled(course.code) : false);
 
   // Calculate overall course progress
   const courseProgress = useMemo(() => {
@@ -362,8 +363,8 @@ const CourseDetail = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Video Player Area */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Enrollment Card for non-enrolled users */}
-              {!enrolled && (
+              {/* Enrollment Card for non-enrolled users (hidden in test mode) */}
+              {!enrolled && !isTestModeEnabled && (
                 <EnrollmentCard
                   course={course}
                   isEnrolled={false}

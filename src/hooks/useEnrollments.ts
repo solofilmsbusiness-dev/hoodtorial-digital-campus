@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useTestModeContext } from "@/contexts/TestModeContext";
 
 export interface Enrollment {
   id: string;
@@ -19,6 +20,10 @@ export function useEnrollments() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { hasAccess } = useSubscription();
+  // Use context directly to avoid circular dependency
+  const testModeContext = useTestModeContext();
+  const isTestModeEnabled = testModeContext.isTestModeEnabled;
+  
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -52,15 +57,18 @@ export function useEnrollments() {
 
   const activeEnrollments = enrollments.filter((e) => e.status === "active");
   const completedEnrollments = enrollments.filter((e) => e.status === "completed");
-  const canEnroll = activeEnrollments.length < MAX_ACTIVE_COURSES;
+  const canEnroll = isTestModeEnabled || activeEnrollments.length < MAX_ACTIVE_COURSES;
 
   const isEnrolled = useCallback(
     (courseCode: string) => {
+      // Test mode: always enrolled
+      if (isTestModeEnabled) return true;
+      
       return enrollments.some(
         (e) => e.course_code === courseCode && (e.status === "active" || e.status === "completed")
       );
     },
-    [enrollments]
+    [enrollments, isTestModeEnabled]
   );
 
   const getEnrollment = useCallback(
@@ -81,7 +89,8 @@ export function useEnrollments() {
         return { error: new Error("Not authenticated"), data: null };
       }
 
-      if (!hasAccess) {
+      // Test mode bypasses subscription check
+      if (!isTestModeEnabled && !hasAccess) {
         toast({
           title: "Subscription required",
           description: "Start your free trial or subscribe to enroll in courses.",
@@ -90,7 +99,8 @@ export function useEnrollments() {
         return { error: new Error("No paid access"), data: null };
       }
 
-      if (!canEnroll) {
+      // Test mode bypasses enrollment limit
+      if (!isTestModeEnabled && !canEnroll) {
         toast({
           title: "Enrollment limit reached",
           description: `You can only have ${MAX_ACTIVE_COURSES} active courses at a time. Complete a course to enroll in more.`,
@@ -141,7 +151,7 @@ export function useEnrollments() {
         return { error: err as Error, data: null };
       }
     },
-    [user, canEnroll, hasAccess, toast]
+    [user, canEnroll, hasAccess, toast, isTestModeEnabled]
   );
 
   const completeCourse = useCallback(
@@ -186,7 +196,7 @@ export function useEnrollments() {
     loading,
     error,
     canEnroll,
-    slotsRemaining: MAX_ACTIVE_COURSES - activeEnrollments.length,
+    slotsRemaining: isTestModeEnabled ? MAX_ACTIVE_COURSES : MAX_ACTIVE_COURSES - activeEnrollments.length,
     maxSlots: MAX_ACTIVE_COURSES,
     isEnrolled,
     getEnrollment,
