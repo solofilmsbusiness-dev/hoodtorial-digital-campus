@@ -7,7 +7,8 @@ import {
   ChevronLeft,
   GraduationCap,
   MessageSquare,
-  Zap
+  Zap,
+  Headphones
 } from "lucide-react";
 import {
   Sidebar,
@@ -22,7 +23,7 @@ import {
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
+import { useAdminSupport } from "@/hooks/useAdminSupport";
 
 const navItems = [
   {
@@ -46,6 +47,11 @@ const navItems = [
     icon: MessageSquare,
   },
   {
+    title: "Support",
+    href: "/admin/support",
+    icon: Headphones,
+  },
+  {
     title: "Users",
     href: "/admin/users",
     icon: Users,
@@ -61,6 +67,7 @@ export function AdminSidebar() {
   const location = useLocation();
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
+  const { openTicketsCount } = useAdminSupport();
 
   return (
     <Sidebar collapsible="icon">
@@ -83,6 +90,7 @@ export function AdminSidebar() {
               {navItems.map((item) => {
                 const isActive = location.pathname === item.href || 
                   (item.href !== "/admin" && location.pathname.startsWith(item.href));
+                const showBadge = item.href === "/admin/support" && openTicketsCount > 0;
                 
                 return (
                   <SidebarMenuItem key={item.href}>
@@ -91,9 +99,14 @@ export function AdminSidebar() {
                       isActive={isActive}
                       tooltip={item.title}
                     >
-                      <Link to={item.href}>
+                      <Link to={item.href} className="relative">
                         <item.icon className="h-5 w-5" />
                         <span>{item.title}</span>
+                        {showBadge && (
+                          <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                            {openTicketsCount > 9 ? "9+" : openTicketsCount}
+                          </span>
+                        )}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

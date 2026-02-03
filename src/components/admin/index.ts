@@ -14,3 +14,5 @@ export { CommandPalette } from "./CommandPalette";
 export { ActivityFeed } from "./ActivityFeed";
 export { AdminNotifications } from "./AdminNotifications";
 export { PendingItemsCard } from "./PendingItemsCard";
+export { SupportTicketList } from "./SupportTicketList";
+export { SupportConversation } from "./SupportConversation";
