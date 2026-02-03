@@ -44,6 +44,7 @@ import {
   BookOpen,
   Trophy,
   MapPin,
+  Download,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Database } from "@/integrations/supabase/types";
@@ -195,6 +196,34 @@ export default function UserManager() {
     }
   };
 
+  const exportToCSV = () => {
+    const headers = ["Name", "Location", "Tier", "Roles", "Courses", "Quiz Passed", "Quiz Failed", "Pass Rate", "Status", "Joined"];
+    const rows = filteredStudents.map((s) => [
+      s.displayName || "No name",
+      s.location || "",
+      s.membershipTier,
+      s.roles.join("; "),
+      s.enrollmentCount,
+      s.quizStats.passed,
+      s.quizStats.failed,
+      `${s.quizStats.passRate}%`,
+      s.subscriptionStatus || "unknown",
+      format(new Date(s.enrolledAt), "yyyy-MM-dd"),
+    ]);
+
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `students-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const getStatusIndicator = (status: string | null, trialEndsAt: string | null) => {
     if (status === "active") return "ring-2 ring-green-500 ring-offset-2 ring-offset-background";
     if (status === "trial" && trialEndsAt) {
@@ -207,7 +236,11 @@ export default function UserManager() {
   return (
     <AdminLayout title="Student Management" description="View and manage all students, their enrollments, and performance">
       <div className="space-y-6">
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-between">
+          <Button variant="outline" size="sm" onClick={exportToCSV} disabled={filteredStudents.length === 0}>
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
+          </Button>
           <div className="flex items-center gap-2 text-muted-foreground">
             <Users className="h-5 w-5" />
             <span>{students?.length || 0} students</span>
