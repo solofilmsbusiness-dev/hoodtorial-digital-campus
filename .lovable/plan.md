@@ -1,117 +1,108 @@
 
 
-# Add Professor Role to Admin System
+# Add Graduation Cap Badges for Admin Users
 
 ## Overview
 
-Add a new "professor" role to the role system and update all admin-related UI to clearly display role badges. This will allow distinguishing professors from regular students, with admin accounts clearly labeled as "Admin" throughout the platform.
+Update the community feed to clearly display admin status with graduation cap icons next to user names. This will make administrators easily identifiable throughout posts and comments.
 
-## Database Changes
+## Current vs. New Design
 
-### 1. Extend the app_role Enum
+| Component | Current | New |
+|-----------|---------|-----|
+| **CommentThread** | Shield icon + "Instructor" label | GraduationCap icon + "Admin" label |
+| **TimelinePost** | No role badge shown | GraduationCap badge for admins |
+| **PostCard** | No role badge shown | GraduationCap badge for admins |
 
-Add "professor" as a new role type:
+## Visual Design
 
-```sql
-ALTER TYPE public.app_role ADD VALUE 'professor';
+```text
+Post Header (Current):
+  [Avatar] John Smith  ·  2h ago  [Category]
+
+Post Header (New - for Admin):
+  [Avatar] John Smith  [🎓 Admin]  ·  2h ago  [Category]
+
+Comment (Current):
+  [Avatar] Admin User  [🛡️ Instructor]
+
+Comment (New):
+  [Avatar] Admin User  [🎓 Admin]
+  [Avatar] Professor   [🎓 Professor]
 ```
 
-## Frontend Changes
+## Implementation Details
 
-### 2. Update StudentFilters.tsx
+### 1. Update CommentThread.tsx
 
-Add "Professor" as a filter option in the role dropdown:
-
-| Before | After |
-|--------|-------|
-| Admin, Moderator, Student | Admin, Professor, Moderator, Student |
-
-### 3. Update UserManager.tsx
-
-Add role management actions and update badge styling:
-
-**Add getRoleBadgeVariant case:**
-```typescript
-case "professor":
-  return "default"; // Uses primary color
-```
-
-**Add dropdown menu options:**
-- "Make Professor" action for non-professors
-- "Remove Professor" action for existing professors
-
-### 4. Update StudentDetailSheet.tsx
-
-Add professor role styling and management options matching the UserManager pattern.
-
-### 5. Update CommentThread.tsx
-
-Update the instructor badge logic to also recognize professors:
+Change the role badge rendering to use GraduationCap and display specific role names:
 
 ```typescript
-// Before
-if (comment.is_instructor_comment || comment.user_role === 'admin')
-
-// After  
-if (comment.is_instructor_comment || comment.user_role === 'admin' || comment.user_role === 'professor')
+const getRoleBadge = () => {
+  if (comment.user_role === 'admin') {
+    return (
+      <Badge className="bg-destructive/20 text-destructive text-xs">
+        <GraduationCap className="h-3 w-3 mr-1" />
+        Admin
+      </Badge>
+    );
+  }
+  if (comment.user_role === 'professor') {
+    return (
+      <Badge className="bg-primary/20 text-primary text-xs">
+        <GraduationCap className="h-3 w-3 mr-1" />
+        Professor
+      </Badge>
+    );
+  }
+  if (comment.user_role === 'moderator') {
+    return (
+      <Badge className="bg-accent/20 text-accent text-xs">
+        <Shield className="h-3 w-3 mr-1" />
+        Moderator
+      </Badge>
+    );
+  }
+  return null;
+};
 ```
 
-### 6. Update useCommunityComments.ts
+### 2. Update TimelinePost.tsx
 
-Include professors when determining if a comment should be marked as an instructor comment:
+Add role badge display in the header section next to author name. This requires:
+- Fetching author role data (needs hook update)
+- Rendering a GraduationCap badge for admins/professors
 
-```typescript
-// Before
-const isInstructor = userRoles?.some(r => r.role === 'admin' || r.role === 'moderator');
+### 3. Update PostCard.tsx
 
-// After
-const isInstructor = userRoles?.some(r => ['admin', 'moderator', 'professor'].includes(r.role));
-```
+Similarly add role badge display next to author names for admins and professors.
 
-## Data Updates
+### 4. Update useCommunityPosts.ts Hook
 
-### 7. Update bangoutfilms@gmail.com Account
+Extend the author data fetch to include role information so posts can display role badges.
 
-After the schema migration, update the user's role from "student" to "professor":
+## Role Badge Styling
 
-1. Look up the user_id for bangoutfilms@gmail.com
-2. Add the "professor" role to their user_roles entry
-3. Remove the "student" role if desired (or keep both)
-
-## Visual Summary
-
-### Role Badge Styling
-
-| Role | Badge Style | Color |
-|------|-------------|-------|
-| Admin | destructive | Red background - clearly stands out |
-| Professor | default | Primary color (gold) |
-| Moderator | secondary | Gray/muted |
-| Student | outline | Subtle border only |
-
-### Role Display in Timeline Posts
-
-When a professor or admin comments on a post:
-- Their avatar gets a gold/primary border
-- An "Instructor" badge appears next to their name
-- Their name appears in the primary color
+| Role | Icon | Background | Text Color |
+|------|------|------------|------------|
+| Admin | GraduationCap | Red (destructive) | Red |
+| Professor | GraduationCap | Gold (primary) | Gold |
+| Moderator | Shield | Green (accent) | Green |
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| Database migration | Add 'professor' to app_role enum |
-| `src/components/admin/StudentFilters.tsx` | Add Professor to role filter dropdown |
-| `src/pages/admin/UserManager.tsx` | Add professor badge variant and dropdown actions |
-| `src/components/admin/StudentDetailSheet.tsx` | Add professor badge variant |
-| `src/components/community/CommentThread.tsx` | Recognize professors as instructors |
-| `src/hooks/useCommunityComments.ts` | Include professors in instructor check |
+| `src/components/community/CommentThread.tsx` | Change icon to GraduationCap, show specific role names |
+| `src/components/community/TimelinePost.tsx` | Add role badge to post header |
+| `src/components/community/PostCard.tsx` | Add role badge to post header |
+| `src/hooks/useCommunityPosts.ts` | Include author role in post data |
 
 ## Expected Outcome
 
-1. Admins are clearly labeled with red "admin" badges throughout the platform
-2. Professors get gold "professor" badges and their comments show "Instructor" label
-3. Role filter in user management includes Professor option
-4. Admin can promote/demote users to/from professor role
-5. bangoutfilms@gmail.com account will have the professor role
+1. Admin users will have a red badge with graduation cap icon saying "Admin"
+2. Professors will have a gold badge with graduation cap icon saying "Professor"  
+3. Moderators keep their current styling with shield icon
+4. Role badges appear on both post cards and comments
+5. Easy visual identification of staff members throughout the community
 
