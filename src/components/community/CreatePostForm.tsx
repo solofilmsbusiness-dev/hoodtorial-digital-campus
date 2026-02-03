@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { PenSquare, X, Link as LinkIcon } from "lucide-react";
+import { PenSquare, X, Link as LinkIcon, Award } from "lucide-react";
 import { PostCategory } from "@/hooks/useCommunityPosts";
 import { courses } from "@/data/courses";
 import { ImageUploader } from "./ImageUploader";
@@ -29,12 +29,15 @@ interface CreatePostFormProps {
     video_url?: string;
     media_urls?: string[];
     mentioned_user_ids?: string[];
+    challenge_id?: string;
   }) => void;
   onCancel: () => void;
   isSubmitting: boolean;
+  challengeId?: string;
+  challengeTitle?: string;
 }
 
-export function CreatePostForm({ onSubmit, onCancel, isSubmitting }: CreatePostFormProps) {
+export function CreatePostForm({ onSubmit, onCancel, isSubmitting, challengeId, challengeTitle }: CreatePostFormProps) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [category, setCategory] = useState<PostCategory>("general");
@@ -56,12 +59,13 @@ export function CreatePostForm({ onSubmit, onCancel, isSubmitting }: CreatePostF
     onSubmit({
       title: title.trim(),
       content: content.trim(),
-      category,
+      category: challengeId ? 'project_submission' : category,
       course_code: courseCode || undefined,
-      is_project_post: isProjectPost,
+      is_project_post: isProjectPost || !!challengeId,
       video_url: videoUrl || undefined,
       media_urls: mediaUrls.length > 0 ? mediaUrls : undefined,
       mentioned_user_ids: mentionedUserIds.length > 0 ? mentionedUserIds : undefined,
+      challenge_id: challengeId,
     });
   };
 
@@ -72,13 +76,27 @@ export function CreatePostForm({ onSubmit, onCancel, isSubmitting }: CreatePostF
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <PenSquare className="h-5 w-5 text-primary" />
-            Create New Post
+            {challengeId ? (
+              <>
+                <Award className="h-5 w-5 text-primary" />
+                Challenge Submission
+              </>
+            ) : (
+              <>
+                <PenSquare className="h-5 w-5 text-primary" />
+                Create New Post
+              </>
+            )}
           </CardTitle>
           <Button variant="ghost" size="icon" onClick={onCancel}>
             <X className="h-4 w-4" />
           </Button>
         </div>
+        {challengeTitle && (
+          <p className="text-sm text-muted-foreground mt-1">
+            Responding to: <span className="font-medium text-primary">{challengeTitle}</span>
+          </p>
+        )}
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">

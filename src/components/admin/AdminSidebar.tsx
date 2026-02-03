@@ -6,7 +6,8 @@ import {
   Settings,
   ChevronLeft,
   GraduationCap,
-  MessageSquare
+  MessageSquare,
+  Zap
 } from "lucide-react";
 import {
   Sidebar,
@@ -33,6 +34,11 @@ const navItems = [
     title: "Courses",
     href: "/admin/courses",
     icon: BookOpen,
+  },
+  {
+    title: "Challenges",
+    href: "/admin/challenges",
+    icon: Zap,
   },
   {
     title: "Community",

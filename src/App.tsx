@@ -29,6 +29,7 @@ import CourseManager from "./pages/admin/CourseManager";
 import CourseEditor from "./pages/admin/CourseEditor";
 import UserManager from "./pages/admin/UserManager";
 import CommunityManager from "./pages/admin/CommunityManager";
+import ChallengeManager from "./pages/admin/ChallengeManager";
 import AdminSettings from "./pages/admin/AdminSettings";
 
 const queryClient = new QueryClient();
@@ -111,6 +112,11 @@ const App = () => (
                 <Route path="/admin/settings" element={
                   <AdminRoute>
                     <AdminSettings />
+                  </AdminRoute>
+                } />
+                <Route path="/admin/challenges" element={
+                  <AdminRoute>
+                    <ChallengeManager />
                   </AdminRoute>
                 } />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
