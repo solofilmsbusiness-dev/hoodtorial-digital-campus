@@ -11,7 +11,7 @@ import {
 } from "@/components/course";
 import { Badge } from "@/components/ui/badge";
 import { getCourseByCode, getTotalLessonsCount, getTotalQuizzesCount, type Lesson, type Quiz } from "@/data/courses";
-import { ArrowLeft, Clock, BookOpen, Award, CheckCircle2, X, Lock, Play } from "lucide-react";
+import { ArrowLeft, Clock, BookOpen, Award, CheckCircle2, X, Lock, Play, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useEnrollments } from "@/hooks/useEnrollments";
@@ -21,6 +21,9 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { TrialBanner, SubscriptionGate } from "@/components/subscription";
 import { useVideoProgress } from "@/hooks/useVideoProgress";
 import { Progress } from "@/components/ui/progress";
+import { useTestMode } from "@/hooks/useTestMode";
+import { TestModeBanner } from "@/components/admin";
+import { useQuizResults } from "@/hooks/useQuizResults";
 
 const CourseDetail = () => {
   const { code } = useParams<{ code: string }>();
@@ -28,6 +31,8 @@ const CourseDetail = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const { hasAccess, isTrialing, trialDaysRemaining } = useSubscription();
+  const { isTestModeEnabled, shouldAutoPassQuiz } = useTestMode();
+  const { instantPassQuiz } = useQuizResults();
   
   const [activeLesson, setActiveLesson] = useState<Lesson | undefined>(
     course?.modules[0]?.lessons[0]
@@ -165,6 +170,16 @@ const CourseDetail = () => {
     
     if (!activeLesson) return;
 
+    // Test mode: allow instant completion
+    if (isTestModeEnabled) {
+      await markLessonComplete(course.code, activeLesson.id, 0);
+      toast({
+        title: "Lesson Completed (Test Mode)",
+        description: "Progress saved instantly via test mode.",
+      });
+      return;
+    }
+
     // For video lessons, require 90% watch
     if (activeLesson.type === "video") {
       if (videoProgress.watchPercentage < 90 && !videoProgress.isCompleted) {
@@ -183,6 +198,25 @@ const CourseDetail = () => {
       title: "Lesson Completed!",
       description: "Your progress has been saved.",
     });
+  };
+
+  // Test mode: instant quiz pass handler
+  const handleInstantPassQuiz = async (quiz: Quiz) => {
+    if (!shouldAutoPassQuiz || !course) return;
+    
+    const result = await instantPassQuiz(quiz.id, course.code, quiz.questions);
+    if (result.error) {
+      toast({
+        title: "Error",
+        description: "Failed to auto-pass quiz.",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Quiz Passed (Test Mode)",
+        description: `${quiz.title} marked as passed.`,
+      });
+    }
   };
 
   const handleLessonSelect = (lesson: Lesson) => {
@@ -216,6 +250,9 @@ const CourseDetail = () => {
 
   return (
     <PageLayout>
+      {/* Test Mode Banner */}
+      <TestModeBanner className={isTrialing ? "top-12" : ""} />
+      
       {/* Trial Banner */}
       {isTrialing && <TrialBanner />}
 
@@ -386,7 +423,18 @@ const CourseDetail = () => {
                   )}
 
                   <div className="flex gap-4 mt-6">
-                    {activeLesson.type === "video" ? (
+                    {/* Test Mode Quick Complete Button */}
+                    {isTestModeEnabled && (
+                      <button 
+                        onClick={handleMarkComplete}
+                        className="btn-brutal bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        <Zap className="mr-2 h-5 w-5" />
+                        Quick Complete
+                      </button>
+                    )}
+
+                    {!isTestModeEnabled && activeLesson.type === "video" ? (
                       <button 
                         onClick={handleMarkComplete} 
                         disabled={!videoProgress.isCompleted && videoProgress.watchPercentage < 90}
@@ -408,12 +456,12 @@ const CourseDetail = () => {
                           </>
                         )}
                       </button>
-                    ) : (
+                    ) : !isTestModeEnabled ? (
                       <button onClick={handleMarkComplete} className="btn-brutal">
                         Mark Complete
                         <CheckCircle2 className="ml-2 h-5 w-5" />
                       </button>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               </>
@@ -468,6 +516,16 @@ const CourseDetail = () => {
                     maxAttempts={3}
                     onClick={() => handleQuizClick(course.finalExam!)}
                   />
+                  {/* Test Mode: Auto-pass final exam button */}
+                  {isTestModeEnabled && shouldAutoPassQuiz && !isQuizPassed(course.finalExam.id) && (
+                    <button
+                      onClick={() => handleInstantPassQuiz(course.finalExam!)}
+                      className="mt-2 w-full flex items-center justify-center gap-2 py-2 px-4 bg-destructive/10 border border-destructive/30 text-destructive text-sm font-medium hover:bg-destructive/20 transition-colors"
+                    >
+                      <Zap className="w-4 h-4" />
+                      Auto-Pass Exam (Test Mode)
+                    </button>
+                  )}
                 </div>
               )}
               </div>

@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTestMode } from "@/hooks/useTestMode";
 import type { Tables } from "@/integrations/supabase/types";
 
 type QuizResult = Tables<"quiz_results">;
 
 export function useQuizResults() {
   const { user } = useAuth();
+  const { shouldAutoPassQuiz, isTestModeEnabled } = useTestMode();
   const [results, setResults] = useState<QuizResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -38,9 +40,11 @@ export function useQuizResults() {
     fetchResults();
   }, [user]);
 
-  const getAttemptCount = (quizId: string) => {
+  const getAttemptCount = useCallback((quizId: string) => {
+    // In test mode, report 0 attempts to allow unlimited retries
+    if (isTestModeEnabled) return 0;
     return results.filter((r) => r.quiz_id === quizId).length;
-  };
+  }, [results, isTestModeEnabled]);
 
   const saveQuizResult = async (result: {
     quiz_id: string;
@@ -52,15 +56,20 @@ export function useQuizResults() {
   }) => {
     if (!user) return { error: new Error("Not authenticated") };
 
+    // In test mode with auto-pass, override the passed status
+    const finalResult = shouldAutoPassQuiz
+      ? { ...result, passed: true, score: result.total_questions }
+      : result;
+
     // Get current attempt count for this quiz
-    const attemptNumber = getAttemptCount(result.quiz_id) + 1;
+    const attemptNumber = getAttemptCount(finalResult.quiz_id) + 1;
 
     try {
       const { data, error } = await supabase
         .from("quiz_results")
         .insert({
           user_id: user.id,
-          ...result,
+          ...finalResult,
           attempt_number: attemptNumber,
         })
         .select()
@@ -75,5 +84,34 @@ export function useQuizResults() {
     }
   };
 
-  return { results, loading, error, saveQuizResult, getAttemptCount };
+  // Test mode helper: instantly pass a quiz without going through the player
+  const instantPassQuiz = useCallback(async (quizId: string, courseCode: string, totalQuestions: number) => {
+    if (!user || !shouldAutoPassQuiz) return { error: new Error("Not in test mode") };
+
+    try {
+      const { data, error } = await supabase
+        .from("quiz_results")
+        .insert({
+          user_id: user.id,
+          quiz_id: quizId,
+          course_code: courseCode,
+          score: totalQuestions,
+          total_questions: totalQuestions,
+          passed: true,
+          attempt_number: 1,
+          time_taken_seconds: 0,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setResults((prev) => [data, ...prev]);
+      return { error: null, data };
+    } catch (err) {
+      return { error: err as Error, data: null };
+    }
+  }, [user, shouldAutoPassQuiz]);
+
+  return { results, loading, error, saveQuizResult, getAttemptCount, instantPassQuiz, isTestModeEnabled };
 }

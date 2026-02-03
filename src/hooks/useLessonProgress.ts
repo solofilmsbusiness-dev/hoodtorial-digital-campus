@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserProgress } from "@/hooks/useUserProgress";
 import { useQuizResults } from "@/hooks/useQuizResults";
+import { useTestMode } from "@/hooks/useTestMode";
 import type { Course, Lesson, Module } from "@/data/courses";
 
 const WATCH_THRESHOLD = 90; // 90% watched to mark complete
@@ -18,6 +19,7 @@ export function useLessonProgress(course: Course | undefined) {
   const { user } = useAuth();
   const { progress, markLessonComplete } = useUserProgress();
   const { results: quizResults } = useQuizResults();
+  const { isTestModeEnabled } = useTestMode();
 
   // Get completion data for this course
   const courseProgress = useMemo(() => {
@@ -62,6 +64,11 @@ export function useLessonProgress(course: Course | undefined) {
     (moduleIndex: number, lessonIndex: number, type: "lesson" | "quiz" = "lesson") => {
       if (!course) return false;
       if (!user) return false; // Must be logged in to progress
+
+      // Admin test mode: bypass all unlock requirements
+      if (isTestModeEnabled) {
+        return true;
+      }
 
       // First module, first lesson is always unlocked
       if (moduleIndex === 0 && lessonIndex === 0 && type === "lesson") {
@@ -111,7 +118,7 @@ export function useLessonProgress(course: Course | undefined) {
 
       return true;
     },
-    [course, user, courseProgress]
+    [course, user, courseProgress, isTestModeEnabled]
   );
 
   // Update video watch progress
@@ -153,18 +160,22 @@ export function useLessonProgress(course: Course | undefined) {
 
   const isQuizPassed = useCallback(
     (quizId: string) => {
+      // Test mode: treat all quizzes as passed
+      if (isTestModeEnabled) return true;
       return courseProgress.quizMap.get(quizId)?.passed || false;
     },
-    [courseProgress]
+    [courseProgress, isTestModeEnabled]
   );
 
   const canAttemptQuiz = useCallback(
     (quizId: string) => {
+      // Test mode: always allow quiz attempts
+      if (isTestModeEnabled) return true;
       const attempts = getQuizAttempts(quizId);
       const passed = isQuizPassed(quizId);
       return !passed && attempts < 3;
     },
-    [getQuizAttempts, isQuizPassed]
+    [getQuizAttempts, isQuizPassed, isTestModeEnabled]
   );
 
   // Calculate module completion percentage
@@ -200,11 +211,13 @@ export function useLessonProgress(course: Course | undefined) {
   // Check if lesson is completed
   const isLessonCompleted = useCallback(
     (lessonId: string) => {
+      // Test mode: treat all lessons as completed
+      if (isTestModeEnabled) return true;
       const data = courseProgress.lessonMap.get(lessonId);
       if (!data) return false;
       return data.completed || data.watchPercentage >= WATCH_THRESHOLD;
     },
-    [courseProgress]
+    [courseProgress, isTestModeEnabled]
   );
 
   // Get watch percentage for a specific lesson
