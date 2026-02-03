@@ -1,154 +1,124 @@
 
+# Fix View Button for Database-Only Courses
 
-# Add Delete Course Action to Course Manager
+## Problem
 
-## Overview
+The View button (eye icon) in Course Manager doesn't work for courses created in the database because:
 
-Add a delete button to the Actions column in the Course Manager table, allowing admins to delete courses directly from the main course list. The delete action will include a confirmation dialog to prevent accidental deletions.
+1. `CourseDetail.tsx` only fetches courses from the static `src/data/courses.ts` file using `getCourseByCode()`
+2. New courses created via the admin panel exist only in the database
+3. When clicking View on a database-only course, students/admins see "Course Not Found"
 
-## Current State
+Currently, the button is intentionally disabled for database-only courses with a tooltip "Preview not available for database-only courses" - but this is a workaround, not a solution.
 
-- **Actions column** has View (Eye icon) and Edit (Pencil icon) buttons
-- No delete functionality exists on the Course Manager page
-- The page already has mutation patterns for updating courses
-- Database has RLS policy allowing admins to delete courses: `"Admins can delete courses"`
+## Solution
 
-## Implementation Plan
+Update `CourseDetail.tsx` to fetch course data from the database first, falling back to static data. This mirrors the pattern already used in `CourseEditor.tsx`.
 
-### 1. Add Delete Mutation
+## Implementation
 
-Create a new `useMutation` hook for deleting courses:
+### 1. Update CourseDetail.tsx to Fetch from Database
+
+Add a database query to fetch the course and its modules/lessons:
 
 ```typescript
-const deleteCourse = useMutation({
-  mutationFn: async (courseId: string) => {
-    const { error } = await supabase
+// Fetch course from database
+const { data: dbCourse, isLoading: isLoadingCourse } = useQuery({
+  queryKey: ["course-detail", code],
+  queryFn: async () => {
+    const { data, error } = await supabase
       .from("courses")
-      .delete()
-      .eq("id", courseId);
+      .select(`
+        *,
+        modules (
+          *,
+          lessons (*)
+        )
+      `)
+      .eq("code", code)
+      .maybeSingle();
+    
     if (error) throw error;
-  },
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ["admin-courses"] });
-    toast({ title: "Course deleted successfully" });
-  },
-  onError: (error) => {
-    toast({ 
-      title: "Failed to delete course", 
-      description: error.message,
-      variant: "destructive" 
-    });
+    return data;
   },
 });
+
+// Fallback to static course if not in database
+const staticCourse = getCourseByCode(code || "");
+const course = dbCourse ? transformDbCourse(dbCourse) : staticCourse;
 ```
 
-### 2. Add Confirmation Dialog State
+### 2. Create a Transform Function
 
-Add state to track which course is being deleted:
+Convert database course format to the Course interface format expected by components:
 
 ```typescript
-const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
+function transformDbCourse(dbCourse): Course {
+  return {
+    code: dbCourse.code,
+    title: dbCourse.title,
+    description: dbCourse.description || "",
+    department: dbCourse.department_id,
+    departmentId: dbCourse.department_id,
+    credits: dbCourse.credits,
+    level: dbCourse.level,
+    duration: dbCourse.duration || "Self-paced",
+    lessons: countLessons(dbCourse.modules),
+    modules: transformModules(dbCourse.modules),
+    finalExam: null, // Will need separate handling
+  };
+}
 ```
 
-### 3. Update Imports
+### 3. Update CourseManager View Button
 
-Add required imports:
-
-```typescript
-import { Plus, Pencil, Eye, Lock, Database, Loader2, Trash2 } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-```
-
-### 4. Add Delete Button to Actions Column
-
-Add a delete button next to the existing View and Edit buttons:
+Enable the View button for all courses once CourseDetail can handle database courses:
 
 ```tsx
-<Button 
-  variant="ghost" 
-  size="icon"
-  onClick={() => setCourseToDelete(course)}
-  disabled={isUsingStaticData}
-  className="text-destructive hover:text-destructive hover:bg-destructive/10"
-  title="Delete course"
->
-  <Trash2 className="h-4 w-4" />
+<Button variant="ghost" size="icon" asChild>
+  <Link to={`/course/${course.code}`}>
+    <Eye className="h-4 w-4" />
+  </Link>
 </Button>
 ```
 
-### 5. Add Confirmation AlertDialog
+### 4. Add Loading State
 
-Add the confirmation dialog at the end of the component:
+Show a loading skeleton while fetching course data:
 
 ```tsx
-<AlertDialog open={!!courseToDelete} onOpenChange={() => setCourseToDelete(null)}>
-  <AlertDialogContent>
-    <AlertDialogHeader>
-      <AlertDialogTitle>Delete Course</AlertDialogTitle>
-      <AlertDialogDescription>
-        Are you sure you want to delete "{courseToDelete?.title}" ({courseToDelete?.code})?
-        This will also delete all modules, lessons, and quizzes associated with this course.
-        This action cannot be undone.
-      </AlertDialogDescription>
-    </AlertDialogHeader>
-    <AlertDialogFooter>
-      <AlertDialogCancel>Cancel</AlertDialogCancel>
-      <AlertDialogAction
-        onClick={() => {
-          if (courseToDelete) {
-            deleteCourse.mutate(courseToDelete.id);
-            setCourseToDelete(null);
-          }
-        }}
-        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-      >
-        Delete
-      </AlertDialogAction>
-    </AlertDialogFooter>
-  </AlertDialogContent>
-</AlertDialog>
-```
-
-## Visual Layout (Updated Actions Column)
-
-```
-+-------+-------+--------+
-| View  | Edit  | Delete |
-| [Eye] | [Pen] | [Trash]|
-+-------+-------+--------+
+if (isLoadingCourse) {
+  return (
+    <PageLayout>
+      <Section className="pt-32">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+          <p className="mt-4 text-muted-foreground">Loading course...</p>
+        </div>
+      </Section>
+    </PageLayout>
+  );
+}
 ```
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/pages/admin/CourseManager.tsx` | Add imports, delete mutation, state, delete button, and confirmation dialog |
+| `src/pages/CourseDetail.tsx` | Add database query, transform function, loading state, merge static + DB data |
+| `src/pages/admin/CourseManager.tsx` | Remove disabled state on View button - always enable it |
 
 ## Technical Considerations
 
-1. **Cascade Deletion**: The database should have ON DELETE CASCADE for modules/lessons/quizzes referencing the course. If not, the deletion might fail.
+1. **Quiz Data**: Database courses may not have quiz questions stored - need to handle this gracefully
+2. **Module/Lesson Order**: Ensure `sort_order` is respected when loading from DB
+3. **Caching**: Use React Query to cache course data efficiently
+4. **Backward Compatibility**: Static courses should continue to work as-is
 
-2. **Static Data Check**: Delete button is disabled when using static data (courses not yet in database), same as other mutations.
+## Expected Behavior After Fix
 
-3. **User Feedback**: Toast notification confirms successful deletion or shows error.
-
-4. **Safety**: Confirmation dialog prevents accidental deletions and clearly states consequences.
-
-## Summary
-
-This adds a delete action to the Course Manager that:
-- Appears as a trash icon button in the Actions column
-- Shows a confirmation dialog before deleting
-- Warns about cascading deletion of modules, lessons, and quizzes
-- Provides success/error feedback via toast notifications
-- Is disabled when courses are not yet in the database
-
+1. Admin creates a new course in Course Manager
+2. Admin can click View (eye icon) to preview the course page
+3. Students can navigate to database-only courses via direct URL
+4. Course displays properly with modules, lessons, and quizzes from the database
+5. Static courses continue to work as before (fallback)
