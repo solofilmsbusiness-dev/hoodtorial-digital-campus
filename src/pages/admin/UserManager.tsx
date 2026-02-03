@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { AdminLayout } from "@/components/admin";
-import { useAllUsers } from "@/hooks/useAllUsers";
+import { StudentFilters, type SubscriptionFilter, type TierFilter, type RoleFilter, type SortOption } from "@/components/admin/StudentFilters";
+import { StudentDetailSheet } from "@/components/admin/StudentDetailSheet";
+import { useAdminStudents, type StudentSummary } from "@/hooks/useAdminStudents";
 import { useManageRoles } from "@/hooks/useManageRoles";
 import { useAuth } from "@/contexts/AuthContext";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Table,
   TableBody,
@@ -32,7 +33,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, MoreHorizontal, Shield, ShieldCheck, ShieldX, Users } from "lucide-react";
+import {
+  MoreHorizontal,
+  Shield,
+  ShieldCheck,
+  ShieldX,
+  Users,
+  Eye,
+  GraduationCap,
+  BookOpen,
+  Trophy,
+  MapPin,
+} from "lucide-react";
 import { format } from "date-fns";
 import { Database } from "@/integrations/supabase/types";
 
@@ -40,9 +52,21 @@ type AppRole = Database["public"]["Enums"]["app_role"];
 
 export default function UserManager() {
   const { user: currentUser } = useAuth();
-  const { data: users, isLoading } = useAllUsers();
+  const { data: students, isLoading } = useAdminStudents();
   const { addRole, removeRole } = useManageRoles();
+
+  // Filters state
   const [searchQuery, setSearchQuery] = useState("");
+  const [subscriptionFilter, setSubscriptionFilter] = useState<SubscriptionFilter>("all");
+  const [tierFilter, setTierFilter] = useState<TierFilter>("all");
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
+  const [sortOption, setSortOption] = useState<SortOption>("newest");
+
+  // Sheet state
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+
+  // Role dialog state
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     action: "add" | "remove";
@@ -51,16 +75,80 @@ export default function UserManager() {
     userName: string;
   } | null>(null);
 
-  const filteredUsers = users?.filter((user) => {
-    const searchLower = searchQuery.toLowerCase();
-    return (
-      user.displayName?.toLowerCase().includes(searchLower) ||
-      user.id.toLowerCase().includes(searchLower)
-    );
-  });
+  // Filter and sort students
+  const filteredStudents = useMemo(() => {
+    if (!students) return [];
+
+    let result = [...students];
+
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(
+        (s) =>
+          s.displayName?.toLowerCase().includes(query) ||
+          s.location?.toLowerCase().includes(query) ||
+          s.id.toLowerCase().includes(query)
+      );
+    }
+
+    // Subscription filter
+    if (subscriptionFilter !== "all") {
+      result = result.filter((s) => {
+        if (subscriptionFilter === "trial") {
+          return s.subscriptionStatus === "trial" && s.trialEndsAt && new Date(s.trialEndsAt) > new Date();
+        }
+        if (subscriptionFilter === "active") {
+          return s.subscriptionStatus === "active";
+        }
+        if (subscriptionFilter === "expired") {
+          return s.subscriptionStatus === "trial" && s.trialEndsAt && new Date(s.trialEndsAt) < new Date();
+        }
+        return true;
+      });
+    }
+
+    // Tier filter
+    if (tierFilter !== "all") {
+      result = result.filter((s) => s.membershipTier === tierFilter);
+    }
+
+    // Role filter
+    if (roleFilter !== "all") {
+      result = result.filter((s) => s.roles.includes(roleFilter));
+    }
+
+    // Sort
+    switch (sortOption) {
+      case "oldest":
+        result.sort((a, b) => new Date(a.enrolledAt).getTime() - new Date(b.enrolledAt).getTime());
+        break;
+      case "newest":
+        result.sort((a, b) => new Date(b.enrolledAt).getTime() - new Date(a.enrolledAt).getTime());
+        break;
+      case "name-asc":
+        result.sort((a, b) => (a.displayName || "").localeCompare(b.displayName || ""));
+        break;
+      case "name-desc":
+        result.sort((a, b) => (b.displayName || "").localeCompare(a.displayName || ""));
+        break;
+      case "quiz-rate":
+        result.sort((a, b) => b.quizStats.passRate - a.quizStats.passRate);
+        break;
+      case "courses":
+        result.sort((a, b) => b.enrollmentCount - a.enrollmentCount);
+        break;
+    }
+
+    return result;
+  }, [students, searchQuery, subscriptionFilter, tierFilter, roleFilter, sortOption]);
+
+  const handleViewDetails = (userId: string) => {
+    setSelectedStudentId(userId);
+    setSheetOpen(true);
+  };
 
   const handleRoleAction = (action: "add" | "remove", userId: string, role: AppRole, userName: string) => {
-    // Prevent admins from removing their own admin role
     if (action === "remove" && role === "admin" && userId === currentUser?.id) {
       return;
     }
@@ -69,7 +157,7 @@ export default function UserManager() {
 
   const confirmRoleAction = () => {
     if (!confirmDialog) return;
-    
+
     if (confirmDialog.action === "add") {
       addRole.mutate({ userId: confirmDialog.userId, role: confirmDialog.role });
     } else {
@@ -80,7 +168,7 @@ export default function UserManager() {
 
   const getInitials = (name: string | null, id: string) => {
     if (name) {
-      return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+      return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
     }
     return id.slice(0, 2).toUpperCase();
   };
@@ -96,85 +184,160 @@ export default function UserManager() {
     }
   };
 
+  const getTierColor = (tier: string) => {
+    switch (tier) {
+      case "graduate":
+        return "text-yellow-500";
+      case "sophomore":
+        return "text-blue-500";
+      default:
+        return "text-muted-foreground";
+    }
+  };
+
+  const getStatusIndicator = (status: string | null, trialEndsAt: string | null) => {
+    if (status === "active") return "ring-2 ring-green-500 ring-offset-2 ring-offset-background";
+    if (status === "trial" && trialEndsAt) {
+      const isExpired = new Date(trialEndsAt) < new Date();
+      return isExpired ? "ring-2 ring-red-500 ring-offset-2 ring-offset-background" : "ring-2 ring-amber-500 ring-offset-2 ring-offset-background";
+    }
+    return "";
+  };
+
   return (
-    <AdminLayout title="User Management" description="Manage user roles and permissions">
+    <AdminLayout title="Student Management" description="View and manage all students, their enrollments, and performance">
       <div className="space-y-6">
         <div className="flex items-center justify-end">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Users className="h-5 w-5" />
-            <span>{users?.length || 0} users</span>
+            <span>{students?.length || 0} students</span>
           </div>
         </div>
 
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by name or ID..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 max-w-sm"
-          />
-        </div>
+        <StudentFilters
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          subscriptionFilter={subscriptionFilter}
+          onSubscriptionChange={setSubscriptionFilter}
+          tierFilter={tierFilter}
+          onTierChange={setTierFilter}
+          roleFilter={roleFilter}
+          onRoleChange={setRoleFilter}
+          sortOption={sortOption}
+          onSortChange={setSortOption}
+        />
 
-        <div className="border rounded-lg">
+        <div className="border rounded-lg overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Roles</TableHead>
+                <TableHead>Student</TableHead>
+                <TableHead className="hidden md:table-cell">
+                  <div className="flex items-center gap-1">
+                    <BookOpen className="h-3.5 w-3.5" />
+                    Courses
+                  </div>
+                </TableHead>
+                <TableHead className="hidden md:table-cell">
+                  <div className="flex items-center gap-1">
+                    <Trophy className="h-3.5 w-3.5" />
+                    Quizzes
+                  </div>
+                </TableHead>
+                <TableHead className="hidden sm:table-cell">Tier</TableHead>
                 <TableHead>Joined</TableHead>
-                <TableHead className="w-[100px]">Actions</TableHead>
+                <TableHead className="w-[80px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8">
-                    Loading users...
+                  <TableCell colSpan={6} className="text-center py-8">
+                    Loading students...
                   </TableCell>
                 </TableRow>
-              ) : filteredUsers?.length === 0 ? (
+              ) : filteredStudents.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                    No users found
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    No students found
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredUsers?.map((user) => (
-                  <TableRow key={user.id}>
+                filteredStudents.map((student) => (
+                  <TableRow key={student.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleViewDetails(student.id)}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10">
+                        <Avatar className={`h-10 w-10 ${getStatusIndicator(student.subscriptionStatus, student.trialEndsAt)}`}>
+                          <AvatarImage src={student.avatarUrl || undefined} />
                           <AvatarFallback className="bg-primary text-primary-foreground">
-                            {getInitials(user.displayName, user.id)}
+                            {getInitials(student.displayName, student.id)}
                           </AvatarFallback>
                         </Avatar>
-                        <div>
-                          <p className="font-medium">
-                            {user.displayName || "No name"}
-                            {user.id === currentUser?.id && (
-                              <span className="text-xs text-muted-foreground ml-2">(you)</span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium truncate">
+                              {student.displayName || "No name"}
+                            </p>
+                            {student.id === currentUser?.id && (
+                              <span className="text-xs text-muted-foreground">(you)</span>
                             )}
-                          </p>
-                          <p className="text-sm text-muted-foreground font-mono">
-                            {user.id.slice(0, 8)}...
-                          </p>
+                          </div>
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                            {student.location ? (
+                              <>
+                                <MapPin className="h-3 w-3" />
+                                <span className="truncate max-w-[150px]">{student.location}</span>
+                              </>
+                            ) : (
+                              <span className="text-muted-foreground/50">—</span>
+                            )}
+                          </div>
+                          <div className="flex gap-1 mt-1 flex-wrap md:hidden">
+                            {student.roles.map((role) => (
+                              <Badge key={role} variant={getRoleBadgeVariant(role)} className="text-xs">
+                                {role}
+                              </Badge>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1 flex-wrap">
-                        {user.roles.map((role) => (
-                          <Badge key={role} variant={getRoleBadgeVariant(role)}>
+                    <TableCell className="hidden md:table-cell">
+                      <span className="font-medium">{student.enrollmentCount}</span>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {student.quizStats.totalAttempts > 0 ? (
+                        <div className="space-y-0.5">
+                          <div className="text-sm">
+                            <span className="text-green-500">{student.quizStats.passed}</span>
+                            <span className="text-muted-foreground">/</span>
+                            <span className="text-red-500">{student.quizStats.failed}</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground">{student.quizStats.passRate}%</div>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground/50">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      <div className="flex items-center gap-1">
+                        <GraduationCap className={`h-4 w-4 ${getTierColor(student.membershipTier)}`} />
+                        <span className={`capitalize ${getTierColor(student.membershipTier)}`}>
+                          {student.membershipTier}
+                        </span>
+                      </div>
+                      <div className="flex gap-1 mt-1 flex-wrap">
+                        {student.roles.map((role) => (
+                          <Badge key={role} variant={getRoleBadgeVariant(role)} className="text-xs">
                             {role}
                           </Badge>
                         ))}
                       </div>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {format(new Date(user.enrolledAt), "MMM d, yyyy")}
+                    <TableCell className="text-muted-foreground whitespace-nowrap">
+                      {format(new Date(student.enrolledAt), "MMM d")}
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon">
@@ -182,35 +345,39 @@ export default function UserManager() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          {!user.roles.includes("admin") && (
+                          <DropdownMenuItem onClick={() => handleViewDetails(student.id)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          {!student.roles.includes("admin") && (
                             <DropdownMenuItem
-                              onClick={() => handleRoleAction("add", user.id, "admin", user.displayName || "User")}
+                              onClick={() => handleRoleAction("add", student.id, "admin", student.displayName || "User")}
                             >
                               <ShieldCheck className="h-4 w-4 mr-2" />
                               Make Admin
                             </DropdownMenuItem>
                           )}
-                          {user.roles.includes("admin") && user.id !== currentUser?.id && (
+                          {student.roles.includes("admin") && student.id !== currentUser?.id && (
                             <DropdownMenuItem
-                              onClick={() => handleRoleAction("remove", user.id, "admin", user.displayName || "User")}
+                              onClick={() => handleRoleAction("remove", student.id, "admin", student.displayName || "User")}
                               className="text-destructive"
                             >
                               <ShieldX className="h-4 w-4 mr-2" />
                               Remove Admin
                             </DropdownMenuItem>
                           )}
-                          <DropdownMenuSeparator />
-                          {!user.roles.includes("moderator") && (
+                          {!student.roles.includes("moderator") && (
                             <DropdownMenuItem
-                              onClick={() => handleRoleAction("add", user.id, "moderator", user.displayName || "User")}
+                              onClick={() => handleRoleAction("add", student.id, "moderator", student.displayName || "User")}
                             >
                               <Shield className="h-4 w-4 mr-2" />
                               Make Moderator
                             </DropdownMenuItem>
                           )}
-                          {user.roles.includes("moderator") && (
+                          {student.roles.includes("moderator") && (
                             <DropdownMenuItem
-                              onClick={() => handleRoleAction("remove", user.id, "moderator", user.displayName || "User")}
+                              onClick={() => handleRoleAction("remove", student.id, "moderator", student.displayName || "User")}
                             >
                               <ShieldX className="h-4 w-4 mr-2" />
                               Remove Moderator
@@ -226,6 +393,21 @@ export default function UserManager() {
           </Table>
         </div>
       </div>
+
+      <StudentDetailSheet
+        userId={selectedStudentId}
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        onManageRoles={(userId, roles, displayName) => {
+          setSheetOpen(false);
+          // Open role dialog for the first missing role or show current state
+          if (!roles.includes("admin")) {
+            handleRoleAction("add", userId, "admin", displayName);
+          } else if (!roles.includes("moderator")) {
+            handleRoleAction("add", userId, "moderator", displayName);
+          }
+        }}
+      />
 
       <AlertDialog open={confirmDialog?.open} onOpenChange={(open) => !open && setConfirmDialog(null)}>
         <AlertDialogContent>
