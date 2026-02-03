@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageLayout } from "@/components/layout";
-import { InterestCard, ExperienceCard, ResultsChart, ScoreComparison } from "@/components/assessment";
+import { InterestCard, ExperienceCard, ResultsChart, ScoreComparison, RecommendedCoursesProgress } from "@/components/assessment";
 import {
   assessmentQuestions,
   departmentInfo,
@@ -543,6 +543,9 @@ export default function Assessment() {
                 </CardContent>
               </Card>
             )}
+
+            {/* Learning Progress Indicator */}
+            <RecommendedCoursesProgress recommendedCourses={finalResults.recommendedCourses} />
 
             <div className="space-y-4">
               <h3 className="text-xl font-semibold">Recommended Courses for You</h3>
