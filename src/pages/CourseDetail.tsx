@@ -207,6 +207,15 @@ const CourseDetail = () => {
     return { completedLessons, completedQuizzes, percent };
   }, [course, isLessonCompleted, isQuizPassed]);
 
+  // Check if final exam is unlocked (all modules complete) - MUST be before early returns
+  const isFinalExamUnlocked = useMemo(() => {
+    if (!course?.finalExam) return false;
+    return course.modules.every((module) => {
+      const progress = getModuleProgress(module);
+      return progress.percent === 100;
+    });
+  }, [course, getModuleProgress]);
+
   // Loading state
   if (isLoadingCourse) {
     return (
@@ -358,14 +367,7 @@ const CourseDetail = () => {
     }
   };
 
-  // Check if final exam is unlocked (all modules complete)
-  const isFinalExamUnlocked = useMemo(() => {
-    if (!course.finalExam) return false;
-    return course.modules.every((module) => {
-      const progress = getModuleProgress(module);
-      return progress.percent === 100;
-    });
-  }, [course, getModuleProgress]);
+  // isFinalExamUnlocked is now calculated before early returns (line ~211)
 
   return (
     <PageLayout>

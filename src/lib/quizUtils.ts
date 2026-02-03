@@ -150,3 +150,11 @@ export function formatTimeRemaining(seconds: number): string {
   const secs = seconds % 60;
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
+
+/**
+ * Get per-question time in seconds
+ * Default: 60 seconds per question
+ */
+export function getPerQuestionTime(perQuestionSeconds?: number): number {
+  return perQuestionSeconds ?? 60;
+}
