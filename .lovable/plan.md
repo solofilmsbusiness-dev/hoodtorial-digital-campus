@@ -1,173 +1,163 @@
 
-# Admin Student Management: Quiz Reset and Course Management
+# Cheat-Proof Quiz System
 
 ## Overview
-Add administrative capabilities to reset quiz results, manage student enrollments, and view detailed question-by-question quiz performance in the Student Detail Sheet.
+Make quizzes and assessments cheat-resistant by implementing time limits, question randomization, and answer order randomization. This prevents students from sharing answers or taking unlimited time to look up answers.
 
 ---
 
-## Current Limitations
-- Quiz results only store aggregate scores (pass/fail, score percentage) - individual answers are NOT saved
-- Admins cannot reset or delete quiz results for students
-- Admins cannot remove student enrollments
-- No visibility into which specific questions students got right or wrong
+## Current State
+- Quizzes track elapsed time but have no enforced time limit
+- Questions are served in a fixed order defined in `src/data/quizzes/*.ts`
+- Answer options are in a fixed order per question
+- Students could share exact answers by position (e.g., "Q1=B, Q2=A, Q3=C")
 
 ---
 
-## Implementation Plan
+## Anti-Cheat Features to Implement
 
-### Phase 1: Database Changes
+### 1. Countdown Timer with Auto-Submit
+- Add a configurable time limit per quiz (in minutes)
+- Display countdown timer instead of elapsed time
+- Visual warning when time is running low (red, flashing)
+- Auto-submit quiz when time expires
+- Store time limit in Quiz interface
 
-**New table: `quiz_answers`**
-Store individual question responses for each quiz attempt:
+### 2. Question Randomization
+- Shuffle question order at quiz start
+- Each student gets questions in a different sequence
+- Prevents "Q1 is B" type answer sharing
 
-```sql
-CREATE TABLE public.quiz_answers (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  quiz_result_id UUID REFERENCES public.quiz_results(id) ON DELETE CASCADE NOT NULL,
-  question_id TEXT NOT NULL,
-  selected_answer INTEGER NOT NULL,
-  is_correct BOOLEAN NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
+### 3. Answer Option Randomization
+- Shuffle the order of answer options for each question
+- Track the shuffled mapping to correctly grade
+- Store original correct answer index, but display shuffled options
+- Prevents "the second option is correct" sharing
 
--- RLS: Users can view their own, admins can view all
-ALTER TABLE public.quiz_answers ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view own quiz answers"
-  ON public.quiz_answers FOR SELECT
-  TO authenticated
-  USING (
-    quiz_result_id IN (
-      SELECT id FROM public.quiz_results WHERE user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY "Admins can view all quiz answers"
-  ON public.quiz_answers FOR SELECT
-  TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'));
-
-CREATE POLICY "Users can insert own quiz answers"
-  ON public.quiz_answers FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    quiz_result_id IN (
-      SELECT id FROM public.quiz_results WHERE user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY "Admins can delete quiz answers"
-  ON public.quiz_answers FOR DELETE
-  TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'));
-```
-
-**Add delete policies to existing tables:**
-```sql
--- Allow admins to delete quiz results
-CREATE POLICY "Admins can delete quiz results"
-  ON public.quiz_results FOR DELETE
-  TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'));
-
--- Allow admins to delete enrollments
-CREATE POLICY "Admins can delete enrollments"
-  ON public.enrollments FOR DELETE
-  TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'));
-```
+### 4. Anti-Tab-Switching Warning (Optional Enhancement)
+- Detect when user leaves the quiz tab
+- Show warning on return
+- Log tab switches for admin review
 
 ---
 
-### Phase 2: Update Quiz Player to Save Answers
+## Implementation Details
 
-**Modify: `src/hooks/useQuizResults.ts`**
-Add function to save individual answers after quiz completion.
+### Phase 1: Update Quiz Interface
 
-**Modify: `src/components/course/QuizPlayer.tsx`**
-After quiz submission, save each answer with:
-- question_id
-- selected_answer index
-- is_correct boolean
-
----
-
-### Phase 3: Enhanced Student Detail Sheet
-
-**Modify: `src/hooks/useAdminStudents.ts`**
-Add new interface and data fetching for detailed quiz results:
+**Modify `src/data/courses.ts`:**
 
 ```typescript
-interface QuizResultDetail {
+export interface Quiz {
   id: string;
-  quizId: string;
-  quizTitle: string;
-  courseCode: string;
-  score: number;
-  totalQuestions: number;
-  passed: boolean;
-  attemptNumber: number;
-  createdAt: string;
-  answers: Array<{
-    questionId: string;
-    questionText: string;
-    options: string[];
-    selectedAnswer: number;
-    correctAnswer: number;
-    isCorrect: boolean;
-  }>;
+  title: string;
+  questions: number;
+  passingScore: number;
+  timeLimitMinutes?: number; // NEW: Time limit in minutes (default: 1 min per question)
 }
 ```
 
-**Modify: `src/components/admin/StudentDetailSheet.tsx`**
-Add three new sections:
+### Phase 2: Randomization Utilities
 
-1. **Enrolled Courses with Actions**
-   - Each course shows a delete/unenroll button
-   - Confirmation dialog before deletion
-   
-2. **Quiz Results with Actions**
-   - Expandable list showing each quiz attempt
-   - Reset button to delete specific quiz results
-   - "Reset All" button to clear all quiz results for student
-   
-3. **Question-by-Question Breakdown**
-   - Expandable section within each quiz result
-   - Shows each question with student's answer vs correct answer
-   - Visual indicators (green check / red X)
+**Create `src/lib/quizUtils.ts`:**
+
+```typescript
+// Shuffle array using Fisher-Yates algorithm
+function shuffleArray<T>(array: T[], seed?: number): T[] { ... }
+
+// Shuffle questions for a quiz
+function getRandomizedQuestions(questions: QuizQuestion[]): QuizQuestion[] { ... }
+
+// Shuffle answer options and track correct answer mapping
+interface ShuffledQuestion {
+  ...originalQuestion,
+  shuffledOptions: string[];
+  shuffledCorrectAnswer: number; // New index after shuffle
+}
+
+function shuffleQuestionOptions(question: QuizQuestion): ShuffledQuestion { ... }
+```
+
+### Phase 3: Quiz Player Timer Enhancement
+
+**Modify `src/components/course/QuizPlayer.tsx`:**
+
+```text
+Current Timer Display:
++------------------------------------------+
+| Q 3/10                         Time: 2:34 |
++------------------------------------------+
+
+New Countdown Timer:
++------------------------------------------+
+| Q 3/10               Time Remaining: 7:26 |
++------------------------------------------+
+
+Warning State (< 2 mins left):
++------------------------------------------+
+| Q 3/10        ⚠️ Time Remaining: 1:45    |
+|              (red text, subtle pulse)     |
++------------------------------------------+
+
+Expired State:
++------------------------------------------+
+|          TIME'S UP!                       |
+|    Your quiz has been auto-submitted      |
++------------------------------------------+
+```
+
+**Key Changes:**
+- Replace `elapsedTime` with `remainingTime` countdown
+- Add `timeLimit` calculation (from quiz data or default)
+- Auto-submit when timer reaches 0
+- Warning state when < 2 minutes remain
+- Disable "Check Answer" during timed quizzes (no peeking at correct answers)
+
+### Phase 4: Integrate Randomization into Quiz Player
+
+**Flow:**
+1. On quiz start, shuffle questions array
+2. For each question, shuffle its options
+3. Track shuffled correct answer index
+4. Grade using shuffled mappings
+5. Store original question IDs and user's selections (unmapped) in database
 
 ---
 
-### UI Wireframe for Enhanced Student Detail Sheet
+## UI Wireframe: Updated Quiz Intro
 
 ```text
-+------------------------------------------+
-| ENROLLED COURSES (3)                     |
-+------------------------------------------+
-| HU-202: Color Grading          [Active]  |
-|   Enrolled: Jan 15             [Remove]  |
-+------------------------------------------+
-| HU-303: Advanced Directing     [Active]  |
-|   Enrolled: Jan 20             [Remove]  |
-+------------------------------------------+
-
-+------------------------------------------+
-| QUIZ RESULTS                  [Reset All]|
-+------------------------------------------+
-| HU-202 Quiz 1 - 80% PASSED     [▼][Reset]|
-| └─ Question Breakdown:                   |
-|    [✓] Q1: What is color temperature...  |
-|    [✗] Q2: Which tool creates a mask...  |
-|        Your answer: B. Pen Tool          |
-|        Correct: C. Shapes Tool           |
-|    [✓] Q3: Log footage preserves...      |
-|    [✓] Q4: A LUT is used for...          |
-|    [✗] Q5: Color wheels affect...        |
-+------------------------------------------+
-| HU-202 Final - 70% FAILED      [▼][Reset]|
-+------------------------------------------+
++--------------------------------------------------+
+|                    [Trophy Icon]                  |
+|                                                   |
+|           LIGHTING BASICS QUIZ                    |
+|                                                   |
+|   Test your knowledge with 6 questions.           |
+|   You need 80% to pass.                          |
+|                                                   |
+|   +------------+  +------------+  +------------+ |
+|   |     6      |  |    80%     |  |   6 min    | |
+|   | Questions  |  |  To Pass   |  | Time Limit | |
+|   +------------+  +------------+  +------------+ |
+|                                                   |
+|   ⚠️ Note: Questions and answers are randomized  |
+|   to ensure assessment integrity.                 |
+|                                                   |
+|   [Cancel]                    [Start Quiz]        |
++--------------------------------------------------+
 ```
+
+---
+
+## Default Time Limits
+
+| Quiz Type | Default Time | Calculation |
+|-----------|--------------|-------------|
+| Module Quiz (5-8 Q) | 1 min per question | 5-8 minutes total |
+| Final Exam (20-35 Q) | 1 min per question | 20-35 minutes total |
+| Assessment | 45 seconds per question | ~12-18 minutes |
+
+Admins can override per-quiz in the course data.
 
 ---
 
@@ -175,30 +165,59 @@ Add three new sections:
 
 | File | Action | Description |
 |------|--------|-------------|
-| `supabase/migrations/xxx.sql` | Create | Add quiz_answers table and admin delete policies |
-| `src/hooks/useQuizResults.ts` | Modify | Add saveQuizAnswers function |
-| `src/components/course/QuizPlayer.tsx` | Modify | Save answers on quiz completion |
-| `src/hooks/useAdminStudents.ts` | Modify | Add detailed quiz results fetching |
-| `src/components/admin/StudentDetailSheet.tsx` | Major Edit | Add course/quiz management and answer breakdown |
+| `src/lib/quizUtils.ts` | Create | Randomization utilities |
+| `src/data/courses.ts` | Modify | Add `timeLimitMinutes` to Quiz interface |
+| `src/components/course/QuizPlayer.tsx` | Major Edit | Timer countdown, randomization, auto-submit |
+| `src/pages/Assessment.tsx` | Modify | Add countdown timer and randomization |
+| `src/data/quizzes/*.ts` | Optional | Add explicit time limits per quiz |
 
 ---
 
-## Admin Actions Summary
+## Grading with Randomization
 
-| Action | Description | Confirmation Required |
-|--------|-------------|----------------------|
-| Remove Enrollment | Delete enrollment record, keeps progress | Yes |
-| Reset Quiz | Delete specific quiz result and answers | Yes |
-| Reset All Quizzes | Delete all quiz results for student | Yes (with warning) |
+**Important:** Store answers referencing original question IDs:
+
+```typescript
+// When saving to database
+const answersToSave = questions.map((originalQ, originalIndex) => {
+  const shuffledQ = shuffledQuestions.find(sq => sq.id === originalQ.id);
+  const userSelectedShuffledIndex = userAnswers[shuffledQ.id];
+  
+  // Map back to original option index
+  const originalOptionIndex = shuffledQ.optionMapping[userSelectedShuffledIndex];
+  
+  return {
+    questionId: originalQ.id,
+    selectedAnswer: originalOptionIndex, // Store in original order
+    isCorrect: originalOptionIndex === originalQ.correctAnswer,
+  };
+});
+```
+
+This ensures:
+- Admin review shows consistent question/answer references
+- Historical data remains comparable
+- No confusion between shuffled vs. original positions
 
 ---
 
-## Technical Considerations
+## Edge Cases
 
-1. **Quiz questions are static**: Questions are defined in `src/data/quizzes/*.ts` files, so we can join saved answer data with static question data to display the breakdown
+1. **Browser crash/refresh**: Quiz progress is lost (by design - prevents cheating)
+2. **Tab switching**: Show warning but don't penalize (accessibility concerns)
+3. **Time expires mid-question**: Auto-submit with current answers
+4. **No answers given**: Submit as 0% score
 
-2. **Cascade deletes**: quiz_answers will cascade delete when quiz_results are deleted
+---
 
-3. **Historical data**: Existing quiz results won't have answer breakdowns - only new attempts will have detailed data
+## Summary
 
-4. **Performance**: Fetch detailed quiz answers only when expanding a specific result, not on initial load
+This implementation makes quizzes significantly more cheat-resistant by:
+
+1. **Time Pressure**: Countdown timer prevents unlimited research time
+2. **Question Shuffle**: Each student sees questions in random order
+3. **Answer Shuffle**: Option positions are randomized per question
+4. **Fair Grading**: Answers mapped back to original positions for consistent grading
+5. **Auto-Submit**: Time expiration triggers automatic submission
+
+Students cannot simply share "Q1=B, Q2=C" as every quiz session has unique ordering.
