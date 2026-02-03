@@ -56,10 +56,8 @@ export function useQuizResults() {
   }) => {
     if (!user) return { error: new Error("Not authenticated") };
 
-    // In test mode with auto-pass, override the passed status
-    const finalResult = shouldAutoPassQuiz
-      ? { ...result, passed: true, score: result.total_questions }
-      : result;
+    // Always save actual results - auto-pass is only for instant-pass buttons
+    const finalResult = result;
 
     // Get current attempt count for this quiz
     const attemptNumber = getAttemptCount(finalResult.quiz_id) + 1;
