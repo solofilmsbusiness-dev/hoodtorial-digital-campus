@@ -258,6 +258,7 @@ export type Database = {
           description: string | null
           duration: string | null
           id: string
+          intro_video_url: string | null
           is_locked: boolean
           is_published: boolean
           level: string
@@ -273,6 +274,7 @@ export type Database = {
           description?: string | null
           duration?: string | null
           id?: string
+          intro_video_url?: string | null
           is_locked?: boolean
           is_published?: boolean
           level?: string
@@ -288,6 +290,7 @@ export type Database = {
           description?: string | null
           duration?: string | null
           id?: string
+          intro_video_url?: string | null
           is_locked?: boolean
           is_published?: boolean
           level?: string

@@ -27,6 +27,7 @@ import { useTestMode } from "@/hooks/useTestMode";
 import { TestModeBanner } from "@/components/admin";
 import { useQuizResults } from "@/hooks/useQuizResults";
 import { supabase } from "@/integrations/supabase/client";
+import { getVideoType, getYouTubeId, getVimeoId, getYouTubeEmbedUrl, getVimeoEmbedUrl } from "@/lib/videoUtils";
 
 // Transform database course to Course interface
 const transformDbCourse = (dbCourse: any): Course => {
@@ -92,6 +93,7 @@ const transformDbCourse = (dbCourse: any): Course => {
     lessons: modules.reduce((acc, m) => acc + m.lessons.length, 0),
     modules,
     finalExam,
+    intro_video_url: dbCourse.intro_video_url || null,
   };
 };
 
@@ -495,6 +497,59 @@ const CourseDetail = () => {
           </div>
         </div>
       </section>
+
+      {/* Intro Video Section */}
+      {course.intro_video_url && (
+        <Section className="py-8 bg-muted/30 border-b border-border">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="heading-4 text-foreground mb-4">Course Introduction</h2>
+            {(() => {
+              const url = course.intro_video_url!;
+              const videoType = getVideoType(url);
+              
+              if (videoType === "youtube") {
+                const videoId = getYouTubeId(url);
+                if (!videoId) return null;
+                return (
+                  <div className="aspect-video rounded-lg overflow-hidden border-2 border-border">
+                    <iframe
+                      src={getYouTubeEmbedUrl(videoId)}
+                      className="w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+                );
+              }
+              
+              if (videoType === "vimeo") {
+                const videoId = getVimeoId(url);
+                if (!videoId) return null;
+                return (
+                  <div className="aspect-video rounded-lg overflow-hidden border-2 border-border">
+                    <iframe
+                      src={getVimeoEmbedUrl(videoId)}
+                      className="w-full h-full"
+                      allow="autoplay; fullscreen; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+                );
+              }
+              
+              if (videoType === "direct") {
+                return (
+                  <div className="aspect-video rounded-lg overflow-hidden border-2 border-border">
+                    <video src={url} controls className="w-full h-full" />
+                  </div>
+                );
+              }
+              
+              return null;
+            })()}
+          </div>
+        </Section>
+      )}
 
       {/* Course Content */}
       <Section className="py-8">

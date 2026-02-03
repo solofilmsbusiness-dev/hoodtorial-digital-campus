@@ -21,6 +21,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import { useAdminCourseContent } from "@/hooks/useAdminCourseContent";
 import { SortableModuleList } from "@/components/admin/SortableModuleList";
+import { CourseVideoPreview } from "@/components/admin/CourseVideoPreview";
+import { getVideoType } from "@/lib/videoUtils";
 
 interface CourseForm {
   code: string;
@@ -32,6 +34,7 @@ interface CourseForm {
   duration: string;
   is_published: boolean;
   is_locked: boolean;
+  intro_video_url: string;
 }
 
 // Separate component to handle modules section
@@ -141,6 +144,7 @@ export default function CourseEditor() {
     duration: "8 weeks",
     is_published: true,
     is_locked: false,
+    intro_video_url: "",
   });
 
   // Fetch existing course
@@ -176,6 +180,7 @@ export default function CourseEditor() {
         duration: dbCourse.duration || "",
         is_published: dbCourse.is_published,
         is_locked: dbCourse.is_locked,
+        intro_video_url: dbCourse.intro_video_url || "",
       });
     } else if (!isLoading) {
       const staticCourse = staticCourses.find((c) => c.code === code);
@@ -190,6 +195,7 @@ export default function CourseEditor() {
           duration: staticCourse.duration,
           is_published: true,
           is_locked: false,
+          intro_video_url: "",
         });
       }
     }
@@ -210,6 +216,7 @@ export default function CourseEditor() {
           duration: data.duration,
           is_published: data.is_published,
           is_locked: data.is_locked,
+          intro_video_url: data.intro_video_url || null,
         }).select().single();
         if (error) throw error;
         return newCourse;
@@ -225,6 +232,7 @@ export default function CourseEditor() {
             duration: data.duration,
             is_published: data.is_published,
             is_locked: data.is_locked,
+            intro_video_url: data.intro_video_url || null,
           })
           .eq("code", code);
         if (error) throw error;
@@ -333,6 +341,27 @@ export default function CourseEditor() {
                     placeholder="Course description..."
                     rows={4}
                   />
+                </div>
+
+                {/* Intro Video Section */}
+                <div className="space-y-2">
+                  <Label htmlFor="intro_video_url">Intro Video URL (optional)</Label>
+                  <Input
+                    id="intro_video_url"
+                    value={form.intro_video_url}
+                    onChange={(e) => updateField("intro_video_url", e.target.value)}
+                    placeholder="YouTube, Vimeo, or direct video URL"
+                  />
+                  {form.intro_video_url && getVideoType(form.intro_video_url) && (
+                    <div className="mt-3">
+                      <CourseVideoPreview url={form.intro_video_url} />
+                    </div>
+                  )}
+                  {form.intro_video_url && !getVideoType(form.intro_video_url) && (
+                    <p className="text-xs text-destructive">
+                      Invalid video URL. Use YouTube, Vimeo, or .mp4/.webm links.
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-3 gap-4">

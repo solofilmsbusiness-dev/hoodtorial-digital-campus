@@ -374,11 +374,22 @@ export default function CourseManager() {
                               <Eye className="h-4 w-4" />
                             </Link>
                           </Button>
-                          <Button variant="ghost" size="icon" asChild>
-                            <Link to={`/admin/courses/${course.code}`}>
+                          {course.code ? (
+                            <Button variant="ghost" size="icon" asChild>
+                              <Link to={`/admin/courses/${course.code}`}>
+                                <Pencil className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                          ) : (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              disabled 
+                              title="Course has no code - cannot edit"
+                            >
                               <Pencil className="h-4 w-4" />
-                            </Link>
-                          </Button>
+                            </Button>
+                          )}
                           <Button 
                             variant="ghost" 
                             size="icon"
