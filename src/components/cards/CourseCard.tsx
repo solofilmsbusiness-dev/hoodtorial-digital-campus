@@ -1,7 +1,8 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Clock, BookOpen, ArrowRight } from "lucide-react";
+import { Clock, BookOpen, ArrowRight, Lock } from "lucide-react";
 import { Link } from "react-router-dom";
+import { toast } from "@/hooks/use-toast";
 
 interface CourseCardProps {
   code: string;
@@ -13,6 +14,7 @@ interface CourseCardProps {
   lessons?: number;
   duration?: string;
   className?: string;
+  isComingSoon?: boolean;
 }
 
 export function CourseCard({
@@ -25,6 +27,7 @@ export function CourseCard({
   lessons,
   duration,
   className,
+  isComingSoon = false,
 }: CourseCardProps) {
   const levelColors = {
     Beginner: "bg-accent/20 text-accent border-accent/50",
@@ -32,24 +35,46 @@ export function CourseCard({
     Advanced: "bg-neon-purple/20 text-neon-purple border-neon-purple/50",
   };
 
+  const handleClick = (e: React.MouseEvent) => {
+    if (isComingSoon) {
+      e.preventDefault();
+      toast({
+        title: "Coming Soon!",
+        description: "This course is not yet available. Stay tuned for updates!",
+      });
+    }
+  };
+
   return (
     <Link
-      to={`/course/${code}`}
+      to={isComingSoon ? "#" : `/course/${code}`}
+      onClick={handleClick}
       className={cn(
         "card-urban group h-full flex flex-col hover:border-primary transition-colors",
+        isComingSoon && "opacity-70 grayscale-[30%] cursor-not-allowed hover:border-border",
         className
       )}
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <span className="tag-sticker text-[10px]">{code}</span>
-        <Badge variant="outline" className={cn("text-xs font-bold border-2", levelColors[level])}>
-          {level}
-        </Badge>
+        <div className="flex items-center gap-2">
+          {isComingSoon && (
+            <Badge variant="outline" className="text-xs font-bold border-2 bg-muted/50 text-muted-foreground border-muted-foreground/50">
+              Coming Soon
+            </Badge>
+          )}
+          <Badge variant="outline" className={cn("text-xs font-bold border-2", levelColors[level])}>
+            {level}
+          </Badge>
+        </div>
       </div>
 
       {/* Title */}
-      <h3 className="heading-4 text-foreground mb-2 group-hover:text-primary transition-colors leading-tight">
+      <h3 className={cn(
+        "heading-4 text-foreground mb-2 group-hover:text-primary transition-colors leading-tight",
+        isComingSoon && "group-hover:text-foreground"
+      )}>
         {title}
       </h3>
 
@@ -90,7 +115,11 @@ export function CourseCard({
         </span>
         <div className="flex items-center gap-2">
           <span className="text-2xl font-black text-primary">{credits}</span>
-          <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+          {isComingSoon ? (
+            <Lock className="w-4 h-4 text-muted-foreground" />
+          ) : (
+            <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+          )}
         </div>
       </div>
     </Link>

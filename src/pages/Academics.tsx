@@ -4,9 +4,11 @@ import { Link } from "react-router-dom";
 import { ArrowRight, BookOpen, Clock, Award, Users, LayoutGrid, List, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
-import { courses, departments } from "@/data/courses";
+import { departments } from "@/data/courses";
 import { TrialBanner } from "@/components/subscription";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useCourseStatus } from "@/hooks/useCourseStatus";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const stats = [
   { icon: BookOpen, value: "16", label: "Total Courses" },
@@ -17,6 +19,7 @@ const stats = [
 
 const Academics = () => {
   const { isTrialing } = useSubscription();
+  const { courses, isLoading } = useCourseStatus();
   const [activeFilter, setActiveFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
@@ -194,7 +197,13 @@ const Academics = () => {
           </div>
         </div>
 
-        {filteredCourses.length === 0 ? (
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {Array.from({ length: 8 }).map((_, index) => (
+              <Skeleton key={index} className="h-64 w-full" />
+            ))}
+          </div>
+        ) : filteredCourses.length === 0 ? (
           <div className="text-center py-16 border-2 border-dashed border-border">
             <Search className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-bold text-foreground mb-2">No courses found</h3>
@@ -219,7 +228,7 @@ const Academics = () => {
                 className="animate-reveal"
                 style={{ animationDelay: `${index * 0.05}s` }}
               >
-                <CourseCard {...course} />
+                <CourseCard {...course} isComingSoon={course.isComingSoon} />
               </div>
             ))}
           </div>
@@ -231,7 +240,7 @@ const Academics = () => {
                 className="animate-reveal"
                 style={{ animationDelay: `${index * 0.03}s` }}
               >
-                <CourseListItem {...course} />
+                <CourseListItem {...course} isComingSoon={course.isComingSoon} />
               </div>
             ))}
           </div>

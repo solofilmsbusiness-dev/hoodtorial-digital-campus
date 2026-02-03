@@ -1,7 +1,8 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Clock, BookOpen, ArrowRight } from "lucide-react";
+import { Clock, BookOpen, ArrowRight, Lock } from "lucide-react";
 import { Link } from "react-router-dom";
+import { toast } from "@/hooks/use-toast";
 
 interface CourseListItemProps {
   code: string;
@@ -12,6 +13,7 @@ interface CourseListItemProps {
   lessons?: number;
   duration?: string;
   className?: string;
+  isComingSoon?: boolean;
 }
 
 export function CourseListItem({
@@ -23,6 +25,7 @@ export function CourseListItem({
   lessons,
   duration,
   className,
+  isComingSoon = false,
 }: CourseListItemProps) {
   const levelColors = {
     Beginner: "bg-accent/20 text-accent border-accent/50",
@@ -30,11 +33,23 @@ export function CourseListItem({
     Advanced: "bg-neon-purple/20 text-neon-purple border-neon-purple/50",
   };
 
+  const handleClick = (e: React.MouseEvent) => {
+    if (isComingSoon) {
+      e.preventDefault();
+      toast({
+        title: "Coming Soon!",
+        description: "This course is not yet available. Stay tuned for updates!",
+      });
+    }
+  };
+
   return (
     <Link
-      to={`/course/${code}`}
+      to={isComingSoon ? "#" : `/course/${code}`}
+      onClick={handleClick}
       className={cn(
         "flex items-center gap-4 p-4 bg-card border-2 border-border hover:border-primary transition-all group",
+        isComingSoon && "opacity-70 grayscale-[30%] cursor-not-allowed hover:border-border",
         className
       )}
     >
@@ -45,9 +60,19 @@ export function CourseListItem({
 
       {/* Title & Department */}
       <div className="flex-1 min-w-0">
-        <h3 className="font-bold text-foreground group-hover:text-primary transition-colors truncate">
-          {title}
-        </h3>
+        <div className="flex items-center gap-2">
+          <h3 className={cn(
+            "font-bold text-foreground group-hover:text-primary transition-colors truncate",
+            isComingSoon && "group-hover:text-foreground"
+          )}>
+            {title}
+          </h3>
+          {isComingSoon && (
+            <Badge variant="outline" className="text-[10px] font-bold border bg-muted/50 text-muted-foreground border-muted-foreground/50 shrink-0">
+              Coming Soon
+            </Badge>
+          )}
+        </div>
         <p className="text-xs text-muted-foreground uppercase tracking-wider mt-0.5">
           {department}
         </p>
@@ -80,7 +105,11 @@ export function CourseListItem({
           <div className="text-lg font-black text-primary">{credits}</div>
           <div className="text-[10px] text-muted-foreground uppercase">credits</div>
         </div>
-        <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+        {isComingSoon ? (
+          <Lock className="w-4 h-4 text-muted-foreground" />
+        ) : (
+          <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+        )}
       </div>
     </Link>
   );
