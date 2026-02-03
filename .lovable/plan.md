@@ -1,184 +1,154 @@
 
 
-# Add Document Upload for Reading Lessons
+# Add Delete Course Action to Course Manager
 
 ## Overview
 
-When creating or editing a "reading" type lesson, admins should be able to upload a PDF or document file that students can read. Currently, reading lessons only support text content via a textarea. This enhancement adds document upload capability.
+Add a delete button to the Actions column in the Course Manager table, allowing admins to delete courses directly from the main course list. The delete action will include a confirmation dialog to prevent accidental deletions.
 
 ## Current State
 
-- **LessonDialog.tsx**: For "reading" type lessons, shows only a textarea for markdown content
-- **lessons table**: Has `content` (text) and `video_url` fields, but no dedicated document URL field
-- **Storage**: Buckets exist for `community-uploads` and `avatars`, but not for lesson documents
-- **VideoPlayer.tsx**: Currently only handles video lessons; reading lessons show a placeholder
+- **Actions column** has View (Eye icon) and Edit (Pencil icon) buttons
+- No delete functionality exists on the Course Manager page
+- The page already has mutation patterns for updating courses
+- Database has RLS policy allowing admins to delete courses: `"Admins can delete courses"`
 
 ## Implementation Plan
 
-### 1. Database: Add `document_url` Column to Lessons Table
+### 1. Add Delete Mutation
 
-Add a new column to store the uploaded document URL:
+Create a new `useMutation` hook for deleting courses:
 
-| Column | Type | Default | Description |
-|--------|------|---------|-------------|
-| document_url | text | null | URL to uploaded PDF/document |
-
-This keeps the existing `content` field for text/markdown, while `document_url` stores the file.
-
-### 2. Storage: Create `lesson-documents` Bucket
-
-Create a new storage bucket for lesson documents:
-- **Bucket name**: `lesson-documents`
-- **Public**: Yes (students need to view/download)
-- **Allowed MIME types**: application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document
-- **File size limit**: 20MB
-
-RLS policies will allow:
-- Authenticated admins to upload/delete
-- Anyone to view (public bucket)
-
-### 3. New Hook: `useLessonDocumentUpload`
-
-Create a hook similar to `useCommunityUploads` for lesson document uploads:
-- Upload document to `lesson-documents` bucket
-- Return public URL
-- Handle progress and errors
-- Delete document capability
-
-### 4. Update LessonDialog Component
-
-Modify the dialog for "reading" type lessons to include:
-- **Document upload section** with drag-and-drop
-- **Preview of uploaded document** (show filename + PDF icon)
-- **Option to remove uploaded document**
-- Keep the existing markdown textarea for supplementary text content
-- Show document preview/download link when document exists
-
-Visual layout for reading lessons:
-```
-+----------------------------------+
-|  Upload Document (PDF, DOCX)     |
-|  [ Drag & drop or click ]        |
-+----------------------------------+
-|  [PDF icon] document.pdf  [X]    |  <- When uploaded
-+----------------------------------+
-|  Additional Content (optional)   |
-|  [Markdown textarea]             |
-+----------------------------------+
-```
-
-### 5. Update DbLesson Interface
-
-Add `document_url` field to the TypeScript interface in `useAdminCourseContent.ts`:
 ```typescript
-export interface DbLesson {
-  // ... existing fields
-  document_url: string | null;
-}
-```
-
-### 6. Update Lesson Save/Update Logic
-
-Modify the `onSave` handler in LessonDialog to include `document_url`:
-```typescript
-onSave({
-  title,
-  type,
-  duration,
-  document_url: documentUrl,  // NEW
-  content,
-  description,
+const deleteCourse = useMutation({
+  mutationFn: async (courseId: string) => {
+    const { error } = await supabase
+      .from("courses")
+      .delete()
+      .eq("id", courseId);
+    if (error) throw error;
+  },
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["admin-courses"] });
+    toast({ title: "Course deleted successfully" });
+  },
+  onError: (error) => {
+    toast({ 
+      title: "Failed to delete course", 
+      description: error.message,
+      variant: "destructive" 
+    });
+  },
 });
 ```
 
-### 7. Student View: Display Document Reader
+### 2. Add Confirmation Dialog State
 
-Update `VideoPlayer.tsx` or create a new `DocumentViewer.tsx` component to:
-- Render PDF in an iframe or embedded viewer
-- Provide download link for non-PDF documents
-- Show the markdown content below the document if provided
-
-## Files to Create/Modify
-
-| File | Action | Description |
-|------|--------|-------------|
-| `supabase/migrations/` | Create | Add `document_url` column + create storage bucket |
-| `src/hooks/useLessonDocumentUpload.ts` | Create | Upload hook for lesson documents |
-| `src/components/admin/LessonDialog.tsx` | Modify | Add document upload UI for reading lessons |
-| `src/hooks/useAdminCourseContent.ts` | Modify | Add `document_url` to DbLesson interface and mutations |
-| `src/components/course/DocumentViewer.tsx` | Create | Component to display documents for students |
-| `src/components/course/VideoPlayer.tsx` | Modify | Handle reading lessons with document_url |
-
-## User Experience
-
-**Admin Flow**:
-1. Go to Course Editor > Add Lesson
-2. Select "Reading" as type
-3. Click "Upload Document" or drag-and-drop a PDF
-4. See upload progress and preview
-5. Optionally add supplementary markdown text
-6. Save lesson
-
-**Student Flow**:
-1. Navigate to reading lesson
-2. See embedded PDF viewer or download link
-3. Read the document
-4. Any supplementary markdown content appears below
-5. Mark lesson complete when done
-
-## Technical Details
-
-### Storage Bucket SQL
-
-```sql
-INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-VALUES (
-  'lesson-documents',
-  'lesson-documents',
-  true,
-  20971520,  -- 20MB
-  ARRAY['application/pdf', 'application/msword', 
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
-);
-```
-
-### RLS Policy for Uploads (Admin Only)
-
-```sql
-CREATE POLICY "Admins can upload lesson documents"
-ON storage.objects FOR INSERT
-WITH CHECK (
-  bucket_id = 'lesson-documents' AND
-  EXISTS (SELECT 1 FROM profiles WHERE user_id = auth.uid() AND membership_tier = 'admin')
-);
-```
-
-### Document Upload Hook Structure
+Add state to track which course is being deleted:
 
 ```typescript
-export function useLessonDocumentUpload() {
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-
-  const uploadDocument = async (file: File): Promise<string | null> => {
-    // Upload to lesson-documents bucket
-    // Return public URL
-  };
-
-  const deleteDocument = async (url: string): Promise<boolean> => {
-    // Remove from storage
-  };
-
-  return { uploadDocument, deleteDocument, isUploading, uploadProgress };
-}
+const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
 ```
+
+### 3. Update Imports
+
+Add required imports:
+
+```typescript
+import { Plus, Pencil, Eye, Lock, Database, Loader2, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+```
+
+### 4. Add Delete Button to Actions Column
+
+Add a delete button next to the existing View and Edit buttons:
+
+```tsx
+<Button 
+  variant="ghost" 
+  size="icon"
+  onClick={() => setCourseToDelete(course)}
+  disabled={isUsingStaticData}
+  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+  title="Delete course"
+>
+  <Trash2 className="h-4 w-4" />
+</Button>
+```
+
+### 5. Add Confirmation AlertDialog
+
+Add the confirmation dialog at the end of the component:
+
+```tsx
+<AlertDialog open={!!courseToDelete} onOpenChange={() => setCourseToDelete(null)}>
+  <AlertDialogContent>
+    <AlertDialogHeader>
+      <AlertDialogTitle>Delete Course</AlertDialogTitle>
+      <AlertDialogDescription>
+        Are you sure you want to delete "{courseToDelete?.title}" ({courseToDelete?.code})?
+        This will also delete all modules, lessons, and quizzes associated with this course.
+        This action cannot be undone.
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    <AlertDialogFooter>
+      <AlertDialogCancel>Cancel</AlertDialogCancel>
+      <AlertDialogAction
+        onClick={() => {
+          if (courseToDelete) {
+            deleteCourse.mutate(courseToDelete.id);
+            setCourseToDelete(null);
+          }
+        }}
+        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+      >
+        Delete
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+```
+
+## Visual Layout (Updated Actions Column)
+
+```
++-------+-------+--------+
+| View  | Edit  | Delete |
+| [Eye] | [Pen] | [Trash]|
++-------+-------+--------+
+```
+
+## Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/pages/admin/CourseManager.tsx` | Add imports, delete mutation, state, delete button, and confirmation dialog |
+
+## Technical Considerations
+
+1. **Cascade Deletion**: The database should have ON DELETE CASCADE for modules/lessons/quizzes referencing the course. If not, the deletion might fail.
+
+2. **Static Data Check**: Delete button is disabled when using static data (courses not yet in database), same as other mutations.
+
+3. **User Feedback**: Toast notification confirms successful deletion or shows error.
+
+4. **Safety**: Confirmation dialog prevents accidental deletions and clearly states consequences.
 
 ## Summary
 
-This feature adds document upload capability for reading lessons:
-1. New `document_url` database column
-2. New `lesson-documents` storage bucket
-3. Upload UI in admin LessonDialog
-4. Document viewer for students
-5. Maintains backward compatibility with existing text-based reading lessons
+This adds a delete action to the Course Manager that:
+- Appears as a trash icon button in the Actions column
+- Shows a confirmation dialog before deleting
+- Warns about cascading deletion of modules, lessons, and quizzes
+- Provides success/error feedback via toast notifications
+- Is disabled when courses are not yet in the database
 
