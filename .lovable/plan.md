@@ -1,129 +1,98 @@
 
-# Fix Skill Tree Layout Clipping Issues
+# Restrict Profile Data Access - Privacy Enhancement
 
-## Problem Analysis
+## Problem
 
-The skill tree nodes and labels are being cut off due to several issues:
+The `profiles` table contains personal information that any enrolled student can query:
+- **Location** (city/country)
+- **Bio** (personal description)
+- **Camera gear** (equipment details)
+- **Social media URLs** (Instagram, YouTube, Twitter, TikTok)
 
-1. **Hexagonal clip-path** - The `.hex-node` CSS class clips content outside the hexagon shape, cutting off:
-   - Skill Points badges (positioned outside the node bounds)
-   - Course code badges (positioned below nodes)
-   - Hover tooltips
-
-2. **Node structure issue** - All node content (badges, labels) is inside the clipped button element when they need to be outside or use overflow handling.
-
-3. **Level indicators positioning** - The "100", "200", "300" level numbers may not align correctly with node rows.
-
-4. **Canvas overflow** - The SVG and container may not properly handle elements that extend beyond their bounds.
-
----
+The current RLS policy "Enrolled students can view profiles for mentions" allows any enrolled user to access ALL profile fields for ALL other users. This enables potential stalking, harassment, or unwanted contact.
 
 ## Solution
 
-### 1. Restructure SkillNodeHex Component
+Create a database **view** that exposes only the minimal data needed for community features (display name and avatar), then update the RLS policies to:
+1. Allow users to see their own full profile
+2. Allow admins/moderators to see all profiles (for moderation)
+3. Restrict other enrolled students to only see the minimal public view
 
-Change the component structure so badges and labels are NOT affected by the hexagon clip-path:
+## Database Changes
 
-```text
-BEFORE (clipped):
-+----------------------------------+
-| <button clip-path=hex>           |
-|   [icon]                         |
-|   [SP badge - CLIPPED!]          |
-|   [course code - CLIPPED!]       |
-| </button>                        |
-+----------------------------------+
+### 1. Create Public Profile View
 
-AFTER (fixed):
-+----------------------------------+
-| <div wrapper>                    |
-|   <button clip-path=hex>         |
-|     [icon only]                  |
-|   </button>                      |
-|   [SP badge - visible]           |
-|   [course code - visible]        |
-|   [tooltip - visible]            |
-| </div>                           |
-+----------------------------------+
+```sql
+CREATE VIEW public.profiles_public
+WITH (security_invoker=on) AS
+SELECT 
+  user_id,
+  display_name,
+  avatar_url
+FROM public.profiles;
 ```
 
-### 2. Remove Clip-Path from Main Button
+This view only exposes:
+- `user_id` - for matching/linking
+- `display_name` - for @mentions and author display
+- `avatar_url` - for avatars in comments/posts
 
-Instead of using `clip-path` on the entire button (which clips children), apply the hexagon shape using:
-- A nested `<div>` inside with the clip-path for the visual shape
-- Keep badges and labels as siblings outside the clipped area
+### 2. Update RLS Policies
 
-### 3. Add Overflow Handling
-
-Ensure the canvas container allows content to overflow visibly:
-- Add `overflow: visible` to the node positioning wrapper
-- Update SVG to use `style={{ overflow: "visible" }}` (already present but verify)
-
-### 4. Fix Level Indicators in DepartmentLane
-
-Adjust the Y-positioning formula to match actual node positions:
-- Current: `80 + level * 160 + 80` = 160, 320, 480
-- Node positions: `headerOffset (80) + level * levelHeight (160) + levelHeight/2 (80)` = 160, 320, 480
-- These should match, but verify alignment and ensure text is not cut off by lane background
-
----
-
-## Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/components/skill-tree/SkillNodeHex.tsx` | Restructure to wrap button with outer div; move badges outside clipped element |
-| `src/index.css` | Optionally adjust hex-node class or add utility classes for overflow |
-
----
-
-## Detailed Changes
-
-### SkillNodeHex.tsx Restructure
-
-1. Wrap the entire node in an outer `<div>` that handles absolute positioning
-2. Move the button's outer styling (position, transform) to the wrapper
-3. Keep the hex clip-path only on the inner visual container
-4. Place SP badge, course code badge, and tooltip as siblings of the clipped element
-
-### Key Structure Change
-
-```typescript
-// Outer wrapper (handles positioning, NOT clipped)
-<div className="absolute" style={{ left, top, transform: "translate(-50%, -50%)" }}>
-  
-  // Inner button with hex shape (clipped, just the visual)
-  <motion.button className="hex-node ...">
-    [icon content]
-  </motion.button>
-  
-  // Badges OUTSIDE the clip (visible)
-  <div className="absolute -top-1 -right-1">SP Badge</div>
-  <div className="absolute -bottom-6">Course Code</div>
-  <div className="absolute top-full">Tooltip</div>
-  
-</div>
+**Remove the broad policy:**
+```sql
+DROP POLICY "Enrolled students can view profiles for mentions" ON public.profiles;
 ```
 
-### Additional CSS Adjustment
+**Create granular policies:**
+```sql
+-- Users can view their own full profile
+CREATE POLICY "Users can view own full profile"
+  ON public.profiles FOR SELECT
+  USING (auth.uid() = user_id);
 
-Add to the wrapper to ensure visible overflow:
-```css
-.skill-node-wrapper {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+-- Admins can view all profiles for moderation
+CREATE POLICY "Admins can view all profiles"
+  ON public.profiles FOR SELECT
+  USING (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'moderator'));
 ```
 
----
+### 3. Enable RLS on the View
 
-## Expected Outcome
+```sql
+ALTER VIEW public.profiles_public SET (security_invoker = on);
 
-After these changes:
-- Skill Point badges (30, 40, 50 SP) will be fully visible in the top-right corner
-- Course codes (HU-101, HU-102, etc.) will show below each node
-- Hover tooltips will display without clipping
-- Level indicators (100, 200, 300) will be properly aligned and visible
-- The overall tree layout remains unchanged
+-- Anyone authenticated can read the limited public data
+CREATE POLICY "Enrolled students can view public profiles"
+  ON public.profiles_public FOR SELECT
+  USING (auth.uid() IS NOT NULL AND is_enrolled_student(auth.uid()));
+```
+
+## Frontend Changes
+
+Update four hooks to query from `profiles_public` instead of `profiles`:
+
+| File | Change |
+|------|--------|
+| `src/hooks/useMentions.ts` | Change `.from('profiles')` to `.from('profiles_public')` |
+| `src/hooks/useCommunityPosts.ts` | Change `.from('profiles')` to `.from('profiles_public')` |
+| `src/hooks/useCommunityComments.ts` | Change `.from('profiles')` to `.from('profiles_public')` |
+| `src/hooks/useNotifications.ts` | Change `.from('profiles')` to `.from('profiles_public')` |
+
+**Note:** `useProfile.ts` continues to use `profiles` for the current user's own profile (editing their settings), and `useAllUsers.ts` is admin-only so it continues to use `profiles` directly.
+
+## Data Access After Fix
+
+| User Type | Can Access |
+|-----------|------------|
+| Own profile | All fields (location, bio, social links, etc.) |
+| Other students' profiles | Only display_name and avatar_url |
+| Admins/Moderators | All fields for all users (moderation) |
+| Not enrolled | Nothing |
+
+## Security Outcome
+
+- Students can still @mention each other and see names/avatars in community
+- Students cannot harvest personal data like locations or social media URLs
+- Users retain full control over viewing/editing their own profile
+- Admins retain oversight for moderation purposes
