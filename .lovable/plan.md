@@ -1,306 +1,151 @@
 
+# Fix Course Editor & Add Per-Question Timer to Admin Quiz Settings
 
-# Fix Course Crash & Add Per-Question Quiz Timing
+## Issues Identified
 
-## Issue 1: Course Selection Crash - Root Cause Analysis
-
-**Error**: `Rendered more hooks than during the previous render`
-
-The crash occurs in `CourseDetail.tsx` because React's Rules of Hooks are being violated:
-
-```text
-Component Flow:
-1. First render (loading): isLoadingCourse = true
-   - Hooks 1-10 are called
-   - Early return at line 211 (loading UI)
-   - useMemo at line 362 is NEVER called
-
-2. Second render (loaded): isLoadingCourse = false, course exists
-   - Hooks 1-10 are called
-   - NO early return
-   - useMemo at line 362 IS called <- NEW HOOK!
-   
-Result: React detects more hooks on second render = CRASH
-```
-
-**Problem Location**: Line 362 has a `useMemo` hook placed AFTER early returns at lines 211-238
-
+### Issue 1: Can't Edit Course After Creation
+**Root Cause**: The `ModulesSection` component only renders when `dbCourse` exists (line 424):
 ```typescript
-// Line 211-222: Early return for loading state
-if (isLoadingCourse) {
-  return <Loading />;  // useMemo on line 362 never runs
-}
-
-// Line 224-239: Early return for missing course
-if (!course) {
-  return <NotFound />;  // useMemo on line 362 never runs
-}
-
-// Line 362-368: This useMemo only runs if NOT loading and course EXISTS
-const isFinalExamUnlocked = useMemo(() => { ... }, [course, getModuleProgress]);
+{!isNew && dbCourse && (
+  <ModulesSection courseId={dbCourse.id} />
+)}
 ```
 
-**Fix**: Move the `isFinalExamUnlocked` useMemo BEFORE the early returns, adding null safety.
+However, when a new course is created:
+1. The course is saved with an empty code if the user didn't fill in the code field first
+2. After saving, the page navigates to `/admin/courses/${form.code}` 
+3. If `form.code` was empty, the URL becomes `/admin/courses/` which doesn't work
+4. Even if the code exists, the query may not immediately refetch the new course
 
----
+**Evidence**: The database has a course with an empty code: `"Intro To Drone Cinematography"` with `code: ""`
 
-## Issue 2: Per-Question Timing for Quizzes
+### Issue 2: Can't Add Modules/Lessons to Newly Created Courses  
+**Root Cause**: Same as Issue 1 - the `ModulesSection` only shows when `dbCourse` is loaded, but the query invalidation timing can cause it to not appear immediately after creation.
 
-Currently, quizzes have a global timer (e.g., 10 minutes for 10 questions). The request is to implement per-question timing where each question has its own countdown.
-
-**Current Timer Behavior** (QuizPlayer.tsx):
-- Global `timeLimitSeconds` calculated once at quiz start
-- Single `remainingTime` countdown for entire quiz
-- When time expires, quiz auto-submits all answers
-
-**New Per-Question Timer Behavior**:
-- Each question gets individual time (e.g., 60 seconds per question)
-- Timer resets when moving to next question
-- If question timer expires:
-  - Current question is marked as unanswered (or current selection is locked)
-  - Auto-advance to next question
-- Final question timeout triggers quiz submission
+### Issue 3: Quiz Per-Question Timer Settings Missing from Admin
+**Root Cause**: The `quizzes` table doesn't have columns for per-question timer settings (`per_question_seconds`, `use_per_question_timer`). The current implementation added these to the static `Quiz` interface, but:
+1. Database-managed quizzes don't have these columns
+2. The `QuizDialog` admin component doesn't have inputs for these settings
 
 ---
 
 ## Implementation Plan
 
-### Phase 1: Fix CourseDetail.tsx Hook Order Bug
+### Phase 1: Fix Course Code Validation
 
-**File**: `src/pages/CourseDetail.tsx`
+**File**: `src/pages/admin/CourseEditor.tsx`
 
 **Changes**:
-1. Move `isFinalExamUnlocked` useMemo to line ~186 (before early returns)
-2. Add null check for `course` inside the useMemo
-3. Ensure all hooks run on every render, regardless of loading state
+1. Add validation to prevent saving a course with an empty code
+2. Show an error message if code is missing
+3. Make the "Save Course" button disabled when code is empty
 
-**Before** (buggy):
 ```typescript
-// Lines 186-208: useMemo for courseProgress
-const courseProgress = useMemo(() => { ... }, [course, isLessonCompleted, isQuizPassed]);
+// Add validation before save
+const canSave = form.code.trim().length > 0 && form.title.trim().length > 0;
 
-// Lines 211-238: Early returns
-if (isLoadingCourse) return <Loading />;
-if (!course) return <NotFound />;
-
-// Line 362: useMemo AFTER early returns - BUG!
-const isFinalExamUnlocked = useMemo(() => { ... }, [course, getModuleProgress]);
+// Disable button if can't save
+<Button type="submit" disabled={saveCourse.isPending || !canSave}>
 ```
 
-**After** (fixed):
+### Phase 2: Fix Query Key Mismatch After Create
+
+**File**: `src/pages/admin/CourseEditor.tsx`
+
+**Changes**:
+1. After creating a new course, invalidate the query using the URL param that will be navigated to
+2. Add a refetch trigger when the URL param changes
+3. Use the returned course data from insert to immediately set `dbCourse`
+
 ```typescript
-// Lines 186-208: useMemo for courseProgress
-const courseProgress = useMemo(() => { ... }, [course, isLessonCompleted, isQuizPassed]);
-
-// NEW: Move isFinalExamUnlocked here, BEFORE early returns
-const isFinalExamUnlocked = useMemo(() => {
-  if (!course?.finalExam) return false;
-  return course.modules.every((module) => {
-    const progress = getModuleProgress(module);
-    return progress.percent === 100;
-  });
-}, [course, getModuleProgress]);
-
-// Lines 211-238: Early returns (hooks already executed)
-if (isLoadingCourse) return <Loading />;
-if (!course) return <NotFound />;
+const saveCourse = useMutation({
+  mutationFn: async (data: CourseForm) => {
+    if (isNew) {
+      const { data: newCourse, error } = await supabase
+        .from("courses")
+        .insert({ ... })
+        .select()
+        .single();  // Return the created course
+      if (error) throw error;
+      return newCourse;  // Return for onSuccess
+    }
+    // ... update logic
+  },
+  onSuccess: (newCourse) => {
+    if (isNew && newCourse) {
+      // Immediately set course data, then navigate
+      queryClient.setQueryData(["admin-course", newCourse.code], newCourse);
+    }
+    // ... rest of success handling
+  }
+});
 ```
 
----
+### Phase 3: Add Per-Question Timer to Database
 
-### Phase 2: Add Per-Question Timer to QuizPlayer
+**Database Migration**:
+Add two new columns to the `quizzes` table:
+- `per_question_seconds` (integer, nullable, default 60)
+- `use_per_question_timer` (boolean, default false)
 
-**Files to modify**:
-- `src/components/course/QuizPlayer.tsx`
-- `src/lib/quizUtils.ts`
-- `src/data/courses.ts` (Quiz interface)
+```sql
+ALTER TABLE quizzes 
+ADD COLUMN per_question_seconds integer DEFAULT 60,
+ADD COLUMN use_per_question_timer boolean DEFAULT false NOT NULL;
+```
 
-**New Quiz Properties**:
+### Phase 4: Update Quiz Admin Components
+
+**File**: `src/hooks/useAdminQuizContent.ts`
+
+Add the new fields to the `DbQuiz` interface:
 ```typescript
-export interface Quiz {
-  id: string;
-  title: string;
-  questions: number;
-  passingScore: number;
-  timeLimitMinutes?: number;      // Total quiz time (existing)
-  perQuestionSeconds?: number;    // NEW: Time per question (default 60s)
-  usePerQuestionTimer?: boolean;  // NEW: Enable per-question mode
+export interface DbQuiz {
+  // ... existing fields
+  per_question_seconds: number | null;
+  use_per_question_timer: boolean;
 }
 ```
 
-**QuizPlayer State Changes**:
-```typescript
-// Existing state
-const [remainingTime, setRemainingTime] = useState<number>(0);
+**File**: `src/components/admin/QuizDialog.tsx`
 
-// NEW: Per-question timer state
-const [questionRemainingTime, setQuestionRemainingTime] = useState<number>(0);
-const [questionStartTime, setQuestionStartTime] = useState<number | null>(null);
+Add UI controls for per-question timer settings:
+1. Toggle switch for "Use Per-Question Timer"
+2. Number input for "Seconds Per Question" (only visible when toggle is on)
+3. Update the `onSave` callback to include these new fields
 
-// Determine timer mode
-const usePerQuestionMode = quiz.usePerQuestionTimer ?? false;
-const perQuestionTime = quiz.perQuestionSeconds ?? 60; // Default 60 seconds
-```
+**File**: `src/components/admin/QuizSection.tsx`
 
-**Timer Logic Changes**:
+Display per-question timer info in the quiz item display.
 
-Current single-timer useEffect becomes conditional:
-```typescript
-useEffect(() => {
-  if (state !== "playing" || !startTime) return;
-  
-  if (usePerQuestionMode) {
-    // Per-question timer
-    const interval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - questionStartTime!) / 1000);
-      const remaining = Math.max(0, perQuestionTime - elapsed);
-      setQuestionRemainingTime(remaining);
-      
-      if (remaining <= 0) {
-        clearInterval(interval);
-        handleQuestionTimeout(); // Auto-advance or lock answer
-      }
-    }, 1000);
-    return () => clearInterval(interval);
-  } else {
-    // Global quiz timer (existing behavior)
-    const interval = setInterval(() => { ... });
-    return () => clearInterval(interval);
-  }
-}, [state, startTime, questionStartTime, usePerQuestionMode]);
-```
+### Phase 5: Connect QuizPlayer to Database Quiz Settings
 
-**New Handler - Question Timeout**:
-```typescript
-const handleQuestionTimeout = useCallback(() => {
-  // Lock current answer (keep whatever is selected, or -1 if none)
-  if (currentQuestion && answers[currentQuestion.id] === undefined) {
-    setAnswers(prev => ({ ...prev, [currentQuestion.id]: -1 })); // Mark as skipped
-  }
-  
-  // Auto-advance to next question
-  if (currentIndex < shuffledQuestions.length - 1) {
-    setCurrentIndex(prev => prev + 1);
-    setQuestionStartTime(Date.now()); // Reset timer
-    setQuestionRemainingTime(perQuestionTime);
-  } else {
-    // Last question - finish quiz
-    handleFinishQuiz();
-  }
-}, [currentQuestion, currentIndex, shuffledQuestions.length, perQuestionTime, answers, handleFinishQuiz]);
-```
+**File**: `src/components/course/QuizPlayer.tsx`
 
-**Reset Timer on Navigation**:
-```typescript
-const handleNext = useCallback(() => {
-  setShowExplanation(false);
-  if (currentIndex < shuffledQuestions.length - 1) {
-    setCurrentIndex(prev => prev + 1);
-    if (usePerQuestionMode) {
-      setQuestionStartTime(Date.now());
-      setQuestionRemainingTime(perQuestionTime);
-    }
-  } else {
-    handleFinishQuiz();
-  }
-}, [currentIndex, shuffledQuestions.length, handleFinishQuiz, usePerQuestionMode, perQuestionTime]);
-```
-
-**UI Updates - Display Per-Question Timer**:
-```typescript
-// In header, show appropriate timer
-{state === "playing" && (
-  <div className={cn("flex items-center gap-2", isTimeWarning && "text-destructive animate-pulse")}>
-    <Clock className="w-4 h-4" />
-    {usePerQuestionMode 
-      ? `${formatTimeRemaining(questionRemainingTime)} / question`
-      : formatTimeRemaining(remainingTime)
-    }
-  </div>
-)}
-```
-
-**Visual Indicator - Question Timer Progress Ring**:
-```typescript
-// Optional: circular progress indicator around timer
-<div className="relative">
-  <svg className="w-10 h-10 transform -rotate-90">
-    <circle
-      cx="20" cy="20" r="16"
-      stroke="currentColor"
-      strokeWidth="3"
-      fill="none"
-      className="text-muted"
-    />
-    <circle
-      cx="20" cy="20" r="16"
-      stroke="currentColor"
-      strokeWidth="3"
-      fill="none"
-      strokeDasharray={100}
-      strokeDashoffset={100 - (questionRemainingTime / perQuestionTime) * 100}
-      className={cn(
-        "transition-all duration-1000",
-        questionRemainingTime <= 10 ? "text-destructive" : "text-primary"
-      )}
-    />
-  </svg>
-  <span className="absolute inset-0 flex items-center justify-center text-xs font-bold">
-    {questionRemainingTime}
-  </span>
-</div>
-```
+Update to read per-question timer settings from the database quiz object when available, falling back to the static quiz config.
 
 ---
 
-## Database Changes
+## Files to Modify
 
-No database migration needed - the new fields are optional and stored in the static quiz configuration. Existing quizzes will continue using the global timer (backward compatible).
+| File | Changes |
+|------|---------|
+| `src/pages/admin/CourseEditor.tsx` | Add code validation, fix query after create |
+| `src/hooks/useAdminQuizContent.ts` | Add per-question timer fields to interface |
+| `src/components/admin/QuizDialog.tsx` | Add per-question timer toggle and input |
+| `src/components/admin/QuizSection.tsx` | Display per-question timer info |
+| `src/components/course/QuizPlayer.tsx` | Read timer settings from database quiz |
 
-For dynamically created quizzes (via admin panel), the quiz table already supports adding new fields. A future enhancement could add `per_question_seconds` column.
+## Database Migration
 
----
-
-## Files Summary
-
-| File | Action | Description |
-|------|--------|-------------|
-| `src/pages/CourseDetail.tsx` | Modify | Move useMemo before early returns to fix hooks crash |
-| `src/components/course/QuizPlayer.tsx` | Modify | Add per-question timer mode with auto-advance |
-| `src/lib/quizUtils.ts` | Modify | Add helper for per-question time calculation |
-| `src/data/courses.ts` | Modify | Extend Quiz interface with per-question timer fields |
-
----
-
-## Quiz Intro Screen Update
-
-When per-question mode is enabled, show different info:
-
-```text
-+-----------------------------------------+
-|         [Trophy Icon]                   |
-|         Module 1 Quiz                   |
-|                                         |
-|  +--------+  +--------+  +--------+     |
-|  |   10   |  |  80%   |  |  60s   |     |
-|  |Questions|  |To Pass |  |/Question|   |
-|  +--------+  +--------+  +--------+     |
-|                                         |
-|  [!] Each question has a 60-second      |
-|      time limit. Unanswered questions   |
-|      will auto-advance.                 |
-|                                         |
-|       [Cancel]  [Start Quiz]            |
-+-----------------------------------------+
-```
+Add new columns to the `quizzes` table for per-question timer settings.
 
 ---
 
 ## Expected Outcome
 
-1. **Bug Fix**: Students can now select courses without crashing
-2. **Per-Question Timer**: Quizzes can be configured with individual question time limits
-3. **Backward Compatible**: Existing quizzes with global timers continue working
-4. **Enhanced UX**: Visual countdown per question creates urgency and engagement
-5. **Auto-Advance**: Unanswered questions are skipped when time runs out
-
+1. Course code is required before saving - prevents empty code issues
+2. Modules section appears immediately after creating a course
+3. Admins can configure per-question timer settings when creating/editing quizzes
+4. Quiz player uses database settings for per-question timing
+5. Backward compatible - existing quizzes use global timer by default
