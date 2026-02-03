@@ -63,20 +63,25 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
       setIsSaving(true);
       const timeTaken = Math.round((Date.now() - startTime) / 1000);
       
-      await saveQuizResult({
-        quiz_id: quiz.id,
-        course_code: courseCode,
-        score,
-        total_questions: questions.length,
-        passed,
-        time_taken_seconds: timeTaken,
-      });
+      // Pass questions and answers to saveQuizResult for detailed tracking
+      await saveQuizResult(
+        {
+          quiz_id: quiz.id,
+          course_code: courseCode,
+          score,
+          total_questions: questions.length,
+          passed,
+          time_taken_seconds: timeTaken,
+        },
+        questions,  // Pass the questions array
+        answers     // Pass the user's answers
+      );
       
       setIsSaving(false);
     }
     
     onComplete?.(score, passed);
-  }, [user, startTime, quiz.id, courseCode, score, questions.length, passed, saveQuizResult, onComplete]);
+  }, [user, startTime, quiz.id, courseCode, score, questions.length, passed, saveQuizResult, onComplete, questions, answers]);
 
   const handleNext = useCallback(() => {
     setShowExplanation(false);

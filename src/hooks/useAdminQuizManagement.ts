@@ -1,0 +1,182 @@
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
+import { getQuizQuestions, type QuizQuestion } from "@/data/quizQuestions";
+
+export interface QuizAnswer {
+  id: string;
+  questionId: string;
+  selectedAnswer: number;
+  isCorrect: boolean;
+}
+
+export interface QuizResultDetail {
+  id: string;
+  quizId: string;
+  courseCode: string;
+  score: number;
+  totalQuestions: number;
+  passed: boolean;
+  attemptNumber: number | null;
+  createdAt: string;
+  timeTakenSeconds: number | null;
+  answers: Array<{
+    questionId: string;
+    questionText: string;
+    options: string[];
+    selectedAnswer: number;
+    correctAnswer: number;
+    isCorrect: boolean;
+  }>;
+}
+
+export function useAdminQuizManagement() {
+  const queryClient = useQueryClient();
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Fetch detailed quiz results with answers for a specific user
+  const fetchQuizResultsWithAnswers = async (userId: string): Promise<QuizResultDetail[]> => {
+    // Fetch quiz results
+    const { data: results, error: resultsError } = await supabase
+      .from("quiz_results")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (resultsError) throw resultsError;
+    if (!results || results.length === 0) return [];
+
+    // Fetch answers for all quiz results
+    const resultIds = results.map((r) => r.id);
+    const { data: answersData, error: answersError } = await supabase
+      .from("quiz_answers")
+      .select("*")
+      .in("quiz_result_id", resultIds);
+
+    if (answersError) throw answersError;
+
+    // Group answers by quiz_result_id
+    const answersByResultId: Record<string, QuizAnswer[]> = {};
+    (answersData || []).forEach((answer) => {
+      if (!answersByResultId[answer.quiz_result_id]) {
+        answersByResultId[answer.quiz_result_id] = [];
+      }
+      answersByResultId[answer.quiz_result_id].push({
+        id: answer.id,
+        questionId: answer.question_id,
+        selectedAnswer: answer.selected_answer,
+        isCorrect: answer.is_correct,
+      });
+    });
+
+    // Build the detailed results
+    return results.map((result) => {
+      const quizQuestions = getQuizQuestions(result.quiz_id);
+      const resultAnswers = answersByResultId[result.id] || [];
+      
+      // Map answers to include question details
+      const answersWithDetails = resultAnswers.map((answer) => {
+        const question = quizQuestions.find((q) => q.id === answer.questionId);
+        return {
+          questionId: answer.questionId,
+          questionText: question?.question || "Question not found",
+          options: question?.options || [],
+          selectedAnswer: answer.selectedAnswer,
+          correctAnswer: question?.correctAnswer ?? -1,
+          isCorrect: answer.isCorrect,
+        };
+      });
+
+      return {
+        id: result.id,
+        quizId: result.quiz_id,
+        courseCode: result.course_code,
+        score: result.score,
+        totalQuestions: result.total_questions,
+        passed: result.passed,
+        attemptNumber: result.attempt_number,
+        createdAt: result.created_at,
+        timeTakenSeconds: result.time_taken_seconds,
+        answers: answersWithDetails,
+      };
+    });
+  };
+
+  // Delete a specific quiz result (and its answers via cascade)
+  const deleteQuizResult = async (quizResultId: string, userId: string) => {
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("quiz_results")
+        .delete()
+        .eq("id", quizResultId);
+
+      if (error) throw error;
+
+      // Invalidate queries
+      queryClient.invalidateQueries({ queryKey: ["admin-student-detail", userId] });
+      queryClient.invalidateQueries({ queryKey: ["admin-students"] });
+      
+      return { success: true };
+    } catch (error) {
+      return { success: false, error };
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Delete all quiz results for a user
+  const deleteAllQuizResults = async (userId: string) => {
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("quiz_results")
+        .delete()
+        .eq("user_id", userId);
+
+      if (error) throw error;
+
+      // Invalidate queries
+      queryClient.invalidateQueries({ queryKey: ["admin-student-detail", userId] });
+      queryClient.invalidateQueries({ queryKey: ["admin-students"] });
+      
+      return { success: true };
+    } catch (error) {
+      return { success: false, error };
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Delete an enrollment for a user
+  const deleteEnrollment = async (userId: string, courseCode: string) => {
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("enrollments")
+        .delete()
+        .eq("user_id", userId)
+        .eq("course_code", courseCode);
+
+      if (error) throw error;
+
+      // Invalidate queries
+      queryClient.invalidateQueries({ queryKey: ["admin-student-detail", userId] });
+      queryClient.invalidateQueries({ queryKey: ["admin-students"] });
+      
+      return { success: true };
+    } catch (error) {
+      return { success: false, error };
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return {
+    fetchQuizResultsWithAnswers,
+    deleteQuizResult,
+    deleteAllQuizResults,
+    deleteEnrollment,
+    isDeleting,
+  };
+}

@@ -3,8 +3,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTestMode } from "@/hooks/useTestMode";
 import type { Tables } from "@/integrations/supabase/types";
+import type { QuizQuestion } from "@/data/quizQuestions";
 
 type QuizResult = Tables<"quiz_results">;
+
+export interface QuizAnswerInput {
+  questionId: string;
+  selectedAnswer: number;
+  isCorrect: boolean;
+}
 
 export function useQuizResults() {
   const { user } = useAuth();
@@ -46,15 +53,43 @@ export function useQuizResults() {
     return results.filter((r) => r.quiz_id === quizId).length;
   }, [results, isTestModeEnabled]);
 
-  const saveQuizResult = async (result: {
-    quiz_id: string;
-    course_code: string;
-    score: number;
-    total_questions: number;
-    passed: boolean;
-    time_taken_seconds?: number;
-  }) => {
-    if (!user) return { error: new Error("Not authenticated") };
+  // Save individual quiz answers after quiz result is created
+  const saveQuizAnswers = async (quizResultId: string, answers: QuizAnswerInput[]) => {
+    if (!user || answers.length === 0) return { error: null };
+
+    try {
+      const answersToInsert = answers.map((answer) => ({
+        quiz_result_id: quizResultId,
+        question_id: answer.questionId,
+        selected_answer: answer.selectedAnswer,
+        is_correct: answer.isCorrect,
+      }));
+
+      const { error } = await supabase
+        .from("quiz_answers")
+        .insert(answersToInsert);
+
+      if (error) throw error;
+      return { error: null };
+    } catch (err) {
+      console.error("Error saving quiz answers:", err);
+      return { error: err as Error };
+    }
+  };
+
+  const saveQuizResult = async (
+    result: {
+      quiz_id: string;
+      course_code: string;
+      score: number;
+      total_questions: number;
+      passed: boolean;
+      time_taken_seconds?: number;
+    },
+    questions?: QuizQuestion[],
+    userAnswers?: Record<string, number>
+  ) => {
+    if (!user) return { error: new Error("Not authenticated"), data: null };
 
     // Always save actual results - auto-pass is only for instant-pass buttons
     const finalResult = result;
@@ -74,6 +109,16 @@ export function useQuizResults() {
         .single();
 
       if (error) throw error;
+
+      // Save individual answers if questions and userAnswers are provided
+      if (data && questions && userAnswers) {
+        const answersToSave: QuizAnswerInput[] = questions.map((q) => ({
+          questionId: q.id,
+          selectedAnswer: userAnswers[q.id] ?? -1,
+          isCorrect: userAnswers[q.id] === q.correctAnswer,
+        }));
+        await saveQuizAnswers(data.id, answersToSave);
+      }
 
       setResults((prev) => [data, ...prev]);
       return { error: null, data };
@@ -111,5 +156,5 @@ export function useQuizResults() {
     }
   }, [user, shouldAutoPassQuiz]);
 
-  return { results, loading, error, saveQuizResult, getAttemptCount, instantPassQuiz, isTestModeEnabled };
+  return { results, loading, error, saveQuizResult, saveQuizAnswers, getAttemptCount, instantPassQuiz, isTestModeEnabled };
 }
