@@ -16,6 +16,21 @@ interface AssessmentResult {
   completed_at: string;
 }
 
+export interface RoadmapPhase {
+  name: string;
+  description: string;
+  courses: string[]; // course codes
+  estimatedWeeks: number;
+}
+
+export interface LearningRoadmap {
+  phases: RoadmapPhase[];
+  totalWeeks: number;
+  primaryStrength: string;
+  secondaryStrength: string | null;
+  areasToImprove: string[];
+}
+
 export function useAssessmentResults() {
   const { user } = useAuth();
   const [results, setResults] = useState<AssessmentResult[]>([]);
@@ -39,7 +54,6 @@ export function useAssessmentResults() {
 
         if (error) throw error;
 
-        // Type assertion since the table is newly created
         setResults((data as unknown as AssessmentResult[]) || []);
       } catch (err) {
         setError(err as Error);
@@ -51,57 +65,157 @@ export function useAssessmentResults() {
     fetchResults();
   }, [user]);
 
+  // Calculate starting level for a department based on score
+  const getStartingLevel = (score: number, experienceLevel: string): string[] => {
+    // Adjust based on experience
+    let adjustedScore = score;
+    if (experienceLevel === "professional") {
+      adjustedScore = Math.max(score, 60); // Professionals start at least at intermediate
+    } else if (experienceLevel === "beginner") {
+      adjustedScore = Math.min(score, 50); // Beginners capped for humility
+    }
+
+    if (adjustedScore <= 30) {
+      return ["Beginner"];
+    } else if (adjustedScore <= 60) {
+      return ["Beginner", "Intermediate"];
+    } else if (adjustedScore <= 85) {
+      return ["Intermediate"];
+    } else {
+      return ["Intermediate", "Advanced"];
+    }
+  };
+
+  // Build a phased learning roadmap
+  const calculateRoadmap = (
+    departmentScores: Record<string, number>,
+    interests: string[],
+    experienceLevel: string
+  ): LearningRoadmap => {
+    // 1. Rank departments by score within interests
+    const interestScores = interests
+      .map((dept) => ({ dept, score: departmentScores[dept] || 0 }))
+      .sort((a, b) => b.score - a.score);
+
+    const primaryStrength = interestScores[0]?.dept || interests[0];
+    const secondaryStrength = interestScores[1]?.dept || null;
+    
+    // Identify areas needing improvement (score < 50%)
+    const areasToImprove = interestScores
+      .filter(({ score }) => score < 50)
+      .map(({ dept }) => dept);
+
+    const phases: RoadmapPhase[] = [];
+
+    // Phase 1: Foundation (for departments where student scored < 60%)
+    if (experienceLevel !== "professional") {
+      const foundationDepts = interests.filter(
+        (dept) => (departmentScores[dept] || 0) < 60
+      );
+
+      const foundationCourses = foundationDepts
+        .flatMap((dept) =>
+          courses
+            .filter((c) => c.departmentId === dept && c.level === "Beginner")
+            .slice(0, 1)
+            .map((c) => c.code)
+        )
+        .slice(0, 3); // Max 3 foundation courses
+
+      if (foundationCourses.length > 0) {
+        phases.push({
+          name: "Foundation",
+          description: "Build core fundamentals in areas that need strengthening",
+          courses: foundationCourses,
+          estimatedWeeks: foundationCourses.length * 4,
+        });
+      }
+    }
+
+    // Phase 2: Core Skills (Intermediate courses in strongest areas)
+    const coreStrengthDepts = interests
+      .filter((dept) => (departmentScores[dept] || 0) >= 40)
+      .sort((a, b) => (departmentScores[b] || 0) - (departmentScores[a] || 0));
+
+    // If no dept scored >= 40, use all interests
+    const coreDepts = coreStrengthDepts.length > 0 ? coreStrengthDepts : interests;
+
+    const coreCourses = coreDepts
+      .flatMap((dept) => {
+        const levels = getStartingLevel(departmentScores[dept] || 0, experienceLevel);
+        // For core, prioritize Intermediate
+        const level = levels.includes("Intermediate") ? "Intermediate" : levels[0];
+        return courses
+          .filter((c) => c.departmentId === dept && c.level === level)
+          .slice(0, 1)
+          .map((c) => c.code);
+      })
+      .slice(0, 3); // Max 3 core courses
+
+    if (coreCourses.length > 0) {
+      phases.push({
+        name: "Core Skills",
+        description: "Develop professional techniques in your areas of interest",
+        courses: coreCourses,
+        estimatedWeeks: coreCourses.length * 5,
+      });
+    }
+
+    // Phase 3: Specialization (Advanced courses for top performers)
+    const hasStrongArea = Object.entries(departmentScores)
+      .filter(([dept]) => interests.includes(dept))
+      .some(([_, score]) => score >= 65);
+
+    if (hasStrongArea || experienceLevel === "professional" || experienceLevel === "semi-professional") {
+      const specializationDepts = [primaryStrength];
+      if (secondaryStrength && (departmentScores[secondaryStrength] || 0) >= 60) {
+        specializationDepts.push(secondaryStrength);
+      }
+
+      const advancedCourses = specializationDepts
+        .flatMap((dept) =>
+          courses
+            .filter((c) => c.departmentId === dept && c.level === "Advanced")
+            .slice(0, 1)
+            .map((c) => c.code)
+        )
+        .slice(0, 2); // Max 2 advanced courses
+
+      if (advancedCourses.length > 0) {
+        phases.push({
+          name: "Specialization",
+          description: "Master advanced concepts in your strongest areas",
+          courses: advancedCourses,
+          estimatedWeeks: advancedCourses.length * 5,
+        });
+      }
+    }
+
+    // Calculate total weeks
+    const totalWeeks = phases.reduce((sum, p) => sum + p.estimatedWeeks, 0);
+
+    return {
+      phases,
+      totalWeeks,
+      primaryStrength,
+      secondaryStrength,
+      areasToImprove,
+    };
+  };
+
+  // Flatten roadmap into ordered course list for database storage
   const calculateRecommendations = (
     departmentScores: Record<string, number>,
     interests: string[],
     experienceLevel: string
   ): string[] => {
-    // Weight scores by interests (1.5x multiplier)
-    const weightedScores = { ...departmentScores };
-    interests.forEach((interest) => {
-      if (weightedScores[interest] !== undefined) {
-        weightedScores[interest] *= 1.5;
-      }
-    });
-
-    // Determine difficulty level based on average score
-    const avgScore =
-      Object.values(departmentScores).reduce((a, b) => a + b, 0) /
-      Object.values(departmentScores).length;
-
-    let targetLevels: string[];
-    if (avgScore <= 40) {
-      targetLevels = ["Beginner"];
-    } else if (avgScore <= 70) {
-      targetLevels = ["Beginner", "Intermediate"];
-    } else {
-      targetLevels = ["Intermediate", "Advanced"];
-    }
-
-    // Adjust based on experience level
-    if (experienceLevel === "professional") {
-      targetLevels = ["Intermediate", "Advanced"];
-    } else if (experienceLevel === "beginner") {
-      targetLevels = ["Beginner"];
-    }
-
-    // Filter and rank courses
-    const scoredCourses = courses
-      .filter((course) => {
-        const matchesInterest = interests.includes(course.departmentId);
-        const matchesLevel = targetLevels.includes(course.level);
-        return matchesInterest && matchesLevel;
-      })
-      .map((course) => ({
-        code: course.code,
-        relevance:
-          (weightedScores[course.departmentId] || 0) +
-          (course.level === "Beginner" ? 10 : 0),
-      }))
-      .sort((a, b) => b.relevance - a.relevance);
-
-    // Return top 5-7 course codes
-    return scoredCourses.slice(0, 7).map((c) => c.code);
+    const roadmap = calculateRoadmap(departmentScores, interests, experienceLevel);
+    
+    // Flatten phases into ordered course codes
+    const orderedCourses = roadmap.phases.flatMap((phase) => phase.courses);
+    
+    // Deduplicate while maintaining order
+    return [...new Set(orderedCourses)];
   };
 
   const saveAssessmentResult = async (result: {
@@ -147,13 +261,24 @@ export function useAssessmentResults() {
   const latestResult = results[0] || null;
   const hasCompletedAssessment = results.length > 0;
 
+  // Get roadmap for latest result
+  const latestRoadmap = latestResult
+    ? calculateRoadmap(
+        latestResult.department_scores,
+        latestResult.interests,
+        latestResult.experience_level
+      )
+    : null;
+
   return {
     results,
     latestResult,
+    latestRoadmap,
     hasCompletedAssessment,
     loading,
     error,
     saveAssessmentResult,
     calculateRecommendations,
+    calculateRoadmap,
   };
 }
