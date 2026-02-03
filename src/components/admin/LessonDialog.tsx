@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +17,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Video, FileText, Dumbbell, Info, Play } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Video, FileText, Dumbbell, Info, Play, Upload, X, File } from "lucide-react";
+import { useLessonDocumentUpload } from "@/hooks/useLessonDocumentUpload";
 import type { DbLesson } from "@/hooks/useAdminCourseContent";
 
 interface LessonDialogProps {
@@ -31,6 +33,7 @@ interface LessonDialogProps {
     video_url?: string;
     content?: string;
     description?: string;
+    document_url?: string;
   }) => void;
   isPending?: boolean;
 }
@@ -78,6 +81,10 @@ export function LessonDialog({
   const [videoUrl, setVideoUrl] = useState("");
   const [description, setDescription] = useState("");
   const [content, setContent] = useState("");
+  const [documentUrl, setDocumentUrl] = useState("");
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { uploadDocument, deleteDocument, isUploading, uploadProgress } = useLessonDocumentUpload();
 
   useEffect(() => {
     if (lesson) {
@@ -87,6 +94,7 @@ export function LessonDialog({
       setVideoUrl(lesson.video_url || "");
       setDescription(lesson.description || "");
       setContent(lesson.content || "");
+      setDocumentUrl(lesson.document_url || "");
     } else {
       setTitle("");
       setType("video");
@@ -94,8 +102,31 @@ export function LessonDialog({
       setVideoUrl("");
       setDescription("");
       setContent("");
+      setDocumentUrl("");
     }
   }, [lesson, open]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const url = await uploadDocument(file);
+    if (url) {
+      setDocumentUrl(url);
+    }
+    
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleRemoveDocument = async () => {
+    if (documentUrl) {
+      await deleteDocument(documentUrl);
+      setDocumentUrl("");
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,7 +137,17 @@ export function LessonDialog({
       video_url: videoUrl || undefined,
       description: description || undefined,
       content: content || undefined,
+      document_url: documentUrl || undefined,
     });
+  };
+
+  const getDocumentFileName = (url: string): string => {
+    try {
+      const pathname = new URL(url).pathname;
+      return pathname.split("/").pop() || "document";
+    } catch {
+      return "document";
+    }
   };
 
   const isEdit = !!lesson;
@@ -206,7 +247,93 @@ export function LessonDialog({
             </div>
           )}
 
-          {(type === "reading" || type === "practice") && (
+          {type === "reading" && (
+            <div className="space-y-4">
+              {/* Document Upload Section */}
+              <div className="space-y-2">
+                <Label>Document (PDF, DOC, DOCX)</Label>
+                
+                {!documentUrl && !isUploading && (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-colors"
+                  >
+                    <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-sm font-medium">Click to upload or drag and drop</p>
+                    <p className="text-xs text-muted-foreground mt-1">PDF, DOC, DOCX up to 20MB</p>
+                  </div>
+                )}
+                
+                {isUploading && (
+                  <div className="border rounded-lg p-4 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <File className="h-4 w-4 text-muted-foreground animate-pulse" />
+                      <span className="text-sm">Uploading...</span>
+                    </div>
+                    <Progress value={uploadProgress} className="h-2" />
+                  </div>
+                )}
+                
+                {documentUrl && !isUploading && (
+                  <div className="border rounded-lg p-3 flex items-center justify-between bg-muted/30">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-primary/10 rounded">
+                        <FileText className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium truncate max-w-[200px]">
+                          {getDocumentFileName(documentUrl)}
+                        </p>
+                        <a 
+                          href={documentUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-xs text-primary hover:underline"
+                        >
+                          Preview document
+                        </a>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleRemoveDocument}
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+                
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+              </div>
+              
+              {/* Additional Content (Optional) */}
+              <div className="space-y-2">
+                <Label htmlFor="lesson-content">Additional Content (optional)</Label>
+                <Textarea
+                  id="lesson-content"
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="Add supplementary text content here. Supports markdown formatting..."
+                  rows={6}
+                  className="font-mono text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Markdown text shown below the document
+                </p>
+              </div>
+            </div>
+          )}
+
+          {type === "practice" && (
             <div className="space-y-2">
               <Label htmlFor="lesson-content">Content</Label>
               <Textarea

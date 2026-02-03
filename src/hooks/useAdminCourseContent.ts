@@ -20,6 +20,7 @@ export interface DbLesson {
   video_url: string | null;
   content: string | null;
   description: string | null;
+  document_url: string | null;
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -146,6 +147,7 @@ export function useAdminCourseContent(courseId: string | undefined) {
       video_url?: string;
       content?: string;
       description?: string;
+      document_url?: string;
     }) => {
       const module = modules.find((m) => m.id === lesson.module_id);
       const maxOrder = module && module.lessons.length > 0
@@ -186,6 +188,7 @@ export function useAdminCourseContent(courseId: string | undefined) {
       video_url?: string | null;
       content?: string | null;
       description?: string | null;
+      document_url?: string | null;
     }) => {
       const { error } = await supabase
         .from("lessons")
