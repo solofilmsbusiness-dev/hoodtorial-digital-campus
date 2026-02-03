@@ -4,6 +4,7 @@ import { CourseFilters, LevelFilter, StatusFilter } from "@/components/admin/Cou
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import {
   Table,
   TableBody,
@@ -12,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Pencil, Eye, Lock, Database, Loader2, Trash2 } from "lucide-react";
+import { Plus, Pencil, Eye, Lock, Database, Loader2, Trash2, Upload } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,6 +29,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { courses as staticCourses } from "@/data/courses";
 import { useToast } from "@/hooks/use-toast";
+import { useBulkImportStaticCourses } from "@/hooks/useBulkImportStaticCourses";
 
 interface Course {
   id: string;
@@ -223,6 +225,11 @@ export default function CourseManager() {
 
   const isUsingStaticData = !dbCourses || dbCourses.length === 0;
 
+  // Bulk import hook
+  const { bulkImport, isImporting, progress, staticCoursesCount } = useBulkImportStaticCourses(
+    dbCourses?.map(c => ({ id: c.id, code: c.code, title: c.title }))
+  );
+
   return (
     <AdminLayout title="Course Manager" description="Manage your curriculum">
       <div className="space-y-6">
@@ -252,6 +259,49 @@ export default function CourseManager() {
                   )}
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Bulk Import Static Content Card */}
+        {!isUsingStaticData && staticCoursesCount > 0 && (
+          <Card className="border-primary/50 bg-primary/5">
+            <CardContent className="py-4">
+              {isImporting ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">
+                      Importing course {progress.current} of {progress.total}...
+                    </p>
+                    <span className="text-sm text-muted-foreground">
+                      {Math.round((progress.current / progress.total) * 100)}%
+                    </span>
+                  </div>
+                  {progress.currentCourse && (
+                    <p className="text-sm text-muted-foreground">{progress.currentCourse}</p>
+                  )}
+                  <Progress value={(progress.current / progress.total) * 100} className="h-2" />
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-medium">
+                      <strong>{staticCoursesCount} courses</strong> have pre-built content ready to import.
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Once imported, you can edit modules, lessons, and quizzes.
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => bulkImport()}
+                    disabled={isImporting}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Import All Static Content
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
