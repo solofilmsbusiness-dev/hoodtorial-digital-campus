@@ -1,5 +1,6 @@
-import { TrendingUp, TrendingDown, Minus, Trophy, Target, Sparkles } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Trophy, Target, Sparkles, Volume2, VolumeX } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState, useRef } from "react";
@@ -135,7 +136,7 @@ export function ScoreComparison({
   const totalDiff = currentTotal - previousTotal;
   const isImproved = totalDiff > 0;
   const hasDeclined = totalDiff < 0;
-  const { playSuccessChime, playLevelUp, playTick } = useCelebrationSound();
+  const { playSuccessChime, playLevelUp, playTick, isMuted, toggleMute } = useCelebrationSound();
   const hasPlayedCelebration = useRef(false);
   
   // Play celebration sounds on mount if improved
@@ -198,6 +199,17 @@ export function ScoreComparison({
           hasDeclined ? "border-red-500/50 bg-red-500/5" : 
           "border-primary/50 bg-primary/5"
         )}>
+          {/* Sound Toggle Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleMute}
+            className="absolute top-2 right-2 h-8 w-8 text-muted-foreground hover:text-foreground z-10"
+            title={isMuted ? "Unmute celebration sounds" : "Mute celebration sounds"}
+          >
+            {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+          </Button>
+          
           <CardContent className="pt-6">
             <div className="flex items-center justify-center gap-8">
               <motion.div 
