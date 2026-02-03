@@ -1,48 +1,48 @@
 
+# Simplify PDF Viewer - Click to Open
 
-# Sort Courses: Available First, Coming Soon Last
+## Problem
 
-## What This Change Does
+Chrome blocks embedded PDFs in iframes with the message "This page has been blocked by Chrome". This is a common security restriction that affects many PDF sources.
 
-When you visit the Academics page, all available courses will appear at the top of the list, and all "Coming Soon" courses will be grouped at the bottom. This applies to both grid and list view modes.
+## Solution
 
-## How It Works
+Remove the iframe embed and replace it with a clean, clickable card that opens the PDF in a new tab when clicked. This is more reliable across all browsers and provides a better user experience.
 
-After filtering courses by department and search, the results will be sorted so that:
-- **Available courses** (isComingSoon = false) appear first
-- **Coming Soon courses** (isComingSoon = true) appear last
+## Changes
 
-The original order within each group will be preserved.
+**File:** `src/components/course/DocumentViewer.tsx`
 
----
+### Current Behavior
+- Shows header with Open/Download buttons
+- Tries to embed PDF in an iframe (blocked by Chrome)
 
-## Technical Details
+### New Behavior
+- Shows a larger, clickable document card
+- Clicking anywhere on the card opens the PDF in a new tab
+- Keep the download button for convenience
+- Remove the problematic iframe entirely
 
-**File:** `src/pages/Academics.tsx`
+## Visual Design
 
-**Change:** Add a sort step after the existing filter logic
-
-```typescript
-// Current code (lines 27-36)
-const filteredCourses = courses.filter(course => {
-  const matchesDepartment = activeFilter === "all" || course.departmentId === activeFilter;
-  const query = searchQuery.toLowerCase();
-  const matchesSearch = !query || 
-    course.code.toLowerCase().includes(query) ||
-    course.title.toLowerCase().includes(query) ||
-    course.description.toLowerCase().includes(query) ||
-    course.department.toLowerCase().includes(query);
-  return matchesDepartment && matchesSearch;
-});
-
-// NEW: Sort to show available courses first, coming soon last
-const sortedCourses = [...filteredCourses].sort((a, b) => {
-  if (a.isComingSoon === b.isComingSoon) return 0;
-  return a.isComingSoon ? 1 : -1;
-});
+```
++------------------------------------------------------------------+
+|  [PDF Icon]                                                       |
+|                                                                   |
+|  Document Title                                                   |
+|  PDF Document - Click to open                                     |
+|                                                                   |
+|  [Download]                                                       |
++------------------------------------------------------------------+
 ```
 
-Then use `sortedCourses` instead of `filteredCourses` for rendering the course grid/list.
+The entire card will be clickable to open the PDF.
 
-**Lines affected:** 27-36 (filter), 225-247 (grid/list rendering), 137-147 (course count and stats)
+## Technical Changes
 
+1. Remove the `showEmbed` variable and the iframe section
+2. Create a unified card design for all documents (PDF and non-PDF)
+3. Make the main area clickable with a clear call-to-action
+4. Keep the download button as a secondary action
+
+This is a simple, reliable solution that works across all browsers without any security restrictions.
