@@ -1,236 +1,117 @@
 
 
-# Facebook-Style Timeline Community Feed
+# Add Professor Role to Admin System
 
 ## Overview
 
-Transform the community feed from its current Instagram-inspired grid/feed layout into a more visual Facebook-style timeline. This will feature a single-column centered timeline with rich post cards, inline media previews, and a more engaging social experience.
+Add a new "professor" role to the role system and update all admin-related UI to clearly display role badges. This will allow distinguishing professors from regular students, with admin accounts clearly labeled as "Admin" throughout the platform.
 
-## Current vs. New Design
+## Database Changes
 
-| Aspect | Current | New Facebook-Style |
-|--------|---------|-------------------|
-| Layout | Grid (Instagram-style) | Single-column timeline |
-| Post cards | Minimal, media-focused | Rich cards with full content preview |
-| Media display | Square thumbnails | Inline images/videos in feed |
-| Content visibility | Title only in grid | Full post content visible |
-| Interactions | Hidden on hover | Always visible action bar |
-| Comments preview | None | Show 2 most recent comments |
-| Create post | Separate form | Inline "What's on your mind?" prompt |
+### 1. Extend the app_role Enum
 
-## Visual Design
+Add "professor" as a new role type:
 
-```text
-+----------------------------------------------------------+
-|  ┌────────────────────────────────────────────────────┐  |
-|  │  [Avatar] What's on your mind?        [📷] [Post]  │  |
-|  └────────────────────────────────────────────────────┘  |
-|                                                          |
-|  ┌────────────────────────────────────────────────────┐  |
-|  │  [Avatar] John Smith           · 2h  [Category]    │  |
-|  │  ─────────────────────────────────────────────     │  |
-|  │  My latest short film project!                     │  |
-|  │                                                    │  |
-|  │  Just wrapped up editing on my cinematography      │  |
-|  │  assignment. Would love feedback on the lighting   │  |
-|  │  choices in the third act...                       │  |
-|  │                                                    │  |
-|  │  ┌────────────────────────────────────────────┐   │  |
-|  │  │                                            │   │  |
-|  │  │            [Large Image/Video]             │   │  |
-|  │  │                                            │   │  |
-|  │  └────────────────────────────────────────────┘   │  |
-|  │                                                    │  |
-|  │  ❤️ 24 likes   💬 8 comments   🔖 Save              │  |
-|  │  ─────────────────────────────────────────────     │  |
-|  │   [❤️ Like]    [💬 Comment]    [🔖 Save]            │  |
-|  │  ─────────────────────────────────────────────     │  |
-|  │                                                    │  |
-|  │  [Avatar] Sarah: Great work on the lighting! 🔥    │  |
-|  │  [Avatar] Mike: The color grading is chef's kiss   │  |
-|  │                                                    │  |
-|  │  View all 8 comments                               │  |
-|  └────────────────────────────────────────────────────┘  |
-|                                                          |
-|  ┌────────────────────────────────────────────────────┐  |
-|  │            [Next Post Card...]                     │  |
-|  └────────────────────────────────────────────────────┘  |
-+----------------------------------------------------------+
+```sql
+ALTER TYPE public.app_role ADD VALUE 'professor';
 ```
 
-## Implementation Details
+## Frontend Changes
 
-### 1. New Component: TimelinePost
+### 2. Update StudentFilters.tsx
 
-Create a rich Facebook-style post card:
+Add "Professor" as a filter option in the role dropdown:
+
+| Before | After |
+|--------|-------|
+| Admin, Moderator, Student | Admin, Professor, Moderator, Student |
+
+### 3. Update UserManager.tsx
+
+Add role management actions and update badge styling:
+
+**Add getRoleBadgeVariant case:**
+```typescript
+case "professor":
+  return "default"; // Uses primary color
+```
+
+**Add dropdown menu options:**
+- "Make Professor" action for non-professors
+- "Remove Professor" action for existing professors
+
+### 4. Update StudentDetailSheet.tsx
+
+Add professor role styling and management options matching the UserManager pattern.
+
+### 5. Update CommentThread.tsx
+
+Update the instructor badge logic to also recognize professors:
 
 ```typescript
-// src/components/community/TimelinePost.tsx
-interface TimelinePostProps {
-  post: CommunityPost;
-  onLike: () => void;
-  onComment: () => void;
-  onSave: () => void;
-  onClick: () => void;
-  previewComments?: Comment[];
-}
+// Before
+if (comment.is_instructor_comment || comment.user_role === 'admin')
+
+// After  
+if (comment.is_instructor_comment || comment.user_role === 'admin' || comment.user_role === 'professor')
 ```
 
-**Features:**
-- Full author header with avatar, name, timestamp, and category badge
-- Complete post content visible (expandable for long posts)
-- Large inline media display (images in 1:1 or 16:9 ratio, video thumbnails)
-- Image carousel for multiple images
-- Engagement stats bar (likes, comments count)
-- Action buttons row (Like, Comment, Save)
-- Preview of 2 most recent comments
-- "View all X comments" link
+### 6. Update useCommunityComments.ts
 
-### 2. New Component: CreatePostPrompt
-
-Inline post creation prompt (Facebook-style):
+Include professors when determining if a comment should be marked as an instructor comment:
 
 ```typescript
-// src/components/community/CreatePostPrompt.tsx
-interface CreatePostPromptProps {
-  onOpen: () => void;
-  userAvatar?: string;
-  userName?: string;
-}
+// Before
+const isInstructor = userRoles?.some(r => r.role === 'admin' || r.role === 'moderator');
+
+// After
+const isInstructor = userRoles?.some(r => ['admin', 'moderator', 'professor'].includes(r.role));
 ```
 
-**Features:**
-- User avatar on left
-- "What's on your mind?" placeholder text
-- Quick action buttons (Photo, Video)
-- Clicking opens the full CreatePostForm
+## Data Updates
 
-### 3. Update FeedGrid Component
+### 7. Update bangoutfilms@gmail.com Account
 
-Add a new "timeline" variant:
+After the schema migration, update the user's role from "student" to "professor":
 
-```typescript
-// Updated FeedGrid.tsx
-type FeedVariant = 'grid' | 'feed' | 'timeline';
+1. Look up the user_id for bangoutfilms@gmail.com
+2. Add the "professor" role to their user_roles entry
+3. Remove the "student" role if desired (or keep both)
 
-if (variant === 'timeline') {
-  return (
-    <div className="space-y-4 max-w-2xl mx-auto">
-      {posts.map((post) => (
-        <TimelinePost 
-          post={post}
-          previewComments={/* fetch 2 recent comments */}
-          // ...
-        />
-      ))}
-    </div>
-  );
-}
-```
+## Visual Summary
 
-### 4. Update ViewToggle
+### Role Badge Styling
 
-Replace current options with more descriptive Facebook-style naming:
+| Role | Badge Style | Color |
+|------|-------------|-------|
+| Admin | destructive | Red background - clearly stands out |
+| Professor | default | Primary color (gold) |
+| Moderator | secondary | Gray/muted |
+| Student | outline | Subtle border only |
 
-```typescript
-const options = [
-  { value: 'timeline', icon: <Newspaper />, label: 'Timeline' },
-  { value: 'grid', icon: <LayoutGrid />, label: 'Gallery' },
-  { value: 'following', icon: <Users />, label: 'Following' },
-];
-```
+### Role Display in Timeline Posts
 
-### 5. Update Community.tsx
+When a professor or admin comments on a post:
+- Their avatar gets a gold/primary border
+- An "Instructor" badge appears next to their name
+- Their name appears in the primary color
 
-- Default to "timeline" view mode
-- Add CreatePostPrompt above the feed
-- Fetch comment previews for timeline view
+## Files to Modify
 
-### 6. Enhance Hooks
+| File | Changes |
+|------|---------|
+| Database migration | Add 'professor' to app_role enum |
+| `src/components/admin/StudentFilters.tsx` | Add Professor to role filter dropdown |
+| `src/pages/admin/UserManager.tsx` | Add professor badge variant and dropdown actions |
+| `src/components/admin/StudentDetailSheet.tsx` | Add professor badge variant |
+| `src/components/community/CommentThread.tsx` | Recognize professors as instructors |
+| `src/hooks/useCommunityComments.ts` | Include professors in instructor check |
 
-Update `useCommunityPosts` to optionally fetch preview comments:
+## Expected Outcome
 
-```typescript
-// Add comment preview fetching
-const fetchWithCommentPreviews = async () => {
-  // Fetch posts
-  // For each post, fetch 2 most recent comments
-  // Return enriched posts
-};
-```
-
-## File Changes
-
-| File | Action | Purpose |
-|------|--------|---------|
-| `src/components/community/TimelinePost.tsx` | Create | Main Facebook-style post card |
-| `src/components/community/CreatePostPrompt.tsx` | Create | Inline "What's on your mind?" prompt |
-| `src/components/community/FeedGrid.tsx` | Modify | Add timeline variant |
-| `src/components/community/ViewToggle.tsx` | Modify | Update view mode options |
-| `src/components/community/index.ts` | Modify | Export new components |
-| `src/pages/Community.tsx` | Modify | Default to timeline, add prompt |
-| `src/hooks/useCommunityPosts.ts` | Modify | Add comment preview fetching |
-
-## TimelinePost Card Structure
-
-```text
-┌─────────────────────────────────────────────────────┐
-│ HEADER                                              │
-│  [Avatar] Author Name  ·  2 hours ago   [Category]  │
-├─────────────────────────────────────────────────────┤
-│ CONTENT                                             │
-│  Post title (bold, larger)                          │
-│  Post body text (expandable if > 3 lines)           │
-│  [Read more] link for long posts                    │
-├─────────────────────────────────────────────────────┤
-│ MEDIA                                               │
-│  ┌───────────────────────────────────────────────┐  │
-│  │  Large image preview (16:9 or 4:3 ratio)      │  │
-│  │  Or video thumbnail with play button          │  │
-│  │  Carousel dots if multiple images             │  │
-│  └───────────────────────────────────────────────┘  │
-├─────────────────────────────────────────────────────┤
-│ ENGAGEMENT STATS                                    │
-│  ❤️ 24    💬 8 comments                             │
-├─────────────────────────────────────────────────────┤
-│ ACTION BUTTONS                                      │
-│  [❤️ Like]       [💬 Comment]       [🔖 Save]        │
-├─────────────────────────────────────────────────────┤
-│ COMMENT PREVIEW                                     │
-│  [Avatar] User1: Great work! This is amazing...     │
-│  [Avatar] User2: Love the cinematography here       │
-│                                                     │
-│  View all 8 comments                                │
-└─────────────────────────────────────────────────────┘
-```
-
-## Media Display Rules
-
-| Media Type | Display |
-|------------|---------|
-| Single image | Full width, maintain aspect ratio (max 16:9) |
-| 2 images | Side by side, 50% width each |
-| 3+ images | First large, rest in grid below |
-| Video (YouTube) | Embedded player with poster |
-| Video (other) | Thumbnail with play overlay |
-| No media | Text-only card (slightly more compact) |
-
-## Styling Notes
-
-- Cards use the existing `card-urban` style with enhanced padding
-- Maintain the gold (#D4AF37) and neon accent colors
-- Action buttons use subtle hover states
-- Like button animates when clicked (heart fill animation)
-- Smooth expand/collapse for "Read more" on long posts
-- Image lightbox on click (existing ImageGallery component)
-
-## Expected User Experience
-
-1. User arrives at /community and sees a clean timeline
-2. "What's on your mind?" prompt encourages posting
-3. Rich post cards show full content without clicking
-4. Media displays inline and large for visual impact
-5. Comment previews encourage engagement
-6. Action buttons always visible for quick interaction
-7. Toggle to Gallery view for visual browsing mode
+1. Admins are clearly labeled with red "admin" badges throughout the platform
+2. Professors get gold "professor" badges and their comments show "Instructor" label
+3. Role filter in user management includes Professor option
+4. Admin can promote/demote users to/from professor role
+5. bangoutfilms@gmail.com account will have the professor role
 
