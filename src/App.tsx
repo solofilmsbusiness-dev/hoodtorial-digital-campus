@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ChatWidget } from "@/components/chat";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { TestModeProvider } from "@/contexts/TestModeContext";
 import { ProtectedRoute, AdminRoute, PaidRoute, AssessmentRequiredRoute } from "@/components/auth";
@@ -28,90 +29,98 @@ import CourseManager from "./pages/admin/CourseManager";
 import CourseEditor from "./pages/admin/CourseEditor";
 import UserManager from "./pages/admin/UserManager";
 import CommunityManager from "./pages/admin/CommunityManager";
+import AdminSettings from "./pages/admin/AdminSettings";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <AuthProvider>
-        <TestModeProvider>
-          <Toaster />
-          <Sonner />
-          <ChatWidget />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-            <Route path="/degrees" element={<Degrees />} />
-            <Route path="/skill-tree/:path" element={<SkillTree />} />
-            <Route path="/academics" element={<Academics />} />
-            <Route path="/course/:code" element={
-              <PaidRoute>
-                <CourseDetail />
-              </PaidRoute>
-            } />
-            <Route path="/enrollment" element={<Enrollment />} />
-            <Route path="/faculty" element={<Faculty />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/shop" element={<Shop />} />
-            <Route path="/community" element={
-              <AssessmentRequiredRoute>
-                <Community />
-              </AssessmentRequiredRoute>
-            } />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/assessment" element={
-              <ProtectedRoute>
-                <Assessment />
-              </ProtectedRoute>
-            } />
-            <Route path="/student" element={
-              <AssessmentRequiredRoute>
-                <StudentCenter />
-              </AssessmentRequiredRoute>
-            } />
-            <Route path="/student/profile" element={
-              <AssessmentRequiredRoute>
-                <StudentProfile />
-              </AssessmentRequiredRoute>
-            } />
-            <Route path="/student/grades" element={
-              <AssessmentRequiredRoute>
-                <StudentGrades />
-              </AssessmentRequiredRoute>
-            } />
-            <Route path="/admin" element={
-              <AdminRoute>
-                <AdminDashboard />
-              </AdminRoute>
-            } />
-            <Route path="/admin/courses" element={
-              <AdminRoute>
-                <CourseManager />
-              </AdminRoute>
-            } />
-            <Route path="/admin/courses/:code" element={
-              <AdminRoute>
-                <CourseEditor />
-              </AdminRoute>
-            } />
-            <Route path="/admin/users" element={
-              <AdminRoute>
-                <UserManager />
-              </AdminRoute>
-            } />
-            <Route path="/admin/community" element={
-              <AdminRoute>
-                <CommunityManager />
-              </AdminRoute>
-            } />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-        </TestModeProvider>
-      </AuthProvider>
-    </TooltipProvider>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+      <TooltipProvider>
+        <AuthProvider>
+          <TestModeProvider>
+            <Toaster />
+            <Sonner />
+            <ChatWidget />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/degrees" element={<Degrees />} />
+                <Route path="/skill-tree/:path" element={<SkillTree />} />
+                <Route path="/academics" element={<Academics />} />
+                <Route path="/course/:code" element={
+                  <PaidRoute>
+                    <CourseDetail />
+                  </PaidRoute>
+                } />
+                <Route path="/enrollment" element={<Enrollment />} />
+                <Route path="/faculty" element={<Faculty />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/shop" element={<Shop />} />
+                <Route path="/community" element={
+                  <AssessmentRequiredRoute>
+                    <Community />
+                  </AssessmentRequiredRoute>
+                } />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/assessment" element={
+                  <ProtectedRoute>
+                    <Assessment />
+                  </ProtectedRoute>
+                } />
+                <Route path="/student" element={
+                  <AssessmentRequiredRoute>
+                    <StudentCenter />
+                  </AssessmentRequiredRoute>
+                } />
+                <Route path="/student/profile" element={
+                  <AssessmentRequiredRoute>
+                    <StudentProfile />
+                  </AssessmentRequiredRoute>
+                } />
+                <Route path="/student/grades" element={
+                  <AssessmentRequiredRoute>
+                    <StudentGrades />
+                  </AssessmentRequiredRoute>
+                } />
+                <Route path="/admin" element={
+                  <AdminRoute>
+                    <AdminDashboard />
+                  </AdminRoute>
+                } />
+                <Route path="/admin/courses" element={
+                  <AdminRoute>
+                    <CourseManager />
+                  </AdminRoute>
+                } />
+                <Route path="/admin/courses/:code" element={
+                  <AdminRoute>
+                    <CourseEditor />
+                  </AdminRoute>
+                } />
+                <Route path="/admin/users" element={
+                  <AdminRoute>
+                    <UserManager />
+                  </AdminRoute>
+                } />
+                <Route path="/admin/community" element={
+                  <AdminRoute>
+                    <CommunityManager />
+                  </AdminRoute>
+                } />
+                <Route path="/admin/settings" element={
+                  <AdminRoute>
+                    <AdminSettings />
+                  </AdminRoute>
+                } />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </TestModeProvider>
+        </AuthProvider>
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 
