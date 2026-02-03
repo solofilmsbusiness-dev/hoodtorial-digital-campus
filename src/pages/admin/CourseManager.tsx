@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Pencil, Eye, Lock } from "lucide-react";
+import { Plus, Pencil, Eye, Lock, Database, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -121,8 +121,13 @@ export default function CourseManager() {
       queryClient.invalidateQueries({ queryKey: ["admin-courses"] });
       toast({ title: "Course updated" });
     },
-    onError: () => {
-      toast({ title: "Failed to update course", variant: "destructive" });
+    onError: (error) => {
+      console.error("Toggle published error:", error);
+      toast({ 
+        title: "Failed to update course", 
+        description: "Courses may need to be initialized first.",
+        variant: "destructive" 
+      });
     },
   });
 
@@ -138,8 +143,48 @@ export default function CourseManager() {
       queryClient.invalidateQueries({ queryKey: ["admin-courses"] });
       toast({ title: "Course updated" });
     },
-    onError: () => {
-      toast({ title: "Failed to update course", variant: "destructive" });
+    onError: (error) => {
+      console.error("Toggle locked error:", error);
+      toast({ 
+        title: "Failed to update course", 
+        description: "Courses may need to be initialized first.",
+        variant: "destructive" 
+      });
+    },
+  });
+
+  // Seed courses mutation - populates database from static data
+  const seedCourses = useMutation({
+    mutationFn: async () => {
+      const coursesToInsert = staticCourses.map((c, index) => ({
+        code: c.code,
+        title: c.title,
+        department_id: c.departmentId,
+        credits: c.credits,
+        level: c.level,
+        description: c.description || null,
+        is_published: true,
+        is_locked: false,
+        sort_order: index,
+      }));
+
+      const { error } = await supabase
+        .from("courses")
+        .insert(coursesToInsert);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-courses"] });
+      toast({ title: "Courses initialized successfully!", description: "You can now toggle course statuses." });
+    },
+    onError: (error) => {
+      console.error("Seed courses error:", error);
+      toast({ 
+        title: "Failed to initialize courses", 
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive" 
+      });
     },
   });
 
@@ -151,9 +196,29 @@ export default function CourseManager() {
         {isUsingStaticData && (
           <Card className="border-yellow-500/50 bg-yellow-500/10">
             <CardContent className="py-4">
-              <p className="text-sm text-yellow-200">
-                <strong>Note:</strong> Showing courses from static data. Add courses to the database to enable editing.
-              </p>
+              <div className="flex items-center justify-between gap-4">
+                <p className="text-sm text-yellow-200">
+                  <strong>Note:</strong> Courses are not in the database yet. Initialize them to enable status toggles.
+                </p>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => seedCourses.mutate()}
+                  disabled={seedCourses.isPending}
+                >
+                  {seedCourses.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Initializing...
+                    </>
+                  ) : (
+                    <>
+                      <Database className="h-4 w-4 mr-2" />
+                      Initialize Courses
+                    </>
+                  )}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}

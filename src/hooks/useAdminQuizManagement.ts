@@ -75,11 +75,17 @@ export function useAdminQuizManagement() {
       const resultAnswers = answersByResultId[result.id] || [];
       
       // Map answers to include question details
-      const answersWithDetails = resultAnswers.map((answer) => {
+      const answersWithDetails = resultAnswers.map((answer, idx) => {
         const question = quizQuestions.find((q) => q.id === answer.questionId);
+        
+        // Log warning if question not found for debugging
+        if (!question) {
+          console.warn(`Admin Quiz View: Question not found - questionId: ${answer.questionId}, quizId: ${result.quiz_id}`);
+        }
+        
         return {
           questionId: answer.questionId,
-          questionText: question?.question || "Question not found",
+          questionText: question?.question || `Question ${idx + 1} (data not available)`,
           options: question?.options || [],
           selectedAnswer: answer.selectedAnswer,
           correctAnswer: question?.correctAnswer ?? -1,
