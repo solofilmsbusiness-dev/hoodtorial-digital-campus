@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { PageLayout } from "@/components/layout";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,6 +11,7 @@ import { courses } from "@/data/courses";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ContactAdminSheet } from "@/components/support";
 import { 
   BookOpen, 
   Trophy, 
@@ -24,7 +26,8 @@ import {
   Layers,
   CheckCircle2,
   Play,
-  Users
+  Users,
+  HelpCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +36,7 @@ export default function StudentCenter() {
   const { profile, loading: profileLoading } = useProfile();
   const { results } = useQuizResults();
   const { getTotalCredits, getCompletedCourses } = useUserProgress();
+  const [supportSheetOpen, setSupportSheetOpen] = useState(false);
   const { latestResult, hasCompletedAssessment } = useAssessmentResults();
   const { activeEnrollments, completedEnrollments, slotsRemaining, maxSlots } = useEnrollments();
 
@@ -354,6 +358,17 @@ export default function StudentCenter() {
                       <ChevronRight className="h-5 w-5 text-muted-foreground" />
                     </Link>
                   )}
+
+                  <button 
+                    onClick={() => setSupportSheetOpen(true)}
+                    className="w-full flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border hover:border-primary transition-colors text-left"
+                  >
+                    <div className="flex items-center gap-3">
+                      <HelpCircle className="h-5 w-5 text-muted-foreground" />
+                      <span className="font-bold">Need Help?</span>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  </button>
                 </CardContent>
               </Card>
 
@@ -435,6 +450,11 @@ export default function StudentCenter() {
           </div>
         </div>
       </div>
+
+      <ContactAdminSheet 
+        open={supportSheetOpen} 
+        onOpenChange={setSupportSheetOpen} 
+      />
     </PageLayout>
   );
 }
