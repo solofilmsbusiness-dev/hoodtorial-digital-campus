@@ -1,194 +1,300 @@
 
+# Enhanced Assessment System with Progressive Difficulty & Smart Recommendations
 
-# Fix Video Progress Tracking for Students
+## Overview
 
-## Problem Analysis
+This enhancement will transform the entry assessment into a more comprehensive evaluation tool that:
+1. Expands the question bank with 150+ questions across 3 difficulty levels
+2. Uses AI to dynamically generate questions tailored to each student's interests
+3. Implements adaptive difficulty progression (easy → medium → hard)
+4. Creates realistic, personalized course recommendations that build a clear learning roadmap
 
-Video watch progress is not being saved to the database for students. After investigation, I found that:
+## Current Limitations
 
-1. **The video is YouTube-based** and uses the YouTube IFrame API for tracking
-2. **The database shows 0% progress** even after watching (record exists but `watched_seconds: 0`, `watch_percentage: 0`)
-3. **The YouTube Player initialization has race conditions** that cause the progress tracking to fail silently
+| Issue | Current State | Proposed Solution |
+|-------|---------------|-------------------|
+| Limited variety | ~50 questions total | 150+ questions with AI generation option |
+| No difficulty range | Only beginner/intermediate | Add beginner/intermediate/advanced tiers |
+| Flat recommendations | Simple list of 7 courses | Structured roadmap with phases |
+| No personalization depth | Basic interest matching | Score-per-department + experience-weighted |
+| No progression path | Random course order | Ordered pathway: Foundation → Core → Advanced |
 
-## Root Causes
+## Implementation Strategy
 
-### Issue 1: YT.Player initialization race condition
-The current code has a problematic pattern:
-```javascript
-if (window.YT && window.YT.Player) {
-  onYouTubeReady();  // Called immediately
-} else {
-  window.onYouTubeIframeAPIReady = onYouTubeReady;  // Callback
+### Part 1: Expanded Question Bank with Three Difficulty Tiers
+
+**New Question Structure:**
+```typescript
+interface AssessmentQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correctAnswer: number;
+  department: string;
+  difficulty: "beginner" | "intermediate" | "advanced"; // Add advanced tier
 }
 ```
-- If the YouTube API is partially loaded, `window.YT` exists but `window.YT.Player` might not be ready
-- If multiple components mount, they overwrite `onYouTubeIframeAPIReady`
 
-### Issue 2: No validation that player is ready
-- The `onReady` event might never fire if the player fails to attach
-- There's no fallback or error handling
+**Question Distribution per Department (25 questions each = 150 total):**
+- 10 Beginner questions (foundational concepts, terminology)
+- 10 Intermediate questions (application, techniques)  
+- 5 Advanced questions (professional scenarios, nuanced choices)
 
-### Issue 3: iframe ID assignment timing
-- The iframe ID is assigned inside `onYouTubeReady`, but the iframe needs the ID before `new YT.Player()` is called
-- React may have already rendered a different iframe by then
+### Part 2: Smart Question Selection Algorithm
 
-## Solution
+Instead of random selection, implement progressive difficulty:
 
-### 1. Refactor YouTube Player Initialization
+```
+Assessment Flow:
+1. Start with 2 EASY questions per selected department
+2. Based on performance, branch:
+   - Got both right → 2 MEDIUM + 1 HARD
+   - Got 1 right → 2 MEDIUM + 1 EASY  
+   - Got 0 right → 2 EASY + 1 MEDIUM
+3. This gives 5-6 questions per department with adaptive difficulty
+```
 
-Use a more robust initialization pattern that:
-- Waits for iframe to be loaded before attaching player
-- Uses proper API ready state checking
-- Adds error handling and fallback
+This ensures the assessment gauges actual skill level rather than just random topic knowledge.
 
-### 2. Add postMessage-based Fallback
+### Part 3: Enhanced Recommendation Engine
 
-As a backup, listen to YouTube's `postMessage` events for playback state, which works even if the JS API fails to initialize.
+**Current Algorithm Issues:**
+- Treats all interests equally regardless of score
+- Doesn't sequence courses logically
+- Ignores prerequisite relationships
 
-### 3. Add Debugging/Logging
+**New Algorithm:**
 
-Add console logging during development to track when progress updates are attempted.
+```typescript
+interface LearningRoadmap {
+  phases: {
+    name: string; // "Foundation", "Core Skills", "Specialization"
+    courses: Course[];
+    estimatedDuration: string;
+  }[];
+  primaryFocus: string; // Best-scoring interest
+  secondaryFocus: string; // Second-best interest
+  improvementAreas: string[]; // Low-scoring departments
+}
+```
+
+**Recommendation Logic:**
+
+1. **Identify Strengths & Weaknesses**
+   - Calculate per-department percentage score
+   - Weight by question difficulty (advanced questions worth more)
+   
+2. **Determine Starting Level per Department**
+   - Score 0-30%: Start at Beginner level
+   - Score 31-60%: Can skip some Beginner, start Beginner-Intermediate
+   - Score 61-85%: Start at Intermediate
+   - Score 86-100%: Start at Intermediate-Advanced
+
+3. **Build Phased Roadmap**
+   - **Phase 1 (Foundation)**: Fill skill gaps in selected interests (1-2 Beginner courses)
+   - **Phase 2 (Core Skills)**: Intermediate courses in strongest areas (2-3 courses)
+   - **Phase 3 (Specialization)**: Advanced courses for professional growth (1-2 courses)
+
+4. **Consider Experience Level**
+   - Beginner: Emphasize Phase 1, limit Phase 3
+   - Hobbyist: Balanced phases
+   - Semi-Pro: Reduce Phase 1, expand Phase 2-3
+   - Professional: Skip Phase 1, focus on Phase 2-3 gaps
+
+### Part 4: New Questions Content (Sample Additions)
+
+**Cinematography - Adding Advanced Questions:**
+```typescript
+{
+  id: "cine-adv-1",
+  question: "When shooting anamorphic, which technique helps minimize breathing artifacts during focus pulls?",
+  options: [
+    "Using wider apertures",
+    "Stopping down and using longer focal lengths",
+    "Increasing shutter speed",
+    "Shooting at higher frame rates"
+  ],
+  correctAnswer: 1,
+  department: "cinematography",
+  difficulty: "advanced"
+}
+```
+
+**Post-Production - Adding Variety:**
+```typescript
+{
+  id: "post-adv-1", 
+  question: "When conforming from an offline edit to DaVinci Resolve, what's the most reliable method for complex timelines?",
+  options: [
+    "AAF export",
+    "XML with relink",
+    "EDL with CDL sidecars",
+    "Direct project import"
+  ],
+  correctAnswer: 1,
+  department: "post-production",
+  difficulty: "advanced"
+}
+```
+
+### Part 5: Updated Results Visualization
+
+**New Results Screen Features:**
+1. **Skill Radar Chart** - Already exists, enhanced with difficulty breakdown
+2. **Roadmap Timeline** - Visual pathway showing course sequence
+3. **Estimated Completion Time** - Based on course durations
+4. **Quick Wins** - Short courses to build momentum
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/components/course/VideoPlayer.tsx` | Fix YouTube player initialization with proper API ready checking, add iframe load event listener, improve error handling |
-| `src/hooks/useVideoProgress.ts` | Add debug logging for save operations |
+| `src/data/quizzes/assessment.ts` | Add 100+ new questions with "advanced" difficulty tier |
+| `src/hooks/useAssessmentResults.ts` | Rewrite `calculateRecommendations()` with phased roadmap logic |
+| `src/pages/Assessment.tsx` | Implement adaptive question selection algorithm |
+| `src/components/assessment/RoadmapDisplay.tsx` | NEW: Visual roadmap component |
+| `src/components/assessment/index.ts` | Export new component |
 
-## Implementation Details
+## Detailed Changes
 
-### VideoPlayer.tsx Changes
+### Assessment.tsx Changes
 
 ```typescript
-// 1. Assign iframe ID immediately (before useEffect)
-const iframeId = useMemo(() => 
-  `yt-player-${lesson.id.replace(/[^a-zA-Z0-9]/g, '')}`, 
-  [lesson.id]
-);
-
-// 2. Use proper API ready detection
-useEffect(() => {
-  if (videoType !== "youtube" || !onProgress) return;
+// New: Adaptive question selection
+const selectQuestionsAdaptively = (
+  allQuestions: AssessmentQuestion[],
+  interests: string[]
+): AssessmentQuestion[] => {
+  const selected: AssessmentQuestion[] = [];
   
-  let player: YT.Player | null = null;
-  let isDestroyed = false;
-  
-  const initPlayer = () => {
-    if (isDestroyed) return;
+  interests.forEach(dept => {
+    const deptQuestions = allQuestions.filter(q => q.department === dept);
+    const beginner = shuffleArray(deptQuestions.filter(q => q.difficulty === "beginner"));
+    const intermediate = shuffleArray(deptQuestions.filter(q => q.difficulty === "intermediate"));
+    const advanced = shuffleArray(deptQuestions.filter(q => q.difficulty === "advanced"));
     
-    try {
-      player = new window.YT.Player(iframeId, {
-        events: {
-          onReady: (event) => {
-            console.log("[VideoPlayer] YouTube player ready");
-            // ... start polling
-          },
-          onError: (event) => {
-            console.error("[VideoPlayer] YouTube player error:", event.data);
-          },
-          onStateChange: (event) => {
-            // Also track on state change for more reliable updates
-            if (player && event.data === window.YT.PlayerState.PLAYING) {
-              // Ensure polling is running
-            }
-          }
-        },
-      });
-    } catch (err) {
-      console.error("[VideoPlayer] Failed to init YouTube player:", err);
-    }
-  };
+    // Progressive selection: 2 easy, 2-3 medium, 1 hard per department
+    selected.push(...beginner.slice(0, 2));
+    selected.push(...intermediate.slice(0, 3));
+    selected.push(...advanced.slice(0, 1));
+  });
   
-  // Robust API loading
-  const checkAPIReady = () => {
-    if (window.YT && window.YT.Player && typeof window.YT.Player === 'function') {
-      initPlayer();
-    } else {
-      // Load API if not present
-      if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
-        const tag = document.createElement("script");
-        tag.src = "https://www.youtube.com/iframe_api";
-        document.head.appendChild(tag);
-      }
-      // Wait for API with polling (more reliable than callback)
-      const pollId = setInterval(() => {
-        if (window.YT && window.YT.Player && typeof window.YT.Player === 'function') {
-          clearInterval(pollId);
-          initPlayer();
-        }
-      }, 100);
-      
-      // Cleanup poll on unmount
-      return () => clearInterval(pollId);
-    }
-  };
-  
-  // Wait for iframe to be in DOM
-  const waitForIframe = setInterval(() => {
-    if (document.getElementById(iframeId)) {
-      clearInterval(waitForIframe);
-      checkAPIReady();
-    }
-  }, 50);
-  
-  return () => {
-    isDestroyed = true;
-    clearInterval(waitForIframe);
-    if (youtubeIntervalRef.current) {
-      clearInterval(youtubeIntervalRef.current);
-    }
-  };
-}, [videoType, onProgress, iframeId, initialTime]);
+  return shuffleArray(selected);
+};
 ```
 
-### Key Improvements
-
-1. **Stable iframe ID**: Generate ID based on lesson.id so it's consistent
-2. **Wait for iframe in DOM**: Don't try to attach player until iframe exists
-3. **Poll for API ready**: More reliable than overwriting the global callback
-4. **Error handling**: Catch and log errors during player initialization
-5. **onStateChange listener**: Additional tracking opportunity
-6. **isDestroyed flag**: Prevent operations after unmount
-
-### useVideoProgress.ts Changes
-
-Add logging to help debug save operations:
+### useAssessmentResults.ts Changes
 
 ```typescript
-const saveProgress = useCallback(
-  async (watchedSeconds: number, durationSeconds: number, forceComplete = false) => {
-    if (!user || !lessonId || durationSeconds <= 0) {
-      console.log("[VideoProgress] Skip save:", { user: !!user, lessonId, durationSeconds });
-      return;
-    }
+interface RoadmapPhase {
+  name: string;
+  description: string;
+  courses: string[]; // course codes
+  estimatedWeeks: number;
+}
 
-    const watchPercentage = Math.round((watchedSeconds / durationSeconds) * 100);
-    console.log("[VideoProgress] Saving:", { watchedSeconds, durationSeconds, watchPercentage });
-    
-    try {
-      const { error } = await supabase.from("user_progress").upsert(
-        // ... existing code
+interface LearningRoadmap {
+  phases: RoadmapPhase[];
+  totalWeeks: number;
+  primaryStrength: string;
+  areasToImprove: string[];
+}
+
+const calculateRoadmap = (
+  departmentScores: Record<string, number>,
+  interests: string[],
+  experienceLevel: string
+): LearningRoadmap => {
+  // 1. Rank departments by score
+  const ranked = Object.entries(departmentScores)
+    .sort((a, b) => b[1] - a[1]);
+  
+  const primaryStrength = ranked[0]?.[0] || interests[0];
+  const areasToImprove = ranked
+    .filter(([_, score]) => score < 50)
+    .map(([dept]) => dept);
+  
+  // 2. Build phases based on scores and experience
+  const phases: RoadmapPhase[] = [];
+  
+  // Phase 1: Foundation (if needed)
+  if (experienceLevel !== "professional") {
+    const foundationCourses = interests
+      .filter(dept => departmentScores[dept] < 60)
+      .flatMap(dept => 
+        courses
+          .filter(c => c.departmentId === dept && c.level === "Beginner")
+          .slice(0, 1)
+          .map(c => c.code)
       );
-      
-      if (error) {
-        console.error("[VideoProgress] Save error:", error);
-      } else {
-        console.log("[VideoProgress] Saved successfully");
-      }
-    } catch (err) {
-      console.error("[VideoProgress] Save exception:", err);
+    
+    if (foundationCourses.length > 0) {
+      phases.push({
+        name: "Foundation",
+        description: "Build core fundamentals",
+        courses: foundationCourses,
+        estimatedWeeks: foundationCourses.length * 4
+      });
     }
-  },
-  [user, courseCode, lessonId, onComplete]
-);
+  }
+  
+  // Phase 2: Core Development
+  const coreCourses = interests
+    .flatMap(dept => 
+      courses
+        .filter(c => c.departmentId === dept && c.level === "Intermediate")
+        .slice(0, 1)
+        .map(c => c.code)
+    );
+  
+  phases.push({
+    name: "Core Skills",
+    description: "Develop professional techniques",
+    courses: coreCourses,
+    estimatedWeeks: coreCourses.length * 5
+  });
+  
+  // Phase 3: Specialization (for stronger students)
+  if (Object.values(departmentScores).some(s => s > 70)) {
+    const advancedCourses = [primaryStrength]
+      .flatMap(dept =>
+        courses
+          .filter(c => c.departmentId === dept && c.level === "Advanced")
+          .slice(0, 1)
+          .map(c => c.code)
+      );
+    
+    if (advancedCourses.length > 0) {
+      phases.push({
+        name: "Specialization",
+        description: "Master advanced concepts",
+        courses: advancedCourses,
+        estimatedWeeks: advancedCourses.length * 5
+      });
+    }
+  }
+  
+  return {
+    phases,
+    totalWeeks: phases.reduce((sum, p) => sum + p.estimatedWeeks, 0),
+    primaryStrength,
+    areasToImprove
+  };
+};
 ```
 
-## Expected Outcome
+## Expected Outcomes
 
-After these fixes:
-- YouTube videos will reliably track watch progress
-- Progress will be saved to the database every 5 seconds
-- Lessons will auto-complete when 90% watched
-- Console logs will help identify any remaining issues
+1. **Better Assessment Accuracy**: 3 difficulty levels ensure proper skill evaluation
+2. **Personalized Roadmaps**: Students see a clear path, not just a list
+3. **Realistic Recommendations**: Course suggestions match actual skill gaps
+4. **Improved Engagement**: Students understand WHY courses are recommended
+5. **Skill Tree Integration**: Roadmap can feed into the existing skill tree visualization
+
+## Technical Notes
+
+- Question bank expansion adds ~100 new questions (can use AI generation edge function for more)
+- Roadmap calculation happens client-side for instant results
+- Backward compatible with existing assessment_results table structure
+- The `recommended_courses` field will store ordered course codes (phases flattened)
 
