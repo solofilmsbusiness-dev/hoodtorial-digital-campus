@@ -1,260 +1,306 @@
 
-# Transform Community into Social Media Platform with Daily Challenges
 
-## Overview
+# Fix Course Crash & Add Per-Question Quiz Timing
 
-Redesign the Community section to feel more like a modern creative social media platform (think Instagram for filmmakers) with daily mini-projects that reward students with bonus credits for participating.
+## Issue 1: Course Selection Crash - Root Cause Analysis
 
-## Current State
+**Error**: `Rendered more hooks than during the previous render`
 
-- Basic forum-style community with categories (General, Courses, Projects, Critique)
-- Standard post cards with like/follow/comment features
-- Text-heavy layout without visual focus
-- No gamification or credit incentives for participation
-
-## New Features
-
-### 1. Daily Challenges System
-
-A rotating system of mini film projects that refresh daily, encouraging consistent creative practice.
-
-**Challenge Examples:**
-- "Film a 15-second transition using only natural light" (0.5 credits)
-- "Capture 3 shots that tell a story without dialogue" (0.5 credits)
-- "Create a cinematic B-roll of your morning routine" (0.5 credits)
-
-**Database Schema (New Tables):**
-
-```sql
--- Daily challenges table
-CREATE TABLE daily_challenges (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  title TEXT NOT NULL,
-  description TEXT NOT NULL,
-  prompt TEXT NOT NULL,
-  difficulty TEXT DEFAULT 'beginner', -- beginner, intermediate, advanced
-  credits_reward DECIMAL(3,1) DEFAULT 0.5,
-  category TEXT DEFAULT 'general', -- lighting, composition, movement, storytelling
-  active_date DATE NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  created_by UUID REFERENCES auth.users(id)
-);
-
--- Challenge submissions tracking
-CREATE TABLE challenge_submissions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  challenge_id UUID REFERENCES daily_challenges(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL,
-  post_id UUID REFERENCES community_posts(id) ON DELETE CASCADE,
-  credits_awarded DECIMAL(3,1),
-  awarded_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(challenge_id, user_id) -- One submission per challenge per user
-);
-```
-
-### 2. Visual Feed Redesign
-
-Transform from forum cards to a more visual, Instagram-style grid/feed layout.
-
-**New Layout Options:**
-- **Grid View**: 3-column masonry grid showing media previews
-- **Feed View**: Full-width single column with larger media display
-- **Stories Bar**: Horizontal scrollable row of recent challenge submissions
-
-**Visual Changes:**
-- Larger image/video previews (hero media)
-- Author avatar overlays on media
-- Quick action buttons (like, comment) visible on hover
-- Floating "New Challenge" banner at top
-
-### 3. Challenge Submission Flow
-
-**New Post Type: "Challenge Response"**
-- When posting, users can tag their submission as a challenge response
-- System auto-links to the active daily challenge
-- Upon submission, credits are awarded automatically
-- Badge appears on post: "Daily Challenge 0.5cr"
-
-### 4. Enhanced Feed Component
+The crash occurs in `CourseDetail.tsx` because React's Rules of Hooks are being violated:
 
 ```text
-+------------------------------------------+
-|  TODAY'S CHALLENGE                   0.5cr |
-|  "Film a 15-second transition..."    [GO] |
-+------------------------------------------+
-|  [Grid] [Feed] [Following]    [+ Post]   |
-+------------------------------------------+
-| +--------+ +--------+ +--------+          |
-| |  Img   | |  Img   | |  Img   |          |
-| | @user1 | | @user2 | | @user3 |          |
-| | 24 ♥   | | 12 ♥   | | 8 ♥    |          |
-| +--------+ +--------+ +--------+          |
-| +--------+ +--------+ +--------+          |
-| |  Img   | |  Img   | |  Img   |          |
-| |Challenge| |  Img   | |  Img   |          |
-| | 0.5cr  | | @user5 | | @user6 |          |
-| +--------+ +--------+ +--------+          |
-+------------------------------------------+
+Component Flow:
+1. First render (loading): isLoadingCourse = true
+   - Hooks 1-10 are called
+   - Early return at line 211 (loading UI)
+   - useMemo at line 362 is NEVER called
+
+2. Second render (loaded): isLoadingCourse = false, course exists
+   - Hooks 1-10 are called
+   - NO early return
+   - useMemo at line 362 IS called <- NEW HOOK!
+   
+Result: React detects more hooks on second render = CRASH
 ```
 
-### 5. Leaderboard & Streaks
+**Problem Location**: Line 362 has a `useMemo` hook placed AFTER early returns at lines 211-238
 
-**Weekly Leaderboard:**
-- Top 10 students by challenge completions
-- Top 10 by engagement (likes received)
-- Streak counter (consecutive days with submissions)
+```typescript
+// Line 211-222: Early return for loading state
+if (isLoadingCourse) {
+  return <Loading />;  // useMemo on line 362 never runs
+}
 
-**Streak System:**
-- Track consecutive days of challenge completion
-- Bonus credits at milestones (7-day: +0.5cr, 30-day: +2cr)
+// Line 224-239: Early return for missing course
+if (!course) {
+  return <NotFound />;  // useMemo on line 362 never runs
+}
 
-### 6. Quick Camera Upload
+// Line 362-368: This useMemo only runs if NOT loading and course EXISTS
+const isFinalExamUnlocked = useMemo(() => { ... }, [course, getModuleProgress]);
+```
 
-**Mobile-First Features:**
-- Large "Create" floating action button
-- Camera quick-launch option
-- Story-style quick post for challenge responses
+**Fix**: Move the `isFinalExamUnlocked` useMemo BEFORE the early returns, adding null safety.
+
+---
+
+## Issue 2: Per-Question Timing for Quizzes
+
+Currently, quizzes have a global timer (e.g., 10 minutes for 10 questions). The request is to implement per-question timing where each question has its own countdown.
+
+**Current Timer Behavior** (QuizPlayer.tsx):
+- Global `timeLimitSeconds` calculated once at quiz start
+- Single `remainingTime` countdown for entire quiz
+- When time expires, quiz auto-submits all answers
+
+**New Per-Question Timer Behavior**:
+- Each question gets individual time (e.g., 60 seconds per question)
+- Timer resets when moving to next question
+- If question timer expires:
+  - Current question is marked as unanswered (or current selection is locked)
+  - Auto-advance to next question
+- Final question timeout triggers quiz submission
 
 ---
 
 ## Implementation Plan
 
-### Phase 1: Database Setup
+### Phase 1: Fix CourseDetail.tsx Hook Order Bug
 
-**New Tables:**
-| Table | Purpose |
-|-------|---------|
-| `daily_challenges` | Store challenge prompts with dates and rewards |
-| `challenge_submissions` | Track who completed which challenges |
+**File**: `src/pages/CourseDetail.tsx`
 
-**Schema Updates:**
-- Add `challenge_id` column to `community_posts` (nullable FK)
-- Add `is_challenge_response` boolean to `community_posts`
+**Changes**:
+1. Move `isFinalExamUnlocked` useMemo to line ~186 (before early returns)
+2. Add null check for `course` inside the useMemo
+3. Ensure all hooks run on every render, regardless of loading state
 
-### Phase 2: New Components
+**Before** (buggy):
+```typescript
+// Lines 186-208: useMemo for courseProgress
+const courseProgress = useMemo(() => { ... }, [course, isLessonCompleted, isQuizPassed]);
 
-| Component | Purpose |
-|-----------|---------|
-| `DailyChallengeCard.tsx` | Hero banner showing today's challenge |
-| `ChallengeSubmissionForm.tsx` | Simplified post form for challenges |
-| `FeedGrid.tsx` | Visual grid layout for posts |
-| `FeedCard.tsx` | Compact visual-first post card |
-| `StreakBadge.tsx` | Shows user's current streak |
-| `Leaderboard.tsx` | Weekly top participants |
-| `ViewToggle.tsx` | Grid/Feed/Following toggle |
+// Lines 211-238: Early returns
+if (isLoadingCourse) return <Loading />;
+if (!course) return <NotFound />;
 
-### Phase 3: New Hooks
+// Line 362: useMemo AFTER early returns - BUG!
+const isFinalExamUnlocked = useMemo(() => { ... }, [course, getModuleProgress]);
+```
 
-| Hook | Purpose |
-|------|---------|
-| `useDailyChallenges.ts` | Fetch active challenge, submit responses |
-| `useChallengeStreak.ts` | Track and display user streaks |
-| `useCommunityLeaderboard.ts` | Fetch weekly top users |
+**After** (fixed):
+```typescript
+// Lines 186-208: useMemo for courseProgress
+const courseProgress = useMemo(() => { ... }, [course, isLessonCompleted, isQuizPassed]);
 
-### Phase 4: UI Overhaul
+// NEW: Move isFinalExamUnlocked here, BEFORE early returns
+const isFinalExamUnlocked = useMemo(() => {
+  if (!course?.finalExam) return false;
+  return course.modules.every((module) => {
+    const progress = getModuleProgress(module);
+    return progress.percent === 100;
+  });
+}, [course, getModuleProgress]);
 
-**Community.tsx Changes:**
-1. Add Daily Challenge banner at top (sticky)
-2. Replace TabsList with visual ViewToggle
-3. Add grid layout option for posts
-4. Implement infinite scroll
-5. Add floating "Create" button (mobile)
-
-**PostCard.tsx Enhancements:**
-1. Larger media preview (16:9 aspect ratio)
-2. Avatar overlay on bottom-left of media
-3. Challenge badge if applicable
-4. Credits earned indicator
-5. Hover effects with quick actions
-
-### Phase 5: Admin Features
-
-**New Admin Section: Challenge Manager**
-- Create/edit daily challenges
-- Schedule challenges in advance
-- View submission analytics
-- Award bonus credits manually
+// Lines 211-238: Early returns (hooks already executed)
+if (isLoadingCourse) return <Loading />;
+if (!course) return <NotFound />;
+```
 
 ---
 
-## Files to Create
+### Phase 2: Add Per-Question Timer to QuizPlayer
 
-| File | Description |
-|------|-------------|
-| `src/components/community/DailyChallengeCard.tsx` | Today's challenge hero |
-| `src/components/community/ChallengeSubmissionForm.tsx` | Quick submit for challenges |
-| `src/components/community/FeedGrid.tsx` | Grid layout container |
-| `src/components/community/FeedCard.tsx` | Visual post card for grid |
-| `src/components/community/StreakBadge.tsx` | Streak counter display |
-| `src/components/community/Leaderboard.tsx` | Weekly rankings |
-| `src/components/community/ViewToggle.tsx` | Grid/Feed toggle |
-| `src/hooks/useDailyChallenges.ts` | Challenge data & submissions |
-| `src/hooks/useChallengeStreak.ts` | Streak tracking |
-| `src/hooks/useCommunityLeaderboard.ts` | Leaderboard data |
-| `src/pages/admin/ChallengeManager.tsx` | Admin challenge CRUD |
+**Files to modify**:
+- `src/components/course/QuizPlayer.tsx`
+- `src/lib/quizUtils.ts`
+- `src/data/courses.ts` (Quiz interface)
 
-## Files to Modify
+**New Quiz Properties**:
+```typescript
+export interface Quiz {
+  id: string;
+  title: string;
+  questions: number;
+  passingScore: number;
+  timeLimitMinutes?: number;      // Total quiz time (existing)
+  perQuestionSeconds?: number;    // NEW: Time per question (default 60s)
+  usePerQuestionTimer?: boolean;  // NEW: Enable per-question mode
+}
+```
 
-| File | Changes |
-|------|---------|
-| `src/pages/Community.tsx` | Complete redesign with new layout |
-| `src/components/community/PostCard.tsx` | Visual-first redesign |
-| `src/components/community/CreatePostForm.tsx` | Add challenge linking |
-| `src/hooks/useCommunityPosts.ts` | Add challenge filtering |
-| `src/components/community/index.ts` | Export new components |
+**QuizPlayer State Changes**:
+```typescript
+// Existing state
+const [remainingTime, setRemainingTime] = useState<number>(0);
+
+// NEW: Per-question timer state
+const [questionRemainingTime, setQuestionRemainingTime] = useState<number>(0);
+const [questionStartTime, setQuestionStartTime] = useState<number | null>(null);
+
+// Determine timer mode
+const usePerQuestionMode = quiz.usePerQuestionTimer ?? false;
+const perQuestionTime = quiz.perQuestionSeconds ?? 60; // Default 60 seconds
+```
+
+**Timer Logic Changes**:
+
+Current single-timer useEffect becomes conditional:
+```typescript
+useEffect(() => {
+  if (state !== "playing" || !startTime) return;
+  
+  if (usePerQuestionMode) {
+    // Per-question timer
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - questionStartTime!) / 1000);
+      const remaining = Math.max(0, perQuestionTime - elapsed);
+      setQuestionRemainingTime(remaining);
+      
+      if (remaining <= 0) {
+        clearInterval(interval);
+        handleQuestionTimeout(); // Auto-advance or lock answer
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  } else {
+    // Global quiz timer (existing behavior)
+    const interval = setInterval(() => { ... });
+    return () => clearInterval(interval);
+  }
+}, [state, startTime, questionStartTime, usePerQuestionMode]);
+```
+
+**New Handler - Question Timeout**:
+```typescript
+const handleQuestionTimeout = useCallback(() => {
+  // Lock current answer (keep whatever is selected, or -1 if none)
+  if (currentQuestion && answers[currentQuestion.id] === undefined) {
+    setAnswers(prev => ({ ...prev, [currentQuestion.id]: -1 })); // Mark as skipped
+  }
+  
+  // Auto-advance to next question
+  if (currentIndex < shuffledQuestions.length - 1) {
+    setCurrentIndex(prev => prev + 1);
+    setQuestionStartTime(Date.now()); // Reset timer
+    setQuestionRemainingTime(perQuestionTime);
+  } else {
+    // Last question - finish quiz
+    handleFinishQuiz();
+  }
+}, [currentQuestion, currentIndex, shuffledQuestions.length, perQuestionTime, answers, handleFinishQuiz]);
+```
+
+**Reset Timer on Navigation**:
+```typescript
+const handleNext = useCallback(() => {
+  setShowExplanation(false);
+  if (currentIndex < shuffledQuestions.length - 1) {
+    setCurrentIndex(prev => prev + 1);
+    if (usePerQuestionMode) {
+      setQuestionStartTime(Date.now());
+      setQuestionRemainingTime(perQuestionTime);
+    }
+  } else {
+    handleFinishQuiz();
+  }
+}, [currentIndex, shuffledQuestions.length, handleFinishQuiz, usePerQuestionMode, perQuestionTime]);
+```
+
+**UI Updates - Display Per-Question Timer**:
+```typescript
+// In header, show appropriate timer
+{state === "playing" && (
+  <div className={cn("flex items-center gap-2", isTimeWarning && "text-destructive animate-pulse")}>
+    <Clock className="w-4 h-4" />
+    {usePerQuestionMode 
+      ? `${formatTimeRemaining(questionRemainingTime)} / question`
+      : formatTimeRemaining(remainingTime)
+    }
+  </div>
+)}
+```
+
+**Visual Indicator - Question Timer Progress Ring**:
+```typescript
+// Optional: circular progress indicator around timer
+<div className="relative">
+  <svg className="w-10 h-10 transform -rotate-90">
+    <circle
+      cx="20" cy="20" r="16"
+      stroke="currentColor"
+      strokeWidth="3"
+      fill="none"
+      className="text-muted"
+    />
+    <circle
+      cx="20" cy="20" r="16"
+      stroke="currentColor"
+      strokeWidth="3"
+      fill="none"
+      strokeDasharray={100}
+      strokeDashoffset={100 - (questionRemainingTime / perQuestionTime) * 100}
+      className={cn(
+        "transition-all duration-1000",
+        questionRemainingTime <= 10 ? "text-destructive" : "text-primary"
+      )}
+    />
+  </svg>
+  <span className="absolute inset-0 flex items-center justify-center text-xs font-bold">
+    {questionRemainingTime}
+  </span>
+</div>
+```
 
 ---
 
-## Credit System Integration
+## Database Changes
 
-When a user submits a challenge response:
-1. Create community post with `challenge_id` set
-2. Insert row into `challenge_submissions`
-3. Increment user's credits via `user_progress` table
-4. Show celebration toast with confetti
-5. Update streak counter
+No database migration needed - the new fields are optional and stored in the static quiz configuration. Existing quizzes will continue using the global timer (backward compatible).
 
-**Credit Amounts:**
-- Daily challenge completion: 0.5 credits
-- 7-day streak bonus: +0.5 credits
-- 14-day streak bonus: +1 credit
-- 30-day streak bonus: +2 credits
-- Featured by instructor: +1 credit
+For dynamically created quizzes (via admin panel), the quiz table already supports adding new fields. A future enhancement could add `per_question_seconds` column.
 
 ---
 
-## Mobile Experience
+## Files Summary
 
-**Touch-Optimized Features:**
-- Swipe between grid and feed views
-- Pull-to-refresh for new content
-- Bottom sheet for creating posts
-- Full-screen media viewer
-- Double-tap to like
+| File | Action | Description |
+|------|--------|-------------|
+| `src/pages/CourseDetail.tsx` | Modify | Move useMemo before early returns to fix hooks crash |
+| `src/components/course/QuizPlayer.tsx` | Modify | Add per-question timer mode with auto-advance |
+| `src/lib/quizUtils.ts` | Modify | Add helper for per-question time calculation |
+| `src/data/courses.ts` | Modify | Extend Quiz interface with per-question timer fields |
 
 ---
 
-## Sample Daily Challenges Seed Data
+## Quiz Intro Screen Update
 
-```sql
-INSERT INTO daily_challenges (title, prompt, difficulty, credits_reward, category, active_date) VALUES
-('Light Study', 'Film a 15-second clip using only available light. Focus on shadows.', 'beginner', 0.5, 'lighting', CURRENT_DATE),
-('Three-Shot Story', 'Tell a complete story in exactly 3 shots. No dialogue.', 'intermediate', 0.5, 'storytelling', CURRENT_DATE + 1),
-('Motion Blur', 'Create intentional motion blur that enhances your subject.', 'intermediate', 0.5, 'movement', CURRENT_DATE + 2),
-('Reflections', 'Use reflections (mirrors, water, glass) creatively in your shot.', 'beginner', 0.5, 'composition', CURRENT_DATE + 3),
-('One Take Wonder', 'Film a 30-second continuous take with camera movement.', 'advanced', 0.5, 'movement', CURRENT_DATE + 4);
+When per-question mode is enabled, show different info:
+
+```text
++-----------------------------------------+
+|         [Trophy Icon]                   |
+|         Module 1 Quiz                   |
+|                                         |
+|  +--------+  +--------+  +--------+     |
+|  |   10   |  |  80%   |  |  60s   |     |
+|  |Questions|  |To Pass |  |/Question|   |
+|  +--------+  +--------+  +--------+     |
+|                                         |
+|  [!] Each question has a 60-second      |
+|      time limit. Unanswered questions   |
+|      will auto-advance.                 |
+|                                         |
+|       [Cancel]  [Start Quiz]            |
++-----------------------------------------+
 ```
 
 ---
 
 ## Expected Outcome
 
-The transformed Community section will:
-1. Feel more like Instagram/TikTok for filmmakers
-2. Encourage daily creative practice through challenges
-3. Reward participation with bonus credits (0.5cr per challenge)
-4. Create healthy competition via leaderboards
-5. Build habits with streak tracking
-6. Prioritize visual content over text discussions
-7. Work beautifully on mobile devices
+1. **Bug Fix**: Students can now select courses without crashing
+2. **Per-Question Timer**: Quizzes can be configured with individual question time limits
+3. **Backward Compatible**: Existing quizzes with global timers continue working
+4. **Enhanced UX**: Visual countdown per question creates urgency and engagement
+5. **Auto-Advance**: Unanswered questions are skipped when time runs out
+
