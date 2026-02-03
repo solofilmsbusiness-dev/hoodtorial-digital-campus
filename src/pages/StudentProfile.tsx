@@ -67,7 +67,7 @@ const FILMMAKING_STYLES = [
 ];
 
 export default function StudentProfile() {
-  const { profile, loading, updateProfile } = useProfileContext();
+  const { profile, loading, updateProfile, refetch } = useProfileContext();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
@@ -299,6 +299,7 @@ export default function StudentProfile() {
                     <CoverBanner
                       currentBannerUrl={bannerUrl}
                       onBannerChange={setBannerUrl}
+                      onUploadComplete={refetch}
                     />
 
                     {/* Avatar & Theme */}
@@ -311,6 +312,7 @@ export default function StudentProfile() {
                           accentColor={formData.profile_accent_color}
                           borderStyle={formData.avatar_border_style}
                           onAvatarChange={setAvatarUrl}
+                          onUploadComplete={refetch}
                         />
                       </div>
 
