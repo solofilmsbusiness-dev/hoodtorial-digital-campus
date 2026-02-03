@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { PageLayout, Section } from "@/components/layout";
 import { 
   ProgressionModuleAccordion, 
@@ -11,8 +12,8 @@ import {
   EnrollmentCard 
 } from "@/components/course";
 import { Badge } from "@/components/ui/badge";
-import { getCourseByCode, getTotalLessonsCount, getTotalQuizzesCount, type Lesson, type Quiz } from "@/data/courses";
-import { ArrowLeft, Clock, BookOpen, Award, CheckCircle2, X, Lock, Play, Zap } from "lucide-react";
+import { getCourseByCode, getTotalLessonsCount, getTotalQuizzesCount, type Lesson, type Quiz, type Course, type Module } from "@/data/courses";
+import { ArrowLeft, Clock, BookOpen, Award, CheckCircle2, X, Lock, Play, Zap, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useEnrollments } from "@/hooks/useEnrollments";
@@ -25,11 +26,112 @@ import { Progress } from "@/components/ui/progress";
 import { useTestMode } from "@/hooks/useTestMode";
 import { TestModeBanner } from "@/components/admin";
 import { useQuizResults } from "@/hooks/useQuizResults";
+import { supabase } from "@/integrations/supabase/client";
+
+// Transform database course to Course interface
+const transformDbCourse = (dbCourse: any): Course => {
+  const modules: Module[] = (dbCourse.modules || [])
+    .sort((a: any, b: any) => a.sort_order - b.sort_order)
+    .map((m: any) => ({
+      id: m.id,
+      title: m.title,
+      lessons: (m.lessons || [])
+        .sort((a: any, b: any) => a.sort_order - b.sort_order)
+        .map((l: any): Lesson => ({
+          id: l.id,
+          title: l.title,
+          type: l.type as "video" | "reading" | "practice",
+          duration: l.duration || "",
+          // Extended properties not in base interface but used by components
+          ...(l.video_url && { video_url: l.video_url }),
+          ...(l.content && { content: l.content }),
+          ...(l.document_url && { document_url: l.document_url }),
+        })),
+      quiz: m.quizzes?.[0] ? {
+        id: m.quizzes[0].id,
+        title: m.quizzes[0].title,
+        passingScore: m.quizzes[0].passing_score,
+        questions: (m.quizzes[0].quiz_questions || [])
+          .sort((a: any, b: any) => a.sort_order - b.sort_order)
+          .map((q: any) => ({
+            id: q.id,
+            question: q.question,
+            options: Array.isArray(q.options) ? q.options : [],
+            correctAnswer: q.correct_answer,
+            explanation: q.explanation || "",
+          })),
+      } : undefined,
+    }));
+
+  // Check for final exam
+  const finalExamData = dbCourse.quizzes?.find((q: any) => q.is_final_exam);
+  const finalExam = finalExamData ? {
+    id: finalExamData.id,
+    title: finalExamData.title,
+    passingScore: finalExamData.passing_score,
+    questions: (finalExamData.quiz_questions || [])
+      .sort((a: any, b: any) => a.sort_order - b.sort_order)
+      .map((q: any) => ({
+        id: q.id,
+        question: q.question,
+        options: Array.isArray(q.options) ? q.options : [],
+        correctAnswer: q.correct_answer,
+        explanation: q.explanation || "",
+      })),
+  } : undefined;
+
+  return {
+    code: dbCourse.code,
+    title: dbCourse.title,
+    description: dbCourse.description || "",
+    department: dbCourse.department_id,
+    departmentId: dbCourse.department_id,
+    credits: dbCourse.credits,
+    level: dbCourse.level as "Beginner" | "Intermediate" | "Advanced",
+    duration: dbCourse.duration || "Self-paced",
+    lessons: modules.reduce((acc, m) => acc + m.lessons.length, 0),
+    modules,
+    finalExam,
+  };
+};
 
 const CourseDetail = () => {
   const { code } = useParams<{ code: string }>();
-  const course = getCourseByCode(code || "");
   const { user } = useAuth();
+  
+  // Fetch course from database first
+  const { data: dbCourse, isLoading: isLoadingCourse } = useQuery({
+    queryKey: ["course-detail", code],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("courses")
+        .select(`
+          *,
+          modules (
+            *,
+            lessons (*),
+            quizzes:quizzes!quizzes_module_id_fkey (
+              *,
+              quiz_questions (*)
+            )
+          ),
+          quizzes:quizzes!quizzes_course_id_fkey (
+            *,
+            quiz_questions (*)
+          )
+        `)
+        .eq("code", code || "")
+        .maybeSingle();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!code,
+  });
+
+  // Fallback to static course if not in database
+  const staticCourse = getCourseByCode(code || "");
+  const course = dbCourse ? transformDbCourse(dbCourse) : staticCourse;
   const { toast } = useToast();
   const { hasAccess, isTrialing, trialDaysRemaining } = useSubscription();
   const { isTestModeEnabled, shouldAutoPassQuiz } = useTestMode();
@@ -104,6 +206,20 @@ const CourseDetail = () => {
 
     return { completedLessons, completedQuizzes, percent };
   }, [course, isLessonCompleted, isQuizPassed]);
+
+  // Loading state
+  if (isLoadingCourse) {
+    return (
+      <PageLayout>
+        <Section className="pt-32">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+            <p className="mt-4 text-muted-foreground">Loading course...</p>
+          </div>
+        </Section>
+      </PageLayout>
+    );
+  }
 
   if (!course) {
     return (
