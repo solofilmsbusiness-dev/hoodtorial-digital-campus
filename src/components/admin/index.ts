@@ -5,3 +5,8 @@ export { StudentDetailSheet } from "./StudentDetailSheet";
 export { StudentFilters } from "./StudentFilters";
 export { CourseFilters } from "./CourseFilters";
 export type { LevelFilter, StatusFilter } from "./CourseFilters";
+export { QuizDialog } from "./QuizDialog";
+export { QuestionDialog } from "./QuestionDialog";
+export { QuestionManager } from "./QuestionManager";
+export { QuizSection } from "./QuizSection";
+export { GenerateQuestionsDialog } from "./GenerateQuestionsDialog";

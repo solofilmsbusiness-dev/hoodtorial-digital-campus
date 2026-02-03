@@ -587,6 +587,50 @@ export type Database = {
           },
         ]
       }
+      quiz_questions: {
+        Row: {
+          correct_answer: number
+          created_at: string
+          explanation: string | null
+          id: string
+          options: Json
+          question: string
+          quiz_id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          correct_answer: number
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          options?: Json
+          question: string
+          quiz_id: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          correct_answer?: number
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          options?: Json
+          question?: string
+          quiz_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_questions_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quiz_results: {
         Row: {
           attempt_number: number | null
@@ -625,6 +669,60 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      quizzes: {
+        Row: {
+          course_id: string | null
+          created_at: string
+          id: string
+          is_final_exam: boolean
+          module_id: string | null
+          passing_score: number
+          sort_order: number
+          time_limit_minutes: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          course_id?: string | null
+          created_at?: string
+          id?: string
+          is_final_exam?: boolean
+          module_id?: string | null
+          passing_score?: number
+          sort_order?: number
+          time_limit_minutes?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string | null
+          created_at?: string
+          id?: string
+          is_final_exam?: boolean
+          module_id?: string | null
+          passing_score?: number
+          sort_order?: number
+          time_limit_minutes?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quizzes_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quizzes_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_progress: {
         Row: {

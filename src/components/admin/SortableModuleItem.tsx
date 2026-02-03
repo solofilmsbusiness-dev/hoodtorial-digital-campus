@@ -18,6 +18,7 @@ import { GripVertical, Pencil, Trash2, Plus, Check, X } from "lucide-react";
 import { useState } from "react";
 import { LessonDialog } from "./LessonDialog";
 import { SortableLessonList } from "./SortableLessonList";
+import { QuizSection } from "./QuizSection";
 import type { ModuleWithLessons, DbLesson } from "@/hooks/useAdminCourseContent";
 
 interface SortableModuleItemProps {
@@ -216,6 +217,9 @@ export function SortableModuleItem({
               <Plus className="h-4 w-4 mr-1" />
               Add Lesson
             </Button>
+
+            {/* Quiz Section */}
+            <QuizSection moduleId={module.id} />
           </div>
         </CardContent>
       </Card>
