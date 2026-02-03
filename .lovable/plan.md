@@ -1,228 +1,299 @@
 
-# Enhanced Assessment Results: Answer Review & Better Visualization
+# Enhanced Profile System with Full Site Reflection
 
-## Overview
+## Problem Analysis
 
-Add the ability for students to review their incorrect answers after completing the assessment, along with an improved, more visually engaging results chart. This will provide valuable learning feedback and make the results more impactful.
+Based on my investigation, there are two main issues:
 
-## Current State Analysis
+### Issue 1: Profile Changes Don't Reflect Across Website
+The Navigation component (header) displays the user avatar but:
+- **Line 77**: Uses `AvatarImage src={undefined}` - hardcoded to undefined!
+- **Line 79**: Only shows email initial, not profile display_name
+- The `useProfile` hook is not used in Navigation, so it has no access to profile data
 
-**What exists:**
-- Assessment completes and shows a radar chart of department scores
-- Final results display: total score, roadmap, and recommended courses
-- No ability to review individual questions or see which answers were wrong
-- Basic RadarChart visualization using recharts
+### Issue 2: Edit Profile Section Could Be Enhanced
+Current limitations:
+- Basic form layout without visual hierarchy or grouping feedback
+- No live preview of how profile will look across the site
+- No indication of which fields are publicly visible vs private
+- Missing profile completeness indicator
+- No unsaved changes warning
 
-**What's missing:**
-- Answer review mode (like QuizPlayer has in its "review" state)
-- Explanations for why answers were correct/incorrect
-- More engaging chart visualization with additional metrics
-- Breakdown of performance by difficulty level
+## Solution Overview
 
-## Features to Add
+### Part 1: Create a Profile Context for Site-Wide Access
+Instead of calling `useProfile` in multiple components, create a centralized profile context that:
+- Loads profile once at app level
+- Provides profile data to any component that needs it
+- Auto-refreshes when profile is updated
+- Eliminates duplicate profile fetches
 
-### 1. Answer Review Mode
-Students can click "Review Answers" to see:
-- Each question they answered
-- Their selected answer (highlighted in red if wrong)
-- The correct answer (highlighted in green)
-- An explanation of why the answer is correct
-- Navigation to move between questions
-- Filter to show only incorrect answers
+### Part 2: Fix Navigation to Show Real Profile Data
+Update Navigation component to:
+- Use the new profile context
+- Display user's actual avatar
+- Show display_name initial (not email initial)
+- Apply user's accent color to avatar border (personalization)
 
-### 2. Enhanced Results Chart
-Replace the basic radar chart with a more comprehensive visualization:
-- **Radial bar chart** showing department scores with color-coded performance levels
-- **Difficulty breakdown** showing performance at beginner/intermediate/advanced levels
-- **Score badges** highlighting strongest and weakest areas
-- **Animated transitions** for a more engaging reveal
+### Part 3: Enhance the Edit Profile Page
+Improvements:
+- Add a live "Preview Card" showing how profile appears to others
+- Add "Profile Completeness" progress indicator
+- Group fields with clearer visual sections
+- Add privacy indicators (🔒 private / 👁 public)
+- Add unsaved changes detection with confirmation dialog
+- Improve mobile responsiveness
 
-### 3. Question Explanations
-Add explanations to assessment questions to provide learning value when reviewing answers.
+### Part 4: Profile Reflection Across Site
+Ensure profile updates reflect in:
+- Navigation header avatar
+- Student Center header
+- Community posts (author info)
+- Comment threads (author info)
 
-## Implementation Plan
+## Implementation Details
+
+### Files to Create
+
+| File | Purpose |
+|------|---------|
+| `src/contexts/ProfileContext.tsx` | Global profile state provider |
+| `src/components/profile/ProfilePreviewCard.tsx` | Live preview of how profile appears |
+| `src/components/profile/ProfileCompleteness.tsx` | Progress indicator for profile completion |
 
 ### Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/data/quizzes/assessment.ts` | Add `explanation` field to questions |
-| `src/pages/Assessment.tsx` | Add review mode state, store shuffled questions for review, add "Review Answers" button |
-| `src/components/assessment/ResultsChart.tsx` | Complete redesign with enhanced visuals |
-| `src/components/assessment/AnswerReview.tsx` | NEW: Component for reviewing individual answers |
-| `src/components/assessment/DifficultyBreakdown.tsx` | NEW: Chart showing performance by difficulty |
-| `src/components/assessment/index.ts` | Export new components |
+| `src/App.tsx` | Wrap with ProfileProvider |
+| `src/components/layout/Navigation.tsx` | Use profile context for avatar/name |
+| `src/pages/StudentProfile.tsx` | Add preview card, completeness, unsaved changes detection |
+| `src/pages/StudentCenter.tsx` | Use profile context (already using useProfile, but will use context) |
+| `src/hooks/useProfile.ts` | Update to expose refetch function for context use |
 
-## Detailed Implementation
+## Technical Implementation
 
-### Assessment.tsx Changes
-
-Add new state to track review mode:
+### ProfileContext.tsx
 
 ```typescript
-type Step = "welcome" | "interests" | "experience" | "quiz" | "results" | "review" | "expired";
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import type { Tables } from "@/integrations/supabase/types";
 
-// Store the shuffled questions after quiz completes for review
-const [completedQuestions, setCompletedQuestions] = useState<ShuffledAssessmentQuestion[]>([]);
-const [reviewIndex, setReviewIndex] = useState(0);
-const [showOnlyIncorrect, setShowOnlyIncorrect] = useState(false);
+type Profile = Tables<"profiles">;
 
-// On finish quiz, save the questions for later review
-const handleFinishQuiz = async () => {
-  setCompletedQuestions([...shuffledQuestions]); // Store for review
-  // ... existing save logic
-  setStep("results");
+interface ProfileContextType {
+  profile: Profile | null;
+  loading: boolean;
+  error: Error | null;
+  refetch: () => Promise<void>;
+  updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null }>;
+}
+
+const ProfileContext = createContext<ProfileContextType | undefined>(undefined);
+
+export function ProfileProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchProfile = useCallback(async () => {
+    if (!user) {
+      setProfile(null);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      setProfile(data);
+    } catch (err) {
+      setError(err as Error);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
+
+  const updateProfile = async (updates: Partial<Profile>) => {
+    if (!user) return { error: new Error("Not authenticated") };
+
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update(updates)
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+
+      // Update local state immediately
+      setProfile((prev) => prev ? { ...prev, ...updates } : null);
+      return { error: null };
+    } catch (err) {
+      return { error: err as Error };
+    }
+  };
+
+  return (
+    <ProfileContext.Provider value={{ profile, loading, error, refetch: fetchProfile, updateProfile }}>
+      {children}
+    </ProfileContext.Provider>
+  );
+}
+
+export function useProfileContext() {
+  const context = useContext(ProfileContext);
+  if (context === undefined) {
+    throw new Error("useProfileContext must be used within a ProfileProvider");
+  }
+  return context;
+}
+```
+
+### Navigation.tsx Changes
+
+```typescript
+// Add import
+import { useProfileContext } from "@/contexts/ProfileContext";
+
+// Inside Navigation component
+const { profile } = useProfileContext();
+
+const getInitials = (name?: string | null, email?: string | null) => {
+  if (name) {
+    return name.split(" ").map((n) => n.charAt(0)).join("").toUpperCase().slice(0, 2);
+  }
+  return email?.charAt(0).toUpperCase() || "S";
 };
+
+// In the avatar JSX
+<Avatar 
+  className="h-9 w-9 border-2"
+  style={{ borderColor: profile?.profile_accent_color || '#D4AF37' }}
+>
+  <AvatarImage src={profile?.avatar_url || undefined} />
+  <AvatarFallback className="bg-primary text-primary-foreground font-bold">
+    {getInitials(profile?.display_name, user?.email)}
+  </AvatarFallback>
+</Avatar>
 ```
 
-Add "Review Answers" button to results screen:
+### ProfilePreviewCard Component
 
-```typescript
-<Button variant="outline" onClick={() => { setReviewIndex(0); setStep("review"); }}>
-  Review Your Answers
-</Button>
-```
-
-### Enhanced ResultsChart Component
-
-Replace the basic radar chart with a more comprehensive design:
+A compact card showing how the user's profile appears to others:
 
 ```text
-+--------------------------------------------------+
-|               Your Assessment Results            |
-+--------------------------------------------------+
-|                                                  |
-|   [Radial Progress Bars - One per Department]    |
-|                                                  |
-|   Cinematography     ████████████░░  78%         |
-|   Post-Production    █████████░░░░░  60%         |
-|   Directing          ████████████████  95%       |
-|                                                  |
-|   +-------------+  +-------------+               |
-|   | Strongest   |  | Focus Area  |               |
-|   | Directing   |  | Post-Prod   |               |
-|   | 95%         |  | 60%         |               |
-|   +-------------+  +-------------+               |
-|                                                  |
-|   Difficulty Breakdown:                          |
-|   Beginner:     ████████████████  90%            |
-|   Intermediate: ██████████░░░░░  65%             |
-|   Advanced:     ████░░░░░░░░░░░  40%             |
-|                                                  |
-+--------------------------------------------------+
+┌─────────────────────────────────────────┐
+│  How others see you                     │
+├─────────────────────────────────────────┤
+│  ┌──────┐                               │
+│  │Avatar│  Display Name                 │
+│  └──────┘  🎬 Narrative Fiction         │
+│            📍 Los Angeles, CA           │
+│                                         │
+│  "Your bio text appears here..."        │
+│                                         │
+│  📷 Sony A7III                          │
+│  🎥 Working on: Short Film Project      │
+│                                         │
+│  Favorite Films: The Matrix, Inception  │
+│                                         │
+│  🔗 Portfolio | 📸 Instagram | 🎬 Vimeo │
+└─────────────────────────────────────────┘
 ```
 
-Key chart features:
-- Horizontal animated progress bars per department
-- Color coding: green (>75%), yellow (50-75%), red (<50%)
-- Badge cards for "Strongest Area" and "Needs Work"
-- Stacked bar chart for difficulty breakdown
-- Smooth animations on load using framer-motion
+### ProfileCompleteness Component
 
-### AnswerReview Component
-
-A dedicated component for stepping through answered questions:
+Shows profile completion percentage with suggestions:
 
 ```text
-+--------------------------------------------------+
-|  Review: Question 3 of 18    [Only Incorrect ✓]  |
-+--------------------------------------------------+
-|  CINEMATOGRAPHY - INTERMEDIATE                   |
-|                                                  |
-|  What is the purpose of a gimbal stabilizer?     |
-|                                                  |
-|  A. To add motion blur                           |
-|  B. To eliminate unwanted camera shake  ✓ CORRECT|
-|  C. To zoom in smoothly               ✗ YOUR ANS |
-|  D. To adjust exposure                           |
-|                                                  |
-|  +--------------------------------------------+  |
-|  | EXPLANATION                               |  |
-|  | A gimbal uses motors and sensors to keep  |  |
-|  | the camera level and eliminate shake...   |  |
-|  +--------------------------------------------+  |
-|                                                  |
-|  [← Previous]              [Next →]              |
-|                    [Back to Results]             |
-+--------------------------------------------------+
+┌─────────────────────────────────────────┐
+│  Profile Completeness: 65%              │
+│  ████████████░░░░░░░░                   │
+│                                         │
+│  Add to stand out:                      │
+│  • Add a bio to introduce yourself      │
+│  • Upload a profile photo               │
+│  • Share your camera gear               │
+│  • Link your portfolio                  │
+└─────────────────────────────────────────┘
 ```
 
-Features:
-- Shows question text with department and difficulty badge
-- Highlights correct answer in green with checkmark
-- Highlights user's incorrect answer in red with X
-- Shows explanation below
-- Toggle to filter only incorrect answers
-- Navigation between questions
-- "Back to Results" button
+### StudentProfile.tsx Enhancements
 
-### Question Explanations
-
-Add explanations to assessment questions (sample):
-
+1. **Unsaved Changes Detection**
 ```typescript
-{
-  id: "cine-i2",
-  question: "What is the purpose of a gimbal stabilizer?",
-  options: ["To add motion blur", "To eliminate unwanted camera shake", "To zoom in smoothly", "To adjust exposure"],
-  correctAnswer: 1,
-  department: "cinematography",
-  difficulty: "intermediate",
-  explanation: "A gimbal stabilizer uses motorized brushless motors and sensors (accelerometers/gyroscopes) to detect and counteract unwanted camera movement, keeping shots smooth and stable even while the operator is walking or moving."
-}
+const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+useEffect(() => {
+  // Compare formData with original profile
+  if (profile) {
+    const changed = Object.keys(formData).some(
+      key => formData[key] !== (profile[key] ?? "")
+    );
+    setHasUnsavedChanges(changed);
+  }
+}, [formData, profile]);
+
+// Add beforeunload warning
+useEffect(() => {
+  const handleBeforeUnload = (e: BeforeEvent) => {
+    if (hasUnsavedChanges) {
+      e.preventDefault();
+      e.returnValue = "";
+    }
+  };
+  window.addEventListener("beforeunload", handleBeforeUnload);
+  return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+}, [hasUnsavedChanges]);
 ```
 
-### DifficultyBreakdown Component
-
-A small component showing performance across difficulty levels:
-
+2. **Privacy Indicators on Fields**
 ```typescript
-interface DifficultyBreakdownProps {
-  questions: ShuffledAssessmentQuestion[];
-  answers: Record<string, number>;
-}
+const PRIVATE_FIELDS = ["location", "bio", "camera_gear", "instagram_url", ...];
 
-// Calculate scores per difficulty tier
-const beginnerScore = calculateScoreForDifficulty("beginner");
-const intermediateScore = calculateScoreForDifficulty("intermediate");
-const advancedScore = calculateScoreForDifficulty("advanced");
+<Label>
+  Location
+  <span className="ml-2 text-xs text-muted-foreground">
+    <Lock className="inline h-3 w-3" /> Private
+  </span>
+</Label>
 ```
 
-Visual design:
-- Three horizontal bars with labels
-- Animated fill on mount
-- Tooltips showing "X of Y correct"
+3. **Layout Improvements**
+- Fixed sidebar with profile preview card (desktop)
+- Profile completeness at top
+- Sticky save button on mobile
 
-## User Flow
+## Expected Outcomes
 
-1. Student completes assessment
-2. Results screen shows:
-   - Overall score with trophy icon
-   - Enhanced department breakdown chart
-   - Difficulty breakdown showing beginner/intermediate/advanced performance
-   - "Strongest Area" and "Focus Area" badges
-   - Learning roadmap
-   - "Review Your Answers" button
-3. Clicking "Review Your Answers":
-   - Shows first question with answer feedback
-   - Toggle to show only incorrect answers
-   - Navigate through all questions
-   - Each shows explanation
-   - "Back to Results" returns to summary
+1. **Immediate Reflection**: Profile changes show instantly in:
+   - Navigation header avatar
+   - Student Center welcome section
+   - Community post author info (on next fetch)
 
-## Technical Notes
+2. **Enhanced Editing Experience**:
+   - Users see live preview of their profile
+   - Clear indication of profile completeness
+   - Know which fields are private vs public
+   - Protected from losing unsaved changes
 
-1. **State preservation**: Store `shuffledQuestions` and `answers` when quiz finishes so they're available for review
-2. **Explanation data**: Add explanations incrementally - not all 150+ questions need explanations immediately, prioritize incorrect-answer learning value
-3. **Performance**: Use React.memo for AnswerReview and chart components
-4. **Accessibility**: Proper focus management when entering/exiting review mode
-5. **Mobile**: Ensure review mode works well on small screens with swipe navigation
+3. **Personalization Visible Site-Wide**:
+   - Custom accent color on nav avatar border
+   - Avatar shows everywhere, not just profile pages
 
-## Question Explanation Strategy
-
-Given 150+ questions, we'll add explanations in phases:
-- Phase 1: Add explanations to advanced questions (most educational value)
-- Phase 2: Add explanations to intermediate questions
-- Phase 3: Complete beginner explanations
-
-Initial implementation will include explanations for ~50 key questions, with the review UI gracefully handling questions without explanations (simply not showing the explanation box).
+4. **Performance**:
+   - Single profile fetch at app level
+   - No duplicate queries
+   - Context provides cached profile to all components
