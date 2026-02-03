@@ -178,6 +178,8 @@ export default function UserManager() {
     switch (role) {
       case "admin":
         return "destructive";
+      case "professor":
+        return "default";
       case "moderator":
         return "secondary";
       default:
@@ -399,6 +401,22 @@ export default function UserManager() {
                             >
                               <ShieldX className="h-4 w-4 mr-2" />
                               Remove Admin
+                            </DropdownMenuItem>
+                          )}
+                          {!student.roles.includes("professor") && (
+                            <DropdownMenuItem
+                              onClick={() => handleRoleAction("add", student.id, "professor", student.displayName || "User")}
+                            >
+                              <GraduationCap className="h-4 w-4 mr-2" />
+                              Make Professor
+                            </DropdownMenuItem>
+                          )}
+                          {student.roles.includes("professor") && (
+                            <DropdownMenuItem
+                              onClick={() => handleRoleAction("remove", student.id, "professor", student.displayName || "User")}
+                            >
+                              <ShieldX className="h-4 w-4 mr-2" />
+                              Remove Professor
                             </DropdownMenuItem>
                           )}
                           {!student.roles.includes("moderator") && (

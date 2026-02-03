@@ -1035,7 +1035,7 @@ export type Database = {
       is_enrolled_student: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "moderator" | "student"
+      app_role: "admin" | "moderator" | "student" | "professor"
       membership_tier: "freshman" | "sophomore" | "graduate"
       post_category:
         | "general"
@@ -1170,7 +1170,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "moderator", "student"],
+      app_role: ["admin", "moderator", "student", "professor"],
       membership_tier: ["freshman", "sophomore", "graduate"],
       post_category: [
         "general",

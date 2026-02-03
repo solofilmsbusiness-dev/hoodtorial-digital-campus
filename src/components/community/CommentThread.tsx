@@ -46,7 +46,7 @@ function CommentItem({ comment, onLike, onReply, onDelete, depth = 0 }: CommentI
   };
 
   const getRoleBadge = () => {
-    if (comment.is_instructor_comment || comment.user_role === 'admin') {
+    if (comment.is_instructor_comment || comment.user_role === 'admin' || comment.user_role === 'professor') {
       return (
         <Badge className="bg-primary/20 text-primary text-xs">
           <Shield className="h-3 w-3 mr-1" />
@@ -82,7 +82,7 @@ function CommentItem({ comment, onLike, onReply, onDelete, depth = 0 }: CommentI
       <div className="flex items-start gap-3">
         <Avatar className={cn(
           "border-2",
-          comment.is_instructor_comment || comment.user_role === 'admin'
+          comment.is_instructor_comment || comment.user_role === 'admin' || comment.user_role === 'professor'
             ? "border-primary"
             : "border-border"
         )}>

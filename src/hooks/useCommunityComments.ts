@@ -149,7 +149,7 @@ export function useCommunityComments(postId: string | null) {
         .select('role')
         .eq('user_id', user.id);
       
-      const isInstructor = userRoles?.some(r => r.role === 'admin' || r.role === 'moderator');
+      const isInstructor = userRoles?.some(r => ['admin', 'moderator', 'professor'].includes(r.role));
 
       const { data: comment, error } = await supabase
         .from('community_comments')
