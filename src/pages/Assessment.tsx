@@ -180,9 +180,51 @@ export default function Assessment() {
     );
   }
 
+  const onboardingSteps = [
+    { label: "Assessment", active: true },
+    { label: "Explore Courses", active: false },
+  ];
+
   return (
     <PageLayout>
       <div className="container max-w-4xl py-8 md:py-12">
+        {/* Onboarding Progress Indicator */}
+        <div className="mb-8 p-4 rounded-lg bg-primary/5 border border-primary/20">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-medium text-muted-foreground">Getting Started</span>
+            <span className="text-xs text-muted-foreground">Step 1 of 2</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {onboardingSteps.map((s, i) => (
+              <div key={s.label} className="flex items-center gap-2 flex-1">
+                <div className="flex items-center gap-2 flex-1">
+                  <div
+                    className={cn(
+                      "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
+                      s.active
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground"
+                    )}
+                  >
+                    {i + 1}
+                  </div>
+                  <span
+                    className={cn(
+                      "text-sm font-medium",
+                      s.active ? "text-foreground" : "text-muted-foreground"
+                    )}
+                  >
+                    {s.label}
+                  </span>
+                </div>
+                {i < onboardingSteps.length - 1 && (
+                  <div className="h-0.5 flex-1 bg-muted" />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Welcome Step */}
         {step === "welcome" && (
           <div className="text-center space-y-8">
