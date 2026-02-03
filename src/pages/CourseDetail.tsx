@@ -52,15 +52,10 @@ const transformDbCourse = (dbCourse: any): Course => {
         id: m.quizzes[0].id,
         title: m.quizzes[0].title,
         passingScore: m.quizzes[0].passing_score,
-        questions: (m.quizzes[0].quiz_questions || [])
-          .sort((a: any, b: any) => a.sort_order - b.sort_order)
-          .map((q: any) => ({
-            id: q.id,
-            question: q.question,
-            options: Array.isArray(q.options) ? q.options : [],
-            correctAnswer: q.correct_answer,
-            explanation: q.explanation || "",
-          })),
+        questions: (m.quizzes[0].quiz_questions || []).length,
+        timeLimitMinutes: m.quizzes[0].time_limit_minutes ?? undefined,
+        perQuestionSeconds: m.quizzes[0].per_question_seconds ?? undefined,
+        usePerQuestionTimer: m.quizzes[0].use_per_question_timer ?? true,
       } : undefined,
     }));
 
@@ -70,15 +65,10 @@ const transformDbCourse = (dbCourse: any): Course => {
     id: finalExamData.id,
     title: finalExamData.title,
     passingScore: finalExamData.passing_score,
-    questions: (finalExamData.quiz_questions || [])
-      .sort((a: any, b: any) => a.sort_order - b.sort_order)
-      .map((q: any) => ({
-        id: q.id,
-        question: q.question,
-        options: Array.isArray(q.options) ? q.options : [],
-        correctAnswer: q.correct_answer,
-        explanation: q.explanation || "",
-      })),
+    questions: (finalExamData.quiz_questions || []).length,
+    timeLimitMinutes: finalExamData.time_limit_minutes ?? undefined,
+    perQuestionSeconds: finalExamData.per_question_seconds ?? undefined,
+    usePerQuestionTimer: finalExamData.use_per_question_timer ?? true,
   } : undefined;
 
   return {
