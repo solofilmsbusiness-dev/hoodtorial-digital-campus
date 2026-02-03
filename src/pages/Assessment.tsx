@@ -52,10 +52,14 @@ export default function Assessment() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [startTime, setStartTime] = useState<number>(0);
-  const [remainingTime, setRemainingTime] = useState(0);
   const [saving, setSaving] = useState(false);
   const [isRetaking, setIsRetaking] = useState(false);
   const [shuffledQuestions, setShuffledQuestions] = useState<ShuffledAssessmentQuestion[]>([]);
+  
+  // Per-question timer state
+  const [questionTimeRemaining, setQuestionTimeRemaining] = useState(60);
+  const [questionStartTime, setQuestionStartTime] = useState<number>(0);
+  const PER_QUESTION_SECONDS = 60;
   
   // Review mode state
   const [completedQuestions, setCompletedQuestions] = useState<ShuffledAssessmentQuestion[]>([]);
@@ -91,10 +95,10 @@ export default function Assessment() {
     return selected;
   }, [interests]);
 
-  // Calculate time limit (45 seconds per question for assessments)
-  const timeLimitSeconds = useMemo(() => {
-    const minutes = getDefaultTimeLimit(baseQuestions.length, true);
-    return minutes * 60;
+  // Total time tracking for results (still track elapsed time for stats)
+  const totalTimeLimitSeconds = useMemo(() => {
+    // Each question has 60 seconds
+    return baseQuestions.length * PER_QUESTION_SECONDS;
   }, [baseQuestions.length]);
 
   // Initialize shuffled questions when starting quiz
@@ -122,57 +126,48 @@ export default function Assessment() {
     setAnswers({});
     setCurrentQuestionIndex(0);
     setStartTime(Date.now());
-    setRemainingTime(timeLimitSeconds);
+    setQuestionStartTime(Date.now());
+    setQuestionTimeRemaining(PER_QUESTION_SECONDS);
     setStep("quiz");
-  }, [baseQuestions, timeLimitSeconds]);
+  }, [baseQuestions]);
 
-  // Countdown timer
+  // Reset timer when question changes
   useEffect(() => {
-    if (step !== "quiz" || startTime === 0) return;
+    if (step === "quiz") {
+      setQuestionStartTime(Date.now());
+      setQuestionTimeRemaining(PER_QUESTION_SECONDS);
+    }
+  }, [step, currentQuestionIndex]);
+
+  // Handle per-question time expired
+  const handleQuestionTimeExpired = useCallback(() => {
+    // If on last question, finish the quiz
+    if (currentQuestionIndex === shuffledQuestions.length - 1) {
+      handleFinishQuiz();
+    } else {
+      // Auto-advance to next question
+      setCurrentQuestionIndex(prev => prev + 1);
+    }
+  }, [currentQuestionIndex, shuffledQuestions.length]);
+
+  // Per-question countdown timer
+  useEffect(() => {
+    if (step !== "quiz" || questionStartTime === 0) return;
     
     const interval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      const remaining = Math.max(0, timeLimitSeconds - elapsed);
-      setRemainingTime(remaining);
+      const elapsed = Math.floor((Date.now() - questionStartTime) / 1000);
+      const remaining = Math.max(0, PER_QUESTION_SECONDS - elapsed);
+      setQuestionTimeRemaining(remaining);
       
       if (remaining <= 0) {
         clearInterval(interval);
-        handleTimeExpired();
+        handleQuestionTimeExpired();
       }
     }, 1000);
     
     return () => clearInterval(interval);
-  }, [step, startTime, timeLimitSeconds]);
+  }, [step, questionStartTime, currentQuestionIndex, handleQuestionTimeExpired]);
 
-  const handleTimeExpired = useCallback(async () => {
-    setStep("expired");
-    
-    // Calculate and save results
-    const results = calculateResults();
-    setSaving(true);
-
-    const { data, error } = await saveAssessmentResult({
-      interests,
-      experience_level: experienceLevel,
-      department_scores: results.departmentScores,
-      total_score: results.totalScore,
-      time_taken_seconds: timeLimitSeconds,
-    });
-
-    setSaving(false);
-
-    if (error) {
-      console.error("Failed to save assessment:", error);
-    }
-
-    const roadmap = calculateRoadmap(results.departmentScores, interests, experienceLevel);
-    setFinalResults({
-      departmentScores: results.departmentScores,
-      totalScore: results.totalScore,
-      recommendedCourses: data?.recommended_courses || [],
-      roadmap,
-    });
-  }, [interests, experienceLevel, timeLimitSeconds]);
 
   const handleInterestToggle = (id: string) => {
     setInterests((prev) => {
@@ -268,8 +263,7 @@ export default function Assessment() {
     setStep("review");
   };
 
-  const isTimeWarning = remainingTime > 0 && remainingTime <= 120; // 2 minutes warning
-  const timeLimitMinutes = Math.ceil(timeLimitSeconds / 60);
+  const isTimeWarning = questionTimeRemaining > 0 && questionTimeRemaining <= 10; // 10 seconds warning
 
   const recommendedCourseDetails = useMemo(() => {
     if (!finalResults?.recommendedCourses) return [];
@@ -530,10 +524,10 @@ export default function Assessment() {
                 <ul className="text-sm text-muted-foreground space-y-2">
                   <li className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-muted-foreground" />
-                    Timed assessment (~{Math.ceil((baseQuestions.length * 45) / 60)} minutes)
+                    60 seconds per question
                   </li>
                   <li>• Questions and answers are randomized for fairness</li>
-                  <li>• Your quiz will auto-submit when time expires</li>
+                  <li>• Questions auto-advance when time expires</li>
                 </ul>
               </CardContent>
             </Card>
@@ -569,9 +563,18 @@ export default function Assessment() {
               )}>
                 {isTimeWarning && <AlertTriangle className="w-4 h-4" />}
                 <Clock className="w-4 h-4" />
-                {formatTimeRemaining(remainingTime)}
+                {formatTimeRemaining(questionTimeRemaining)}
               </div>
             </div>
+
+            {/* Per-question timer progress bar */}
+            <Progress
+              value={(questionTimeRemaining / PER_QUESTION_SECONDS) * 100}
+              className={cn(
+                "h-1 mb-2",
+                isTimeWarning && "bg-destructive/20 [&>div]:bg-destructive"
+              )}
+            />
 
             <Progress
               value={((currentQuestionIndex + 1) / shuffledQuestions.length) * 100}
