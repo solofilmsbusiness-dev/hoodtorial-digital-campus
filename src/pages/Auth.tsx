@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -8,8 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { Eye, EyeOff, Mail, Lock, User, Film } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import heroLogo from "@/assets/hero-logo.png";
-import heroVideo from "@/assets/hero-video.mp4";
+import defaultLogo from "@/assets/hero-logo.png";
+import defaultVideo from "@/assets/hero-video.mp4";
 import { motion } from "framer-motion";
 import { FilmCountdown } from "@/components/auth/FilmCountdown";
 import { RotatingQuotes } from "@/components/auth/RotatingQuotes";
@@ -28,10 +28,40 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; displayName?: string }>({});
   
+  // Dynamic media URLs (fall back to static imports)
+  const [videoUrl, setVideoUrl] = useState<string>(defaultVideo);
+  const [logoUrl, setLogoUrl] = useState<string>(defaultLogo);
+  
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+
+  // Fetch custom login media from site_settings
+  useEffect(() => {
+    const fetchSiteMedia = async () => {
+      try {
+        const { data } = await supabase
+          .from("site_settings")
+          .select("id, value")
+          .in("id", ["login_video_url", "login_logo_url"]);
+
+        data?.forEach((setting) => {
+          if (setting.id === "login_video_url" && setting.value) {
+            setVideoUrl(setting.value);
+          }
+          if (setting.id === "login_logo_url" && setting.value) {
+            setLogoUrl(setting.value);
+          }
+        });
+      } catch (err) {
+        console.error("Error fetching site settings:", err);
+        // Continue with defaults on error
+      }
+    };
+
+    fetchSiteMedia();
+  }, []);
 
   // Redirect if already logged in
   if (user) {
@@ -167,8 +197,9 @@ export default function Auth() {
           muted
           playsInline
           className="absolute inset-0 w-full h-full object-cover"
+          key={videoUrl}
         >
-          <source src={heroVideo} type="video/mp4" />
+          <source src={videoUrl} type="video/mp4" />
         </video>
 
         {/* Film Overlay Effects */}
@@ -196,15 +227,16 @@ export default function Auth() {
           muted
           playsInline
           className="absolute inset-0 w-full h-full object-cover"
+          key={`mobile-${videoUrl}`}
         >
-          <source src={heroVideo} type="video/mp4" />
+          <source src={videoUrl} type="video/mp4" />
         </video>
         <div className="absolute inset-0 bg-gradient-to-b from-background/50 via-background/70 to-background z-10" />
         
         {/* Mobile Logo */}
         <div className="absolute inset-0 z-20 flex items-center justify-center">
           <motion.img
-            src={heroLogo}
+            src={logoUrl}
             alt="Hoodtorial University"
             className="h-20 w-auto logo-glow"
             initial={{ opacity: 0, scale: 0.8 }}
@@ -230,7 +262,7 @@ export default function Auth() {
             className="hidden lg:block text-center mb-8"
           >
             <img 
-              src={heroLogo} 
+              src={logoUrl}
               alt="Hoodtorial University" 
               className="h-24 w-auto mx-auto animate-logo-pulse"
             />
