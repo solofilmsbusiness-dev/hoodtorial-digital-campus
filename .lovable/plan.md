@@ -1,134 +1,194 @@
 
 
-# User-to-Admin Support Messaging System
+# Fix Video Progress Tracking for Students
 
-## Overview
+## Problem Analysis
 
-Create a support messaging system that allows authenticated users to send help requests directly to admins. Messages will appear in a dedicated section of the admin panel, where admins can view, respond to, and manage support tickets.
+Video watch progress is not being saved to the database for students. After investigation, I found that:
 
-## Architecture
+1. **The video is YouTube-based** and uses the YouTube IFrame API for tracking
+2. **The database shows 0% progress** even after watching (record exists but `watched_seconds: 0`, `watch_percentage: 0`)
+3. **The YouTube Player initialization has race conditions** that cause the progress tracking to fail silently
 
-```text
-+---------------------------+      +---------------------------+
-|    USER INTERFACE         |      |    ADMIN INTERFACE        |
-|---------------------------|      |---------------------------|
-| - Help button in          |      | - New "Support" link in   |
-|   Student Center          |      |   admin sidebar           |
-| - Contact Admin sheet     |      | - Support Messages page   |
-|   with message form       |      |   with conversation view  |
-| - View conversation       |      | - Reply functionality     |
-|   history                 |      | - Mark as resolved        |
-+---------------------------+      +---------------------------+
-            |                                  |
-            v                                  v
-+-----------------------------------------------------------+
-|              DATABASE (support_tickets table)              |
-|-----------------------------------------------------------|
-| - id, user_id, subject, status (open/resolved)            |
-| - created_at, updated_at, resolved_at, resolved_by        |
-+-----------------------------------------------------------+
-                            |
-                            v
-+-----------------------------------------------------------+
-|              DATABASE (support_messages table)             |
-|-----------------------------------------------------------|
-| - id, ticket_id, sender_id, content, is_admin             |
-| - created_at                                               |
-+-----------------------------------------------------------+
+## Root Causes
+
+### Issue 1: YT.Player initialization race condition
+The current code has a problematic pattern:
+```javascript
+if (window.YT && window.YT.Player) {
+  onYouTubeReady();  // Called immediately
+} else {
+  window.onYouTubeIframeAPIReady = onYouTubeReady;  // Callback
+}
 ```
+- If the YouTube API is partially loaded, `window.YT` exists but `window.YT.Player` might not be ready
+- If multiple components mount, they overwrite `onYouTubeIframeAPIReady`
 
-## Key Features
+### Issue 2: No validation that player is ready
+- The `onReady` event might never fire if the player fails to attach
+- There's no fallback or error handling
 
-### For Users
-1. "Need Help?" button in the Student Center quick links section
-2. Sheet/dialog to compose and send messages to admins
-3. View conversation history for their support tickets
-4. See ticket status (open/resolved)
+### Issue 3: iframe ID assignment timing
+- The iframe ID is assigned inside `onYouTubeReady`, but the iframe needs the ID before `new YT.Player()` is called
+- React may have already rendered a different iframe by then
 
-### For Admins
-1. New "Support" menu item in admin sidebar with unread badge
-2. Dedicated support messages page (/admin/support)
-3. List of all support tickets with filters (open/resolved)
-4. Click into ticket to view full conversation
-5. Reply to users directly
-6. Mark tickets as resolved
-7. Real-time updates when new messages arrive
+## Solution
 
-## Database Schema
+### 1. Refactor YouTube Player Initialization
 
-### Table: support_tickets
-| Column | Type | Description |
-|--------|------|-------------|
-| id | uuid | Primary key |
-| user_id | uuid | References profiles |
-| subject | text | Ticket subject/title |
-| status | text | 'open' or 'resolved' |
-| created_at | timestamptz | When created |
-| updated_at | timestamptz | Last activity |
-| resolved_at | timestamptz | When resolved |
-| resolved_by | uuid | Admin who resolved |
+Use a more robust initialization pattern that:
+- Waits for iframe to be loaded before attaching player
+- Uses proper API ready state checking
+- Adds error handling and fallback
 
-### Table: support_messages
-| Column | Type | Description |
-|--------|------|-------------|
-| id | uuid | Primary key |
-| ticket_id | uuid | References support_tickets |
-| sender_id | uuid | Who sent the message |
-| content | text | Message content |
-| is_admin | boolean | True if sent by admin |
-| created_at | timestamptz | When sent |
+### 2. Add postMessage-based Fallback
 
-### RLS Policies
-- Users can read/create tickets where user_id = auth.uid()
-- Users can read/create messages for their own tickets
-- Admins (via has_role) can read/update all tickets and messages
+As a backup, listen to YouTube's `postMessage` events for playback state, which works even if the JS API fails to initialize.
 
-## Files to Create/Modify
+### 3. Add Debugging/Logging
 
-| File | Action | Description |
-|------|--------|-------------|
-| `src/pages/admin/SupportManager.tsx` | Create | Admin page to manage support tickets |
-| `src/components/admin/SupportTicketList.tsx` | Create | List component for tickets |
-| `src/components/admin/SupportConversation.tsx` | Create | Conversation view component |
-| `src/components/support/ContactAdminSheet.tsx` | Create | User-facing help sheet |
-| `src/components/support/SupportHistory.tsx` | Create | User's ticket history view |
-| `src/hooks/useSupportTickets.ts` | Create | Hook for ticket CRUD operations |
-| `src/hooks/useAdminSupport.ts` | Create | Admin-specific support hook |
-| `src/components/admin/AdminSidebar.tsx` | Modify | Add Support nav item with badge |
-| `src/pages/StudentCenter.tsx` | Modify | Add "Need Help?" quick link |
-| `src/App.tsx` | Modify | Add /admin/support route |
-| `src/components/admin/index.ts` | Modify | Export new components |
+Add console logging during development to track when progress updates are attempted.
+
+## Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/components/course/VideoPlayer.tsx` | Fix YouTube player initialization with proper API ready checking, add iframe load event listener, improve error handling |
+| `src/hooks/useVideoProgress.ts` | Add debug logging for save operations |
 
 ## Implementation Details
 
-### User Contact Form (ContactAdminSheet)
-- Sheet component that slides in from the right
-- Subject field (required)
-- Message textarea (required)
-- Submit button that creates a new ticket with initial message
-- Shows existing open tickets with option to continue conversation
+### VideoPlayer.tsx Changes
 
-### Admin Support Page (SupportManager)
-- Uses AdminLayout for consistent styling
-- Tabs: "Open" and "Resolved"
-- Table with: User avatar/name, Subject, Last message preview, Time since last activity
-- Click to open conversation in side sheet
-- Reply input at bottom of conversation
-- "Mark as Resolved" button
+```typescript
+// 1. Assign iframe ID immediately (before useEffect)
+const iframeId = useMemo(() => 
+  `yt-player-${lesson.id.replace(/[^a-zA-Z0-9]/g, '')}`, 
+  [lesson.id]
+);
 
-### Admin Sidebar Badge
-- Show count of open tickets
-- Use existing notification badge styling (red circle)
+// 2. Use proper API ready detection
+useEffect(() => {
+  if (videoType !== "youtube" || !onProgress) return;
+  
+  let player: YT.Player | null = null;
+  let isDestroyed = false;
+  
+  const initPlayer = () => {
+    if (isDestroyed) return;
+    
+    try {
+      player = new window.YT.Player(iframeId, {
+        events: {
+          onReady: (event) => {
+            console.log("[VideoPlayer] YouTube player ready");
+            // ... start polling
+          },
+          onError: (event) => {
+            console.error("[VideoPlayer] YouTube player error:", event.data);
+          },
+          onStateChange: (event) => {
+            // Also track on state change for more reliable updates
+            if (player && event.data === window.YT.PlayerState.PLAYING) {
+              // Ensure polling is running
+            }
+          }
+        },
+      });
+    } catch (err) {
+      console.error("[VideoPlayer] Failed to init YouTube player:", err);
+    }
+  };
+  
+  // Robust API loading
+  const checkAPIReady = () => {
+    if (window.YT && window.YT.Player && typeof window.YT.Player === 'function') {
+      initPlayer();
+    } else {
+      // Load API if not present
+      if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
+        const tag = document.createElement("script");
+        tag.src = "https://www.youtube.com/iframe_api";
+        document.head.appendChild(tag);
+      }
+      // Wait for API with polling (more reliable than callback)
+      const pollId = setInterval(() => {
+        if (window.YT && window.YT.Player && typeof window.YT.Player === 'function') {
+          clearInterval(pollId);
+          initPlayer();
+        }
+      }, 100);
+      
+      // Cleanup poll on unmount
+      return () => clearInterval(pollId);
+    }
+  };
+  
+  // Wait for iframe to be in DOM
+  const waitForIframe = setInterval(() => {
+    if (document.getElementById(iframeId)) {
+      clearInterval(waitForIframe);
+      checkAPIReady();
+    }
+  }, 50);
+  
+  return () => {
+    isDestroyed = true;
+    clearInterval(waitForIframe);
+    if (youtubeIntervalRef.current) {
+      clearInterval(youtubeIntervalRef.current);
+    }
+  };
+}, [videoType, onProgress, iframeId, initialTime]);
+```
 
-### Real-time Updates
-- Subscribe to support_tickets and support_messages tables
-- Auto-refresh when new messages arrive
+### Key Improvements
 
-## Technical Considerations
+1. **Stable iframe ID**: Generate ID based on lesson.id so it's consistent
+2. **Wait for iframe in DOM**: Don't try to attach player until iframe exists
+3. **Poll for API ready**: More reliable than overwriting the global callback
+4. **Error handling**: Catch and log errors during player initialization
+5. **onStateChange listener**: Additional tracking opportunity
+6. **isDestroyed flag**: Prevent operations after unmount
 
-1. **Security**: RLS policies ensure users only see their own tickets, admins see all
-2. **Performance**: Paginate ticket list, limit message history to last 100
-3. **UX**: Show loading states, success/error toasts
-4. **Mobile**: Responsive design following existing patterns
-5. **Accessibility**: Proper labels, focus management in sheets
+### useVideoProgress.ts Changes
+
+Add logging to help debug save operations:
+
+```typescript
+const saveProgress = useCallback(
+  async (watchedSeconds: number, durationSeconds: number, forceComplete = false) => {
+    if (!user || !lessonId || durationSeconds <= 0) {
+      console.log("[VideoProgress] Skip save:", { user: !!user, lessonId, durationSeconds });
+      return;
+    }
+
+    const watchPercentage = Math.round((watchedSeconds / durationSeconds) * 100);
+    console.log("[VideoProgress] Saving:", { watchedSeconds, durationSeconds, watchPercentage });
+    
+    try {
+      const { error } = await supabase.from("user_progress").upsert(
+        // ... existing code
+      );
+      
+      if (error) {
+        console.error("[VideoProgress] Save error:", error);
+      } else {
+        console.log("[VideoProgress] Saved successfully");
+      }
+    } catch (err) {
+      console.error("[VideoProgress] Save exception:", err);
+    }
+  },
+  [user, courseCode, lessonId, onComplete]
+);
+```
+
+## Expected Outcome
+
+After these fixes:
+- YouTube videos will reliably track watch progress
+- Progress will be saved to the database every 5 seconds
+- Lessons will auto-complete when 90% watched
+- Console logs will help identify any remaining issues
 
