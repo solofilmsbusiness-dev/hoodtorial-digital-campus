@@ -4,6 +4,7 @@ import { PageLayout, Section } from "@/components/layout";
 import { 
   ProgressionModuleAccordion, 
   VideoPlayer, 
+  DocumentViewer,
   LockedQuizCard, 
   QuizPlayer,
   ProgressionInfo,
@@ -382,13 +383,21 @@ const CourseDetail = () => {
 
             {activeLesson && enrolled ? (
               <>
-                <VideoPlayer 
-                  lesson={activeLesson} 
-                  onProgress={videoProgress.updateProgress}
-                  initialTime={videoProgress.getResumePosition()}
-                  watchPercentage={videoProgress.watchPercentage}
-                  isCompleted={videoProgress.isCompleted}
-                />
+                {/* Show DocumentViewer for reading lessons with document_url */}
+                {activeLesson.type === "reading" && (activeLesson as unknown as { document_url?: string }).document_url ? (
+                  <DocumentViewer 
+                    documentUrl={(activeLesson as unknown as { document_url: string }).document_url}
+                    title={activeLesson.title}
+                  />
+                ) : (
+                  <VideoPlayer 
+                    lesson={activeLesson} 
+                    onProgress={videoProgress.updateProgress}
+                    initialTime={videoProgress.getResumePosition()}
+                    watchPercentage={videoProgress.watchPercentage}
+                    isCompleted={videoProgress.isCompleted}
+                  />
+                )}
                 <div className="border-2 border-border p-6 bg-card/50">
                   <h2 className="heading-4 text-foreground mb-2">{activeLesson.title}</h2>
                   <p className="text-muted-foreground text-sm">

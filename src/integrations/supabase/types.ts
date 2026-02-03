@@ -279,6 +279,7 @@ export type Database = {
           content: string | null
           created_at: string
           description: string | null
+          document_url: string | null
           duration: string | null
           id: string
           module_id: string
@@ -292,6 +293,7 @@ export type Database = {
           content?: string | null
           created_at?: string
           description?: string | null
+          document_url?: string | null
           duration?: string | null
           id?: string
           module_id: string
@@ -305,6 +307,7 @@ export type Database = {
           content?: string | null
           created_at?: string
           description?: string | null
+          document_url?: string | null
           duration?: string | null
           id?: string
           module_id?: string
