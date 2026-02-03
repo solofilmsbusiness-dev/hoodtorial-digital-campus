@@ -1,61 +1,93 @@
 
-# Fix Test Mode Quiz Behavior
+# Fix Test Mode Quiz Retake Issue
 
 ## Problem
-Currently, when Test Mode is active with "Auto-Pass Quizzes" enabled:
-- The `saveQuizResult` function **overrides** the actual quiz score to force a pass
-- This means even if you answer questions incorrectly, your result is changed to 100%
-- The admin cannot test the real quiz experience
+When Test Mode is enabled, quizzes show as "Passed" and cannot be clicked/taken because:
 
-The user wants Test Mode to give **full access** to all content while still allowing them to **take quizzes normally** (answer questions, see real scores, experience the quiz flow as a student would).
-
-## Current Behavior
+1. **`isQuizPassed()`** returns `true` in Test Mode to allow content progression
+2. **`LockedQuizCard`** checks `!isPassed` to determine if quiz can be attempted
+3. This creates a conflict: We need quizzes to be "passed" for progression BUT still takeable
 
 ```text
-Admin takes quiz → Answers 5/10 correctly → saveQuizResult called
+Test Mode Active:
+isQuizPassed() → true (for progression)
         ↓
-shouldAutoPassQuiz = true
+LockedQuizCard receives isPassed = true
         ↓
-Score overridden: { passed: true, score: 10 } ← WRONG!
-        ↓
-Admin sees 100% but actually got 50%
-```
-
-## Desired Behavior
-
-```text
-Admin takes quiz → Answers 5/10 correctly → saveQuizResult called
-        ↓
-shouldAutoPassQuiz = true (but only for instant-pass buttons)
-        ↓
-Actual score saved: { passed: false, score: 5 }
-        ↓
-Admin sees real 50% result
-        ↓
-Test Mode unlocks next content anyway (no blocking)
+canAttempt = isUnlocked && !isPassed && attempts < max
+           = true && !true && 0 < 3
+           = false ← CANNOT CLICK!
 ```
 
 ---
 
 ## Solution
+Separate the concept of "quiz unlocks next content" from "quiz is actually passed" in Test Mode.
 
-### Step 1: Separate "Instant Pass" from "Regular Quiz"
-The `shouldAutoPassQuiz` flag should **only** affect the instant-pass buttons, not the normal quiz-taking flow.
+### Approach
+Create two different checks:
+1. **`isQuizPassedForProgression`** - Returns `true` in Test Mode (unlocks content)
+2. **`isQuizActuallyPassed`** - Returns real quiz status (for display and retake logic)
 
-**Edit: `src/hooks/useQuizResults.ts`**
-- Remove the auto-pass override from `saveQuizResult`
-- Keep `shouldAutoPassQuiz` for the `instantPassQuiz` function only
-- Save actual quiz results when admin takes a quiz normally
+Then update components to use the correct check for each purpose.
 
-### Step 2: Test Mode Unlocks Content Regardless of Quiz Result
-In Test Mode, content should be unlocked regardless of whether quizzes are passed.
+---
 
+## Implementation Steps
+
+### Step 1: Update useLessonProgress Hook
 **Edit: `src/hooks/useLessonProgress.ts`**
-- Already handles this with `isTestModeEnabled` check in `isContentUnlocked`
-- Verify `isQuizPassed` still shows real pass/fail status for display
 
-### Step 3: Remove Attempt Limit in Test Mode (Already Done)
-- The `getAttemptCount` already returns 0 in test mode, allowing unlimited retries
+Add a new function that returns the actual quiz pass status (ignoring Test Mode):
+
+```typescript
+// For progression/unlocking - respects Test Mode bypass
+const isQuizPassed = useCallback((quizId: string) => {
+  if (isTestModeEnabled) return true;
+  return courseProgress.quizMap.get(quizId)?.passed || false;
+}, [courseProgress, isTestModeEnabled]);
+
+// For display/retake logic - always returns real status
+const isQuizActuallyPassed = useCallback((quizId: string) => {
+  return courseProgress.quizMap.get(quizId)?.passed || false;
+}, [courseProgress]);
+```
+
+Update `canAttemptQuiz` to use real pass status:
+```typescript
+const canAttemptQuiz = useCallback((quizId: string) => {
+  // In Test Mode: unlimited attempts, only blocked if actually passed
+  if (isTestModeEnabled) {
+    const reallyPassed = courseProgress.quizMap.get(quizId)?.passed || false;
+    return !reallyPassed; // Can retry if not actually passed
+  }
+  // Normal mode
+  const attempts = getQuizAttempts(quizId);
+  const passed = isQuizPassed(quizId);
+  return !passed && attempts < 3;
+}, [...]);
+```
+
+### Step 2: Update ProgressionModuleAccordion
+**Edit: `src/components/course/ProgressionModuleAccordion.tsx`**
+
+Add new prop for actual pass status and pass it to LockedQuizCard:
+
+```typescript
+// In props
+isQuizActuallyPassed?: (quizId: string) => boolean;
+
+// When rendering LockedQuizCard
+<LockedQuizCard
+  isPassed={isQuizActuallyPassed?.(module.quiz.id) ?? isQuizPassed(module.quiz.id)}
+  ...
+/>
+```
+
+### Step 3: Update CourseDetail Page
+**Edit: `src/pages/CourseDetail.tsx`**
+
+Pass the new `isQuizActuallyPassed` function to the accordion components.
 
 ---
 
@@ -63,48 +95,26 @@ In Test Mode, content should be unlocked regardless of whether quizzes are passe
 
 | File | Change |
 |------|--------|
-| `src/hooks/useQuizResults.ts` | Remove auto-pass override from `saveQuizResult()` - save actual results |
+| `src/hooks/useLessonProgress.ts` | Add `isQuizActuallyPassed` function, update `canAttemptQuiz` |
+| `src/components/course/ProgressionModuleAccordion.tsx` | Add optional `isQuizActuallyPassed` prop |
+| `src/pages/CourseDetail.tsx` | Pass `isQuizActuallyPassed` to accordion |
 
 ---
 
-## Technical Details
+## Behavior After Fix
 
-### Current `saveQuizResult` (lines 59-62):
-```typescript
-// In test mode with auto-pass, override the passed status
-const finalResult = shouldAutoPassQuiz
-  ? { ...result, passed: true, score: result.total_questions }
-  : result;
-```
-
-### Fixed `saveQuizResult`:
-```typescript
-// Always save actual results - auto-pass is only for instant buttons
-const finalResult = result;
-```
-
-The `instantPassQuiz` function already handles the "skip quiz" behavior for Quick Complete buttons.
+| Scenario | isQuizPassed (progression) | isQuizActuallyPassed (display) | canAttempt |
+|----------|---------------------------|-------------------------------|------------|
+| Test Mode, not taken | true | false | true ✓ |
+| Test Mode, failed | true | false | true ✓ |
+| Test Mode, passed | true | true | false |
+| Normal, not taken | false | false | true |
+| Normal, passed | true | true | false |
 
 ---
 
-## What Stays the Same
-- Test Mode still bypasses subscription, enrollment, and progression locks
-- "Quick Complete" buttons still work for lessons
-- "Auto-Pass Exam" buttons still instantly pass quizzes via `instantPassQuiz()`
-- Unlimited quiz attempts in Test Mode
-
-## What Changes
-- When admin actually takes a quiz (answers questions), their real score is saved
-- Admin can experience the full quiz flow: intro → questions → results → review
-- If they fail, content is still unlocked (Test Mode) but they see the real feedback
-
----
-
-## User Experience Summary
-
-| Action | Test Mode Behavior |
-|--------|-------------------|
-| Click "Auto-Pass Exam" button | Instantly passes quiz, saves 100% |
-| Click "Start Quiz" and answer questions | Takes real quiz, saves actual score |
-| Fail quiz in Test Mode | Shows failure feedback, but next content still unlocked |
-| Retry quiz | Unlimited attempts (no 3-attempt limit) |
+## Summary
+- Quizzes remain unlocked in Test Mode (content progression works)
+- Quizzes can be clicked and taken normally (shows real status)
+- After actually passing, quiz shows checkmark and becomes disabled
+- Unlimited retries in Test Mode until actually passed
