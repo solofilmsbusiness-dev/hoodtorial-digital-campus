@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { getQuizQuestions, type QuizQuestion } from "@/data/quizQuestions";
@@ -35,7 +35,7 @@ export function useAdminQuizManagement() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch detailed quiz results with answers for a specific user
-  const fetchQuizResultsWithAnswers = async (userId: string): Promise<QuizResultDetail[]> => {
+  const fetchQuizResultsWithAnswers = useCallback(async (userId: string): Promise<QuizResultDetail[]> => {
     // Fetch quiz results
     const { data: results, error: resultsError } = await supabase
       .from("quiz_results")
@@ -106,10 +106,10 @@ export function useAdminQuizManagement() {
         answers: answersWithDetails,
       };
     });
-  };
+  }, []);
 
   // Delete a specific quiz result (and its answers via cascade)
-  const deleteQuizResult = async (quizResultId: string, userId: string) => {
+  const deleteQuizResult = useCallback(async (quizResultId: string, userId: string) => {
     setIsDeleting(true);
     try {
       const { error } = await supabase
@@ -129,10 +129,10 @@ export function useAdminQuizManagement() {
     } finally {
       setIsDeleting(false);
     }
-  };
+  }, [queryClient]);
 
   // Delete all quiz results for a user
-  const deleteAllQuizResults = async (userId: string) => {
+  const deleteAllQuizResults = useCallback(async (userId: string) => {
     setIsDeleting(true);
     try {
       const { error } = await supabase
@@ -152,10 +152,10 @@ export function useAdminQuizManagement() {
     } finally {
       setIsDeleting(false);
     }
-  };
+  }, [queryClient]);
 
   // Delete an enrollment for a user
-  const deleteEnrollment = async (userId: string, courseCode: string) => {
+  const deleteEnrollment = useCallback(async (userId: string, courseCode: string) => {
     setIsDeleting(true);
     try {
       const { error } = await supabase
@@ -176,7 +176,7 @@ export function useAdminQuizManagement() {
     } finally {
       setIsDeleting(false);
     }
-  };
+  }, [queryClient]);
 
   return {
     fetchQuizResultsWithAnswers,
