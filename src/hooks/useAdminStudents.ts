@@ -27,6 +27,7 @@ export interface AssessmentResult {
 
 export interface StudentSummary {
   id: string;
+  email: string | null;
   displayName: string | null;
   avatarUrl: string | null;
   location: string | null;
@@ -108,6 +109,18 @@ export function useAdminStudents() {
         return acc;
       }, {} as Record<string, { passed: number; failed: number; totalAttempts: number }>);
 
+      // Fetch emails for all users using the security definer function
+      const userIds = profiles.map((p) => p.user_id);
+      const emailPromises = userIds.map(async (userId) => {
+        const { data, error } = await supabase.rpc("get_user_email", { _user_id: userId });
+        return { userId, email: error ? null : data };
+      });
+      const emailResults = await Promise.all(emailPromises);
+      const emailsByUser = emailResults.reduce((acc, { userId, email }) => {
+        acc[userId] = email;
+        return acc;
+      }, {} as Record<string, string | null>);
+
       // Combine data
       const students: StudentSummary[] = profiles.map((profile) => {
         const stats = quizStatsByUser[profile.user_id] || { passed: 0, failed: 0, totalAttempts: 0 };
@@ -115,6 +128,7 @@ export function useAdminStudents() {
 
         return {
           id: profile.user_id,
+          email: emailsByUser[profile.user_id] || null,
           displayName: profile.display_name,
           avatarUrl: profile.avatar_url,
           location: profile.location,
@@ -220,8 +234,12 @@ export function useStudentDetails(userId: string | null) {
         ? Math.round((quizStats.passed / quizStats.totalAttempts) * 100) 
         : 0;
 
+      // Fetch email for this user
+      const { data: email } = await supabase.rpc("get_user_email", { _user_id: userId });
+
       return {
         id: profile.user_id,
+        email: email || null,
         displayName: profile.display_name,
         avatarUrl: profile.avatar_url,
         bio: profile.bio,
