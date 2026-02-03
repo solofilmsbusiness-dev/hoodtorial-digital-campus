@@ -1,146 +1,236 @@
 
 
-# Centered Login with Full-Screen Background Video
+# Facebook-Style Timeline Community Feed
 
 ## Overview
 
-Redesign the Auth page to feature a full-screen looping background video with the login form centered on top. This creates a more immersive, cinematic experience compared to the current split-screen layout.
+Transform the community feed from its current Instagram-inspired grid/feed layout into a more visual Facebook-style timeline. This will feature a single-column centered timeline with rich post cards, inline media previews, and a more engaging social experience.
 
 ## Current vs. New Design
 
-| Aspect | Current | New |
-|--------|---------|-----|
-| Layout | Split-screen (50/50) | Centered single-column |
-| Video | Left side only | Full-screen background |
-| Form | Right side | Centered overlay with glass effect |
-| Mobile | Compact header video | Full-screen with centered form |
+| Aspect | Current | New Facebook-Style |
+|--------|---------|-------------------|
+| Layout | Grid (Instagram-style) | Single-column timeline |
+| Post cards | Minimal, media-focused | Rich cards with full content preview |
+| Media display | Square thumbnails | Inline images/videos in feed |
+| Content visibility | Title only in grid | Full post content visible |
+| Interactions | Hidden on hover | Always visible action bar |
+| Comments preview | None | Show 2 most recent comments |
+| Create post | Separate form | Inline "What's on your mind?" prompt |
 
 ## Visual Design
 
 ```text
 +----------------------------------------------------------+
+|  ┌────────────────────────────────────────────────────┐  |
+|  │  [Avatar] What's on your mind?        [📷] [Post]  │  |
+|  └────────────────────────────────────────────────────┘  |
 |                                                          |
-|   ╔════════════════════════════════════════════════════╗ |
-|   ║                                                    ║ |
-|   ║           [Full-Screen Looping Video]              ║ |
-|   ║                                                    ║ |
-|   ║          ┌─────────────────────────┐               ║ |
-|   ║          │      [Logo]             │               ║ |
-|   ║          │                         │               ║ |
-|   ║          │   HOODTORIAL            │               ║ |
-|   ║          │   UNIVERSITY            │               ║ |
-|   ║          │   ─────────────         │               ║ |
-|   ║          │                         │               ║ |
-|   ║          │   📧 Email              │               ║ |
-|   ║          │   🔒 Password           │               ║ |
-|   ║          │                         │               ║ |
-|   ║          │   [SIGN IN]             │               ║ |
-|   ║          │                         │               ║ |
-|   ║          │   Don't have account?   │               ║ |
-|   ║          └─────────────────────────┘               ║ |
-|   ║                                                    ║ |
-|   ║          👥👥👥 500+ enrolled                      ║ |
-|   ╚════════════════════════════════════════════════════╝ |
+|  ┌────────────────────────────────────────────────────┐  |
+|  │  [Avatar] John Smith           · 2h  [Category]    │  |
+|  │  ─────────────────────────────────────────────     │  |
+|  │  My latest short film project!                     │  |
+|  │                                                    │  |
+|  │  Just wrapped up editing on my cinematography      │  |
+|  │  assignment. Would love feedback on the lighting   │  |
+|  │  choices in the third act...                       │  |
+|  │                                                    │  |
+|  │  ┌────────────────────────────────────────────┐   │  |
+|  │  │                                            │   │  |
+|  │  │            [Large Image/Video]             │   │  |
+|  │  │                                            │   │  |
+|  │  └────────────────────────────────────────────┘   │  |
+|  │                                                    │  |
+|  │  ❤️ 24 likes   💬 8 comments   🔖 Save              │  |
+|  │  ─────────────────────────────────────────────     │  |
+|  │   [❤️ Like]    [💬 Comment]    [🔖 Save]            │  |
+|  │  ─────────────────────────────────────────────     │  |
+|  │                                                    │  |
+|  │  [Avatar] Sarah: Great work on the lighting! 🔥    │  |
+|  │  [Avatar] Mike: The color grading is chef's kiss   │  |
+|  │                                                    │  |
+|  │  View all 8 comments                               │  |
+|  └────────────────────────────────────────────────────┘  |
+|                                                          |
+|  ┌────────────────────────────────────────────────────┐  |
+|  │            [Next Post Card...]                     │  |
+|  └────────────────────────────────────────────────────┘  |
 +----------------------------------------------------------+
 ```
 
 ## Implementation Details
 
-### Layout Structure Change
+### 1. New Component: TimelinePost
 
-```tsx
-// New structure
-<div className="min-h-screen relative overflow-hidden">
-  {/* Full-screen background video */}
-  <video className="absolute inset-0 w-full h-full object-cover" />
-  
-  {/* Dark overlay for readability */}
-  <div className="absolute inset-0 bg-background/80" />
-  
-  {/* Film effects overlay */}
-  <FilmOverlay />
-  
-  {/* Countdown animation */}
-  <FilmCountdown />
-  
-  {/* Centered content */}
-  <div className="relative z-20 min-h-screen flex items-center justify-center px-4">
-    <div className="w-full max-w-md">
-      {/* Logo */}
-      {/* Title */}
-      {/* Glass form card */}
-      {/* Social proof */}
-    </div>
-  </div>
-</div>
+Create a rich Facebook-style post card:
+
+```typescript
+// src/components/community/TimelinePost.tsx
+interface TimelinePostProps {
+  post: CommunityPost;
+  onLike: () => void;
+  onComment: () => void;
+  onSave: () => void;
+  onClick: () => void;
+  previewComments?: Comment[];
+}
 ```
 
-### Key Changes
+**Features:**
+- Full author header with avatar, name, timestamp, and category badge
+- Complete post content visible (expandable for long posts)
+- Large inline media display (images in 1:1 or 16:9 ratio, video thumbnails)
+- Image carousel for multiple images
+- Engagement stats bar (likes, comments count)
+- Action buttons row (Like, Comment, Save)
+- Preview of 2 most recent comments
+- "View all X comments" link
 
-1. **Video Positioning**
-   - Move video to absolute position covering entire viewport
-   - Add darker overlay (`bg-background/80`) for form readability
-   - Keep video looping with `autoPlay`, `loop`, `muted`, `playsInline`
+### 2. New Component: CreatePostPrompt
 
-2. **Form Centering**
-   - Use `flex items-center justify-center` on wrapper
-   - Single column layout works for all screen sizes
-   - Remove split-screen responsive breakpoints
+Inline post creation prompt (Facebook-style):
 
-3. **Film Overlay Adjustments**
-   - Modify `FilmOverlay` to work better with centered layout
-   - Remove the side-specific gradient (was designed for split-screen)
-   - Keep scanlines, grain, lens flare, and neon accents
+```typescript
+// src/components/community/CreatePostPrompt.tsx
+interface CreatePostPromptProps {
+  onOpen: () => void;
+  userAvatar?: string;
+  userName?: string;
+}
+```
 
-4. **Glass Card Enhancement**
-   - Increase backdrop blur for better readability over video
-   - Slightly increase card opacity
-   - Keep the animated border glow effect
+**Features:**
+- User avatar on left
+- "What's on your mind?" placeholder text
+- Quick action buttons (Photo, Video)
+- Clicking opens the full CreatePostForm
 
-5. **Remove Duplicate Elements**
-   - Remove mobile-specific video hero section (no longer needed)
-   - Remove left/right panel logic
-   - Simplified single responsive layout
+### 3. Update FeedGrid Component
 
-### Updated FilmOverlay
+Add a new "timeline" variant:
 
-Adjust the overlay to work better for full-screen:
+```typescript
+// Updated FeedGrid.tsx
+type FeedVariant = 'grid' | 'feed' | 'timeline';
 
-```tsx
-export function FilmOverlay() {
+if (variant === 'timeline') {
   return (
-    <>
-      {/* Center vignette overlay instead of side gradients */}
-      <div className="absolute inset-0 bg-gradient-radial from-transparent via-background/20 to-background/60 z-10" />
-      
-      {/* Keep scanlines, grain, lens flare */}
-      {/* Remove sprocket holes (they were for split-screen aesthetic) */}
-    </>
+    <div className="space-y-4 max-w-2xl mx-auto">
+      {posts.map((post) => (
+        <TimelinePost 
+          post={post}
+          previewComments={/* fetch 2 recent comments */}
+          // ...
+        />
+      ))}
+    </div>
   );
 }
 ```
 
-## Files to Modify
+### 4. Update ViewToggle
 
-| File | Changes |
-|------|---------|
-| `src/pages/Auth.tsx` | Restructure to centered layout with full-screen video |
-| `src/components/auth/FilmOverlay.tsx` | Adjust overlays for centered design |
+Replace current options with more descriptive Facebook-style naming:
 
-## Mobile Experience
+```typescript
+const options = [
+  { value: 'timeline', icon: <Newspaper />, label: 'Timeline' },
+  { value: 'grid', icon: <LayoutGrid />, label: 'Gallery' },
+  { value: 'following', icon: <Users />, label: 'Following' },
+];
+```
 
-The centered design works naturally on mobile:
-- Full-screen video background maintains immersion
-- Form card centered vertically and horizontally
-- Scrollable if content exceeds viewport
-- Same experience across all screen sizes
+### 5. Update Community.tsx
 
-## Preserved Elements
+- Default to "timeline" view mode
+- Add CreatePostPrompt above the feed
+- Fetch comment previews for timeline view
 
-All the cinematic elements from the previous redesign will be kept:
-- "3, 2, 1... ACTION!" countdown animation
-- Glass-morphism form card with animated border
-- Social proof footer
-- Dynamic video/logo loading from admin settings
-- Film grain and scanline effects (simplified)
+### 6. Enhance Hooks
+
+Update `useCommunityPosts` to optionally fetch preview comments:
+
+```typescript
+// Add comment preview fetching
+const fetchWithCommentPreviews = async () => {
+  // Fetch posts
+  // For each post, fetch 2 most recent comments
+  // Return enriched posts
+};
+```
+
+## File Changes
+
+| File | Action | Purpose |
+|------|--------|---------|
+| `src/components/community/TimelinePost.tsx` | Create | Main Facebook-style post card |
+| `src/components/community/CreatePostPrompt.tsx` | Create | Inline "What's on your mind?" prompt |
+| `src/components/community/FeedGrid.tsx` | Modify | Add timeline variant |
+| `src/components/community/ViewToggle.tsx` | Modify | Update view mode options |
+| `src/components/community/index.ts` | Modify | Export new components |
+| `src/pages/Community.tsx` | Modify | Default to timeline, add prompt |
+| `src/hooks/useCommunityPosts.ts` | Modify | Add comment preview fetching |
+
+## TimelinePost Card Structure
+
+```text
+┌─────────────────────────────────────────────────────┐
+│ HEADER                                              │
+│  [Avatar] Author Name  ·  2 hours ago   [Category]  │
+├─────────────────────────────────────────────────────┤
+│ CONTENT                                             │
+│  Post title (bold, larger)                          │
+│  Post body text (expandable if > 3 lines)           │
+│  [Read more] link for long posts                    │
+├─────────────────────────────────────────────────────┤
+│ MEDIA                                               │
+│  ┌───────────────────────────────────────────────┐  │
+│  │  Large image preview (16:9 or 4:3 ratio)      │  │
+│  │  Or video thumbnail with play button          │  │
+│  │  Carousel dots if multiple images             │  │
+│  └───────────────────────────────────────────────┘  │
+├─────────────────────────────────────────────────────┤
+│ ENGAGEMENT STATS                                    │
+│  ❤️ 24    💬 8 comments                             │
+├─────────────────────────────────────────────────────┤
+│ ACTION BUTTONS                                      │
+│  [❤️ Like]       [💬 Comment]       [🔖 Save]        │
+├─────────────────────────────────────────────────────┤
+│ COMMENT PREVIEW                                     │
+│  [Avatar] User1: Great work! This is amazing...     │
+│  [Avatar] User2: Love the cinematography here       │
+│                                                     │
+│  View all 8 comments                                │
+└─────────────────────────────────────────────────────┘
+```
+
+## Media Display Rules
+
+| Media Type | Display |
+|------------|---------|
+| Single image | Full width, maintain aspect ratio (max 16:9) |
+| 2 images | Side by side, 50% width each |
+| 3+ images | First large, rest in grid below |
+| Video (YouTube) | Embedded player with poster |
+| Video (other) | Thumbnail with play overlay |
+| No media | Text-only card (slightly more compact) |
+
+## Styling Notes
+
+- Cards use the existing `card-urban` style with enhanced padding
+- Maintain the gold (#D4AF37) and neon accent colors
+- Action buttons use subtle hover states
+- Like button animates when clicked (heart fill animation)
+- Smooth expand/collapse for "Read more" on long posts
+- Image lightbox on click (existing ImageGallery component)
+
+## Expected User Experience
+
+1. User arrives at /community and sees a clean timeline
+2. "What's on your mind?" prompt encourages posting
+3. Rich post cards show full content without clicking
+4. Media displays inline and large for visual impact
+5. Comment previews encourage engagement
+6. Action buttons always visible for quick interaction
+7. Toggle to Gallery view for visual browsing mode
 
