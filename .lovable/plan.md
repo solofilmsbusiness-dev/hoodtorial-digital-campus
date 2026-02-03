@@ -1,124 +1,146 @@
 
 
-# Urban Graffiti Header Typography
+# Centered Login with Full-Screen Background Video
 
 ## Overview
 
-Transform the main header titles to have a graffiti/urban street art style while preserving the existing gold and neon color scheme. This will give titles like "MASTER THE CRAFT" the edgy, street-inspired look that fits the "Where Hustle Meets Hollywood" brand.
+Redesign the Auth page to feature a full-screen looping background video with the login form centered on top. This creates a more immersive, cinematic experience compared to the current split-screen layout.
 
-## Font Selection
+## Current vs. New Design
 
-After researching Google Fonts options, **Permanent Marker** is the best choice for this project:
+| Aspect | Current | New |
+|--------|---------|-----|
+| Layout | Split-screen (50/50) | Centered single-column |
+| Video | Left side only | Full-screen background |
+| Form | Right side | Centered overlay with glass effect |
+| Mobile | Compact header video | Full-screen with centered form |
 
-| Font | Style | Why It Works |
-|------|-------|--------------|
-| **Permanent Marker** | Bold hand-drawn marker | Mimics thick marker tags and urban signage - perfect graffiti aesthetic |
-| Rock Salt | Rough chalk/brush | Backup option - more textured, rough street style |
-
-Permanent Marker captures the essence of street art while remaining highly readable for headers.
-
-## Visual Preview
+## Visual Design
 
 ```text
-Current Style (Inter Black):
-┌─────────────────────────────────────┐
-│      MASTER THE CRAFT               │  <-- Clean, geometric, corporate
-│      THESE COURSES COUNT            │
-│      EARN YOUR DEGREE               │
-└─────────────────────────────────────┘
-
-New Style (Permanent Marker):
-┌─────────────────────────────────────┐
-│      𝕸𝖆𝖘𝖙𝖊𝖗 𝖙𝖍𝖊 𝕮𝖗𝖆𝖋𝖙               │  <-- Hand-drawn, edgy, urban
-│      These Courses Count            │
-│      Earn Your Degree               │
-└─────────────────────────────────────┘
++----------------------------------------------------------+
+|                                                          |
+|   ╔════════════════════════════════════════════════════╗ |
+|   ║                                                    ║ |
+|   ║           [Full-Screen Looping Video]              ║ |
+|   ║                                                    ║ |
+|   ║          ┌─────────────────────────┐               ║ |
+|   ║          │      [Logo]             │               ║ |
+|   ║          │                         │               ║ |
+|   ║          │   HOODTORIAL            │               ║ |
+|   ║          │   UNIVERSITY            │               ║ |
+|   ║          │   ─────────────         │               ║ |
+|   ║          │                         │               ║ |
+|   ║          │   📧 Email              │               ║ |
+|   ║          │   🔒 Password           │               ║ |
+|   ║          │                         │               ║ |
+|   ║          │   [SIGN IN]             │               ║ |
+|   ║          │                         │               ║ |
+|   ║          │   Don't have account?   │               ║ |
+|   ║          └─────────────────────────┘               ║ |
+|   ║                                                    ║ |
+|   ║          👥👥👥 500+ enrolled                      ║ |
+|   ╚════════════════════════════════════════════════════╝ |
++----------------------------------------------------------+
 ```
-
-The graffiti font applies only to major headings (h1, h2, h3), keeping body text clean and readable.
 
 ## Implementation Details
 
-### 1. Add Permanent Marker Font
+### Layout Structure Change
 
-Update `index.html` to load the new font alongside Inter:
-
-```html
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Permanent+Marker&display=swap" rel="stylesheet">
+```tsx
+// New structure
+<div className="min-h-screen relative overflow-hidden">
+  {/* Full-screen background video */}
+  <video className="absolute inset-0 w-full h-full object-cover" />
+  
+  {/* Dark overlay for readability */}
+  <div className="absolute inset-0 bg-background/80" />
+  
+  {/* Film effects overlay */}
+  <FilmOverlay />
+  
+  {/* Countdown animation */}
+  <FilmCountdown />
+  
+  {/* Centered content */}
+  <div className="relative z-20 min-h-screen flex items-center justify-center px-4">
+    <div className="w-full max-w-md">
+      {/* Logo */}
+      {/* Title */}
+      {/* Glass form card */}
+      {/* Social proof */}
+    </div>
+  </div>
+</div>
 ```
 
-### 2. Update Tailwind Configuration
+### Key Changes
 
-Add the new font family in `tailwind.config.ts`:
+1. **Video Positioning**
+   - Move video to absolute position covering entire viewport
+   - Add darker overlay (`bg-background/80`) for form readability
+   - Keep video looping with `autoPlay`, `loop`, `muted`, `playsInline`
 
-```typescript
-fontFamily: {
-  sans: ['Inter', 'system-ui', 'sans-serif'],
-  display: ['Inter', 'system-ui', 'sans-serif'],
-  urban: ['Permanent Marker', 'cursive'],  // NEW
-},
+2. **Form Centering**
+   - Use `flex items-center justify-center` on wrapper
+   - Single column layout works for all screen sizes
+   - Remove split-screen responsive breakpoints
+
+3. **Film Overlay Adjustments**
+   - Modify `FilmOverlay` to work better with centered layout
+   - Remove the side-specific gradient (was designed for split-screen)
+   - Keep scanlines, grain, lens flare, and neon accents
+
+4. **Glass Card Enhancement**
+   - Increase backdrop blur for better readability over video
+   - Slightly increase card opacity
+   - Keep the animated border glow effect
+
+5. **Remove Duplicate Elements**
+   - Remove mobile-specific video hero section (no longer needed)
+   - Remove left/right panel logic
+   - Simplified single responsive layout
+
+### Updated FilmOverlay
+
+Adjust the overlay to work better for full-screen:
+
+```tsx
+export function FilmOverlay() {
+  return (
+    <>
+      {/* Center vignette overlay instead of side gradients */}
+      <div className="absolute inset-0 bg-gradient-radial from-transparent via-background/20 to-background/60 z-10" />
+      
+      {/* Keep scanlines, grain, lens flare */}
+      {/* Remove sprocket holes (they were for split-screen aesthetic) */}
+    </>
+  );
+}
 ```
-
-### 3. Update CSS Heading Classes
-
-Modify heading styles in `src/index.css` to use the graffiti font:
-
-```css
-.heading-display {
-  font-family: 'Permanent Marker', cursive;
-  @apply tracking-tight uppercase;
-  letter-spacing: 0.02em;
-}
-
-.heading-1 {
-  @apply heading-display text-5xl md:text-7xl lg:text-8xl leading-[0.95];
-}
-
-.heading-2 {
-  @apply heading-display text-4xl md:text-5xl lg:text-6xl leading-tight;
-}
-
-.heading-3 {
-  @apply heading-display text-3xl md:text-4xl leading-tight;
-}
-```
-
-Note: Permanent Marker has slightly different line-height needs, so minor adjustments are included.
-
-## Pages Affected
-
-All pages using `heading-1`, `heading-2`, or `heading-3` classes will automatically get the new urban style:
-
-| Page | Headers That Change |
-|------|---------------------|
-| `/academics` | "MASTER THE CRAFT", "THESE COURSES COUNT", "READY TO START?" |
-| `/` (Index) | "HOODTORIAL UNIVERSITY", "EARN YOUR DEGREE", "DROPS FROM THE DEAN'S OFFICE" |
-| `/degrees` | "EARN YOUR DEGREE", "WATCH YOUR PROGRESS" |
-| `/shop` | "GEAR UP" |
-| `/community` | "Community Access Required" |
-| `/auth` | "HOODTORIAL UNIVERSITY" |
-| `/student` | "Welcome back" |
-| All Section Headers | Via `SectionHeader` component |
-
-## Color Theme Preservation
-
-All existing color classes continue to work perfectly with the new font:
-- `text-gold-gradient` - Gold gradient on emphasized words
-- `text-neon-gradient` - Neon purple/pink gradient 
-- `text-glow` - Glowing text effect
-- `text-foreground` - Standard white text
-
-The graffiti font + existing colors = authentic street art aesthetic.
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `index.html` | Add Permanent Marker to Google Fonts import |
-| `tailwind.config.ts` | Add `font-urban` utility class |
-| `src/index.css` | Update `.heading-display` to use Permanent Marker with adjusted line-heights |
+| `src/pages/Auth.tsx` | Restructure to centered layout with full-screen video |
+| `src/components/auth/FilmOverlay.tsx` | Adjust overlays for centered design |
 
-## Expected Result
+## Mobile Experience
 
-Headers will transform from clean corporate typography to bold, hand-drawn street art style - giving the site an authentic urban film school vibe that matches the "Hustle Meets Hollywood" brand identity, while the neon gold and purple colors create that graffiti-meets-cinema aesthetic.
+The centered design works naturally on mobile:
+- Full-screen video background maintains immersion
+- Form card centered vertically and horizontally
+- Scrollable if content exceeds viewport
+- Same experience across all screen sizes
+
+## Preserved Elements
+
+All the cinematic elements from the previous redesign will be kept:
+- "3, 2, 1... ACTION!" countdown animation
+- Glass-morphism form card with animated border
+- Social proof footer
+- Dynamic video/logo loading from admin settings
+- Film grain and scanline effects (simplified)
 
