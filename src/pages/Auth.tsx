@@ -12,7 +12,6 @@ import defaultLogo from "@/assets/hero-logo.png";
 import defaultVideo from "@/assets/hero-video.mp4";
 import { motion } from "framer-motion";
 import { FilmCountdown } from "@/components/auth/FilmCountdown";
-import { RotatingQuotes } from "@/components/auth/RotatingQuotes";
 import { SocialProof } from "@/components/auth/SocialProof";
 import { FilmOverlay } from "@/components/auth/FilmOverlay";
 
@@ -184,82 +183,37 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row overflow-hidden">
+    <div className="min-h-screen relative overflow-hidden">
       {/* Film Countdown Overlay */}
       <FilmCountdown />
 
-      {/* Left: Cinematic Visual Side */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
-        {/* Background Video */}
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover"
-          key={videoUrl}
-        >
-          <source src={videoUrl} type="video/mp4" />
-        </video>
+      {/* Full-screen Background Video */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover"
+        key={videoUrl}
+      >
+        <source src={videoUrl} type="video/mp4" />
+      </video>
 
-        {/* Film Overlay Effects */}
-        <FilmOverlay />
+      {/* Dark overlay for readability */}
+      <div className="absolute inset-0 bg-background/80 z-[5]" />
 
-        {/* Rotating Quotes */}
-        <RotatingQuotes />
+      {/* Film Overlay Effects */}
+      <FilmOverlay />
 
-        {/* Film reel decoration */}
-        <motion.div
-          initial={{ opacity: 0, rotate: -180 }}
-          animate={{ opacity: 0.1, rotate: 0 }}
-          transition={{ duration: 2, delay: 4 }}
-          className="absolute top-20 left-1/2 -translate-x-1/2 z-10"
-        >
-          <Film className="w-32 h-32 text-primary" />
-        </motion.div>
-      </div>
-
-      {/* Mobile: Compact Video Hero */}
-      <div className="lg:hidden relative h-48 overflow-hidden">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover"
-          key={`mobile-${videoUrl}`}
-        >
-          <source src={videoUrl} type="video/mp4" />
-        </video>
-        <div className="absolute inset-0 bg-gradient-to-b from-background/50 via-background/70 to-background z-10" />
-        
-        {/* Mobile Logo */}
-        <div className="absolute inset-0 z-20 flex items-center justify-center">
-          <motion.img
-            src={logoUrl}
-            alt="Hoodtorial University"
-            className="h-20 w-auto logo-glow"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 3.5 }}
-          />
-        </div>
-      </div>
-
-      {/* Right: Form Side */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center px-6 py-12 lg:py-0 bg-background relative">
-        {/* Background effects */}
-        <div className="absolute inset-0 bg-grid opacity-50" />
-        <div className="absolute top-1/4 right-1/4 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[150px]" />
-        <div className="absolute bottom-1/3 left-1/4 w-[300px] h-[300px] bg-neon-purple/5 rounded-full blur-[120px]" />
-
-        <div className="w-full max-w-md relative z-10">
-          {/* Desktop Logo */}
+      {/* Centered Content */}
+      <div className="relative z-20 min-h-screen flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md">
+          {/* Logo */}
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 3.5 }}
-            className="hidden lg:block text-center mb-8"
+            className="text-center mb-6"
           >
             <img 
               src={logoUrl}
@@ -294,7 +248,7 @@ export default function Auth() {
             {/* Animated border glow */}
             <div className="absolute -inset-[1px] bg-gradient-to-r from-primary via-neon-purple to-primary rounded-lg opacity-30 blur-sm animate-border-flow" />
             
-            <div className="relative backdrop-blur-xl bg-card/60 border border-border/50 rounded-lg p-6 md:p-8 shadow-2xl">
+            <div className="relative backdrop-blur-xl bg-card/70 border border-border/50 rounded-lg p-6 md:p-8 shadow-2xl">
               <div className="text-center mb-6">
                 <h2 
                   key={isSignUp ? 'signup' : 'signin'} 
