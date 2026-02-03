@@ -36,17 +36,23 @@ function QuizItem({ quiz, onEdit, onDelete, onManageQuestions }: {
         <ListChecks className="h-4 w-4 text-primary" />
         <div>
           <p className="font-medium text-sm">{quiz.title}</p>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
             <span>{questions.length} questions</span>
             <span>•</span>
             <span>{quiz.passing_score}% to pass</span>
-            {quiz.time_limit_minutes && (
+            {quiz.use_per_question_timer ? (
+              <>
+                <span>•</span>
+                <Clock className="h-3 w-3" />
+                <span>{quiz.per_question_seconds || 60}s/question</span>
+              </>
+            ) : quiz.time_limit_minutes ? (
               <>
                 <span>•</span>
                 <Clock className="h-3 w-3" />
                 <span>{quiz.time_limit_minutes} min</span>
               </>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
@@ -109,6 +115,8 @@ export function QuizSection({ moduleId }: QuizSectionProps) {
     title: string;
     passing_score: number;
     time_limit_minutes: number | null;
+    per_question_seconds: number | null;
+    use_per_question_timer: boolean;
   }) => {
     if (editingQuiz) {
       updateQuiz.mutate(

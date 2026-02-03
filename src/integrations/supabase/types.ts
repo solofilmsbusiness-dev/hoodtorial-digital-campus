@@ -782,10 +782,12 @@ export type Database = {
           is_final_exam: boolean
           module_id: string | null
           passing_score: number
+          per_question_seconds: number | null
           sort_order: number
           time_limit_minutes: number | null
           title: string
           updated_at: string
+          use_per_question_timer: boolean
         }
         Insert: {
           course_id?: string | null
@@ -794,10 +796,12 @@ export type Database = {
           is_final_exam?: boolean
           module_id?: string | null
           passing_score?: number
+          per_question_seconds?: number | null
           sort_order?: number
           time_limit_minutes?: number | null
           title: string
           updated_at?: string
+          use_per_question_timer?: boolean
         }
         Update: {
           course_id?: string | null
@@ -806,10 +810,12 @@ export type Database = {
           is_final_exam?: boolean
           module_id?: string | null
           passing_score?: number
+          per_question_seconds?: number | null
           sort_order?: number
           time_limit_minutes?: number | null
           title?: string
           updated_at?: string
+          use_per_question_timer?: boolean
         }
         Relationships: [
           {

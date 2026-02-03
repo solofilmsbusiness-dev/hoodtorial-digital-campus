@@ -195,10 +195,12 @@ export default function CourseEditor() {
     }
   }, [dbCourse, isLoading, isNew, code]);
 
+  const canSave = form.code.trim().length > 0 && form.title.trim().length > 0;
+
   const saveCourse = useMutation({
     mutationFn: async (data: CourseForm) => {
       if (isNew) {
-        const { error } = await supabase.from("courses").insert({
+        const { data: newCourse, error } = await supabase.from("courses").insert({
           code: data.code,
           title: data.title,
           description: data.description,
@@ -208,8 +210,9 @@ export default function CourseEditor() {
           duration: data.duration,
           is_published: data.is_published,
           is_locked: data.is_locked,
-        });
+        }).select().single();
         if (error) throw error;
+        return newCourse;
       } else {
         const { error } = await supabase
           .from("courses")
@@ -225,15 +228,21 @@ export default function CourseEditor() {
           })
           .eq("code", code);
         if (error) throw error;
+        return null;
       }
     },
-    onSuccess: () => {
+    onSuccess: (newCourse) => {
       queryClient.invalidateQueries({ queryKey: ["admin-courses"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-course", form.code] });
       queryClient.invalidateQueries({ queryKey: ["course-status"] });
-      toast({ title: isNew ? "Course created" : "Course updated" });
-      if (isNew) {
-        navigate(`/admin/courses/${form.code}`);
+      
+      if (isNew && newCourse) {
+        // Set the course data immediately for the new URL
+        queryClient.setQueryData(["admin-course", newCourse.code], newCourse);
+        toast({ title: "Course created" });
+        navigate(`/admin/courses/${newCourse.code}`);
+      } else {
+        queryClient.invalidateQueries({ queryKey: ["admin-course", code] });
+        toast({ title: "Course updated" });
       }
     },
     onError: (error) => {
@@ -405,15 +414,20 @@ export default function CourseEditor() {
                 <CardHeader>
                   <CardTitle>Actions</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-2">
                   <Button
                     type="submit"
                     className="w-full"
-                    disabled={saveCourse.isPending}
+                    disabled={saveCourse.isPending || !canSave}
                   >
                     <Save className="h-4 w-4 mr-2" />
                     {saveCourse.isPending ? "Saving..." : "Save Course"}
                   </Button>
+                  {!canSave && (
+                    <p className="text-xs text-destructive text-center">
+                      Course code and title are required
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             </div>
