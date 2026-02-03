@@ -88,13 +88,23 @@ export function useVideoProgress({ courseCode, lessonId, onComplete }: UseVideoP
   // Save progress to database (debounced)
   const saveProgress = useCallback(
     async (watchedSeconds: number, durationSeconds: number, forceComplete = false) => {
-      if (!user || !lessonId || durationSeconds <= 0) return;
+      if (!user || !lessonId || durationSeconds <= 0) {
+        console.log("[VideoProgress] Skip save:", { user: !!user, lessonId, durationSeconds });
+        return;
+      }
 
       const watchPercentage = Math.round((watchedSeconds / durationSeconds) * 100);
       const shouldComplete = forceComplete || watchPercentage >= WATCH_THRESHOLD;
 
+      console.log("[VideoProgress] Saving:", { 
+        watchedSeconds: Math.round(watchedSeconds), 
+        durationSeconds: Math.round(durationSeconds), 
+        watchPercentage,
+        shouldComplete
+      });
+
       try {
-        await supabase.from("user_progress").upsert(
+        const { error } = await supabase.from("user_progress").upsert(
           {
             user_id: user.id,
             course_code: courseCode,
@@ -108,6 +118,12 @@ export function useVideoProgress({ courseCode, lessonId, onComplete }: UseVideoP
           { onConflict: "user_id,course_code,lesson_id" }
         );
 
+        if (error) {
+          console.error("[VideoProgress] Save error:", error);
+        } else {
+          console.log("[VideoProgress] Saved successfully");
+        }
+
         // Trigger completion callback once
         if (shouldComplete && !hasCompletedRef.current) {
           hasCompletedRef.current = true;
@@ -115,7 +131,7 @@ export function useVideoProgress({ courseCode, lessonId, onComplete }: UseVideoP
           onComplete?.();
         }
       } catch (err) {
-        console.error("Failed to save video progress:", err);
+        console.error("[VideoProgress] Save exception:", err);
       }
     },
     [user, courseCode, lessonId, onComplete]

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useCallback, useState, useMemo } from "react";
 import { Play, Volume2, Maximize, Settings, CheckCircle2, RotateCcw } from "lucide-react";
 import Player from "@vimeo/player";
 import type { Lesson } from "@/data/courses";
@@ -31,9 +31,16 @@ export function VideoPlayer({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const vimeoPlayerRef = useRef<Player | null>(null);
   const youtubeIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const youtubePlayerRef = useRef<YT.Player | null>(null);
   const [hasSetInitialTime, setHasSetInitialTime] = useState(false);
   const [showResumeIndicator, setShowResumeIndicator] = useState(false);
   const resumeIndicatorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Stable iframe ID based on lesson.id
+  const iframeId = useMemo(() => 
+    `yt-player-${lesson.id.replace(/[^a-zA-Z0-9]/g, '')}`, 
+    [lesson.id]
+  );
 
   // Format seconds to MM:SS
   const formatTime = (seconds: number) => {
@@ -66,66 +73,142 @@ export function VideoPlayer({
     }
   }, [initialTime, hasSetInitialTime]);
 
-  // YouTube tracking via postMessage
+  // YouTube tracking with robust initialization
   useEffect(() => {
-    if (videoType !== "youtube" || !iframeRef.current || !onProgress) return;
+    if (videoType !== "youtube" || !onProgress) return;
 
-    const iframe = iframeRef.current;
-    let player: YT.Player | null = null;
+    let isDestroyed = false;
+    let apiPollId: NodeJS.Timeout | null = null;
+    let iframePollId: NodeJS.Timeout | null = null;
 
-    // Load YouTube IFrame API if not loaded
-    if (!window.YT) {
-      const tag = document.createElement("script");
-      tag.src = "https://www.youtube.com/iframe_api";
-      const firstScript = document.getElementsByTagName("script")[0];
-      firstScript.parentNode?.insertBefore(tag, firstScript);
-    }
-
-    const onYouTubeReady = () => {
-      if (!iframe.id) {
-        iframe.id = `yt-player-${Math.random().toString(36).substr(2, 9)}`;
-      }
-      
-      player = new window.YT.Player(iframe.id, {
-        events: {
-          onReady: (event: YT.PlayerEvent) => {
-            // Set initial time
-            if (initialTime > 0 && !hasSetInitialTime) {
-              event.target.seekTo(initialTime, true);
-              setHasSetInitialTime(true);
-              // Show resume indicator
-              setShowResumeIndicator(true);
-              resumeIndicatorTimeoutRef.current = setTimeout(() => {
-                setShowResumeIndicator(false);
-              }, 4000);
-            }
-            // Start polling for progress
-            youtubeIntervalRef.current = setInterval(() => {
-              if (player && typeof player.getCurrentTime === "function") {
-                const currentTime = player.getCurrentTime();
-                const duration = player.getDuration();
-                if (duration > 0) {
-                  onProgress(currentTime, duration);
-                }
-              }
-            }, 1000);
-          },
-        },
-      });
-    };
-
-    if (window.YT && window.YT.Player) {
-      onYouTubeReady();
-    } else {
-      window.onYouTubeIframeAPIReady = onYouTubeReady;
-    }
-
-    return () => {
+    const startProgressPolling = (player: YT.Player) => {
+      // Clear any existing interval
       if (youtubeIntervalRef.current) {
         clearInterval(youtubeIntervalRef.current);
       }
+      
+      youtubeIntervalRef.current = setInterval(() => {
+        if (isDestroyed) return;
+        try {
+          if (player && typeof player.getCurrentTime === "function") {
+            const currentTime = player.getCurrentTime();
+            const duration = player.getDuration();
+            if (duration > 0) {
+              console.log("[VideoPlayer] YouTube progress:", { currentTime: Math.round(currentTime), duration: Math.round(duration) });
+              onProgress(currentTime, duration);
+            }
+          }
+        } catch (err) {
+          console.error("[VideoPlayer] Error getting YouTube time:", err);
+        }
+      }, 1000);
     };
-  }, [videoType, onProgress, initialTime, hasSetInitialTime]);
+
+    const initPlayer = () => {
+      if (isDestroyed) return;
+      
+      const iframeElement = document.getElementById(iframeId);
+      if (!iframeElement) {
+        console.error("[VideoPlayer] Iframe not found with id:", iframeId);
+        return;
+      }
+
+      try {
+        console.log("[VideoPlayer] Initializing YouTube player for:", iframeId);
+        
+        const player = new window.YT.Player(iframeId, {
+          events: {
+            onReady: (event: YT.PlayerEvent) => {
+              if (isDestroyed) return;
+              console.log("[VideoPlayer] YouTube player ready");
+              youtubePlayerRef.current = player;
+              
+              // Set initial time
+              if (initialTime > 0 && !hasSetInitialTime) {
+                event.target.seekTo(initialTime, true);
+                setHasSetInitialTime(true);
+                setShowResumeIndicator(true);
+                resumeIndicatorTimeoutRef.current = setTimeout(() => {
+                  setShowResumeIndicator(false);
+                }, 4000);
+              }
+              
+              // Start polling for progress
+              startProgressPolling(player);
+            },
+            onStateChange: (event: YT.OnStateChangeEvent) => {
+              if (isDestroyed) return;
+              console.log("[VideoPlayer] YouTube state change:", event.data);
+              
+              // If playing and we don't have polling running, start it
+              if (event.data === 1 && !youtubeIntervalRef.current && youtubePlayerRef.current) {
+                startProgressPolling(youtubePlayerRef.current);
+              }
+            },
+            onError: (event: { data: number }) => {
+              console.error("[VideoPlayer] YouTube player error:", event.data);
+            },
+          },
+        });
+
+        youtubePlayerRef.current = player;
+      } catch (err) {
+        console.error("[VideoPlayer] Failed to init YouTube player:", err);
+      }
+    };
+
+    const checkAPIReady = () => {
+      if (window.YT && window.YT.Player && typeof window.YT.Player === 'function') {
+        console.log("[VideoPlayer] YouTube API ready, initializing player");
+        initPlayer();
+      } else {
+        // Load API if not present
+        if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
+          console.log("[VideoPlayer] Loading YouTube API script");
+          const tag = document.createElement("script");
+          tag.src = "https://www.youtube.com/iframe_api";
+          document.head.appendChild(tag);
+        }
+        
+        // Poll for API ready (more reliable than global callback)
+        apiPollId = setInterval(() => {
+          if (isDestroyed) {
+            if (apiPollId) clearInterval(apiPollId);
+            return;
+          }
+          if (window.YT && window.YT.Player && typeof window.YT.Player === 'function') {
+            console.log("[VideoPlayer] YouTube API became ready");
+            if (apiPollId) clearInterval(apiPollId);
+            initPlayer();
+          }
+        }, 100);
+      }
+    };
+
+    // Wait for iframe to be in DOM before initializing
+    iframePollId = setInterval(() => {
+      if (isDestroyed) {
+        if (iframePollId) clearInterval(iframePollId);
+        return;
+      }
+      if (document.getElementById(iframeId)) {
+        console.log("[VideoPlayer] Iframe found in DOM:", iframeId);
+        if (iframePollId) clearInterval(iframePollId);
+        checkAPIReady();
+      }
+    }, 50);
+
+    return () => {
+      isDestroyed = true;
+      if (iframePollId) clearInterval(iframePollId);
+      if (apiPollId) clearInterval(apiPollId);
+      if (youtubeIntervalRef.current) {
+        clearInterval(youtubeIntervalRef.current);
+        youtubeIntervalRef.current = null;
+      }
+      youtubePlayerRef.current = null;
+    };
+  }, [videoType, onProgress, iframeId, initialTime, hasSetInitialTime]);
 
   // Vimeo tracking
   useEffect(() => {
@@ -223,6 +306,7 @@ export function VideoPlayer({
       return (
         <div className="relative w-full aspect-video bg-background border-2 border-border overflow-hidden">
           <iframe
+            id={iframeId}
             ref={iframeRef}
             src={embedUrl}
             className="absolute inset-0 w-full h-full"
@@ -345,9 +429,16 @@ declare global {
           events?: {
             onReady?: (event: YT.PlayerEvent) => void;
             onStateChange?: (event: YT.OnStateChangeEvent) => void;
+            onError?: (event: YT.OnErrorEvent) => void;
           };
         }
       ) => YT.Player;
+      PlayerState: {
+        PLAYING: number;
+        PAUSED: number;
+        ENDED: number;
+        BUFFERING: number;
+      };
     };
     onYouTubeIframeAPIReady: () => void;
   }
@@ -363,6 +454,9 @@ declare namespace YT {
     target: Player;
   }
   interface OnStateChangeEvent {
+    data: number;
+  }
+  interface OnErrorEvent {
     data: number;
   }
 }
