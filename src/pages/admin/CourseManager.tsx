@@ -1,5 +1,7 @@
+import { useState, useMemo } from "react";
 import { AdminLayout } from "@/components/admin";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CourseFilters, LevelFilter, StatusFilter } from "@/components/admin/CourseFilters";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -10,8 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Switch } from "@/components/ui/switch";
-import { Plus, Pencil, Trash2, Eye, Lock } from "lucide-react";
+import { Plus, Pencil, Eye, Lock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,6 +33,12 @@ interface Course {
 export default function CourseManager() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Filter states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [levelFilter, setLevelFilter] = useState<LevelFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [departmentFilter, setDepartmentFilter] = useState("all");
 
   const { data: dbCourses, isLoading } = useQuery({
     queryKey: ["admin-courses"],
@@ -59,6 +66,48 @@ export default function CourseManager() {
         is_published: true,
         is_locked: false,
       }));
+
+  // Get unique departments for filter
+  const departments = useMemo(() => {
+    const depts = [...new Set(courses.map((c) => c.department_id))];
+    return depts.sort();
+  }, [courses]);
+
+  // Filter courses
+  const filteredCourses = useMemo(() => {
+    return courses.filter((course) => {
+      // Search filter
+      const matchesSearch =
+        !searchQuery ||
+        course.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        course.department_id.toLowerCase().includes(searchQuery.toLowerCase());
+
+      // Level filter
+      const matchesLevel = levelFilter === "all" || course.level === levelFilter;
+
+      // Status filter
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "published" && course.is_published && !course.is_locked) ||
+        (statusFilter === "coming-soon" && course.is_locked) ||
+        (statusFilter === "hidden" && !course.is_published);
+
+      // Department filter
+      const matchesDept = departmentFilter === "all" || course.department_id === departmentFilter;
+
+      return matchesSearch && matchesLevel && matchesStatus && matchesDept;
+    });
+  }, [courses, searchQuery, levelFilter, statusFilter, departmentFilter]);
+
+  // Stats
+  const stats = useMemo(() => {
+    const total = courses.length;
+    const published = courses.filter((c) => c.is_published && !c.is_locked).length;
+    const comingSoon = courses.filter((c) => c.is_locked).length;
+    const hidden = courses.filter((c) => !c.is_published).length;
+    return { total, published, comingSoon, hidden };
+  }, [courses]);
 
   const togglePublished = useMutation({
     mutationFn: async ({ id, is_published }: { id: string; is_published: boolean }) => {
@@ -109,10 +158,16 @@ export default function CourseManager() {
           </Card>
         )}
 
-        <div className="flex justify-between items-center">
+        {/* Header with stats */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h2 className="text-2xl font-bold">{courses.length} Courses</h2>
-            <p className="text-muted-foreground">Manage course visibility and content</p>
+            <h2 className="text-2xl font-bold">Course Manager</h2>
+            <div className="flex flex-wrap gap-3 mt-2 text-sm text-muted-foreground">
+              <span>{stats.total} total</span>
+              <span className="text-green-500">{stats.published} published</span>
+              <span className="text-amber-500">{stats.comingSoon} coming soon</span>
+              <span className="text-muted-foreground">{stats.hidden} hidden</span>
+            </div>
           </div>
           <Button asChild>
             <Link to="/admin/courses/new">
@@ -122,6 +177,20 @@ export default function CourseManager() {
           </Button>
         </div>
 
+        {/* Filters */}
+        <CourseFilters
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          levelFilter={levelFilter}
+          onLevelChange={setLevelFilter}
+          statusFilter={statusFilter}
+          onStatusChange={setStatusFilter}
+          departmentFilter={departmentFilter}
+          onDepartmentChange={setDepartmentFilter}
+          departments={departments}
+        />
+
+        {/* Table */}
         <Card>
           <CardContent className="p-0">
             <Table>
@@ -131,60 +200,92 @@ export default function CourseManager() {
                   <TableHead>Title</TableHead>
                   <TableHead>Department</TableHead>
                   <TableHead>Level</TableHead>
-                  <TableHead>Credits</TableHead>
-                  <TableHead>Published</TableHead>
-                  <TableHead>Locked</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {courses.map((course) => (
-                  <TableRow key={course.id}>
-                    <TableCell className="font-mono font-medium">
-                      {course.code}
-                    </TableCell>
-                    <TableCell className="max-w-[200px] truncate">
-                      {course.title}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{course.department_id}</Badge>
-                    </TableCell>
-                    <TableCell>{course.level}</TableCell>
-                    <TableCell>{course.credits}</TableCell>
-                    <TableCell>
-                      <Switch
-                        checked={course.is_published}
-                        onCheckedChange={(checked) =>
-                          togglePublished.mutate({ id: course.id, is_published: checked })
-                        }
-                        disabled={isUsingStaticData}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Switch
-                        checked={course.is_locked}
-                        onCheckedChange={(checked) =>
-                          toggleLocked.mutate({ id: course.id, is_locked: checked })
-                        }
-                        disabled={isUsingStaticData}
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="icon" asChild>
-                          <Link to={`/course/${course.code}`}>
-                            <Eye className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                        <Button variant="ghost" size="icon" asChild>
-                          <Link to={`/admin/courses/${course.code}`}>
-                            <Pencil className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                      </div>
+                {filteredCourses.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      No courses found matching your filters
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  filteredCourses.map((course) => (
+                    <TableRow key={course.id}>
+                      <TableCell className="font-mono font-medium">
+                        {course.code}
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate">
+                        {course.title}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{course.department_id}</Badge>
+                      </TableCell>
+                      <TableCell>{course.level}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          {/* Published Toggle Badge */}
+                          <button
+                            onClick={() =>
+                              togglePublished.mutate({
+                                id: course.id,
+                                is_published: !course.is_published,
+                              })
+                            }
+                            disabled={isUsingStaticData}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${
+                              course.is_published
+                                ? "bg-green-600 text-white hover:bg-green-700"
+                                : "bg-muted text-muted-foreground hover:bg-muted/80"
+                            }`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                course.is_published ? "bg-white" : "bg-muted-foreground"
+                              }`}
+                            />
+                            {course.is_published ? "Published" : "Hidden"}
+                          </button>
+
+                          {/* Coming Soon Toggle Badge */}
+                          <button
+                            onClick={() =>
+                              toggleLocked.mutate({
+                                id: course.id,
+                                is_locked: !course.is_locked,
+                              })
+                            }
+                            disabled={isUsingStaticData}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${
+                              course.is_locked
+                                ? "bg-amber-600 text-white hover:bg-amber-700"
+                                : "border border-dashed border-muted-foreground/30 text-muted-foreground/50 hover:border-muted-foreground/50"
+                            }`}
+                          >
+                            <Lock className="w-3 h-3" />
+                            {course.is_locked ? "Coming Soon" : "—"}
+                          </button>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button variant="ghost" size="icon" asChild>
+                            <Link to={`/course/${course.code}`}>
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          <Button variant="ghost" size="icon" asChild>
+                            <Link to={`/admin/courses/${course.code}`}>
+                              <Pencil className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </CardContent>
