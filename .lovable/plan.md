@@ -1,186 +1,124 @@
 
 
-# Add 60-Second Per-Question Timer to Assessment
+# Urban Graffiti Header Typography
 
 ## Overview
 
-Add a per-question timer to the entry assessment where each question has its own 60-second countdown. When time expires on a question, it auto-advances to the next question (marking the current as skipped if unanswered).
+Transform the main header titles to have a graffiti/urban street art style while preserving the existing gold and neon color scheme. This will give titles like "MASTER THE CRAFT" the edgy, street-inspired look that fits the "Where Hustle Meets Hollywood" brand.
 
-## Current Implementation
+## Font Selection
 
-The assessment currently uses a **global timer**:
-- Total time = 45 seconds x number of questions
-- Single countdown for the entire quiz
-- Auto-submits when global time expires
+After researching Google Fonts options, **Permanent Marker** is the best choice for this project:
 
-```typescript
-// Current: lines 94-98
-const timeLimitSeconds = useMemo(() => {
-  const minutes = getDefaultTimeLimit(baseQuestions.length, true); // 45s per Q
-  return minutes * 60;
-}, [baseQuestions.length]);
-```
+| Font | Style | Why It Works |
+|------|-------|--------------|
+| **Permanent Marker** | Bold hand-drawn marker | Mimics thick marker tags and urban signage - perfect graffiti aesthetic |
+| Rock Salt | Rough chalk/brush | Backup option - more textured, rough street style |
 
-## Proposed Changes
+Permanent Marker captures the essence of street art while remaining highly readable for headers.
 
-### Timer Behavior
-
-| Aspect | Current | New |
-|--------|---------|-----|
-| Timer scope | Global (entire quiz) | Per-question |
-| Time per question | ~45 seconds (averaged) | 60 seconds each |
-| On time expire | Auto-submit entire quiz | Auto-advance to next question |
-| Display | Single countdown | Resets each question |
-| Skipped questions | N/A | Marked as unanswered |
-
-### Visual Design
+## Visual Preview
 
 ```text
-+--------------------------------------------------+
-|  Question 3 of 18                    ⏱️ 0:45     |
-|  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━        |
-|                                                  |
-|  [Progress bar for question timer - depleting]   |
-|                                                  |
-|  ┌────────────────────────────────────────────┐  |
-|  │ CINEMATOGRAPHY                              │  |
-|  │                                             │  |
-|  │ What is the 180-degree rule?                │  |
-|  │                                             │  |
-|  │ [ A. Screen direction continuity... ]       │  |
-|  │ [ B. Lighting angle principle...   ]        │  |
-|  │ [ C. Camera movement guideline...  ]        │  |
-|  │ [ D. Lens selection formula...     ]        │  |
-|  └────────────────────────────────────────────┘  |
-|                                                  |
-|  [< Previous]                          [Next >]  |
-+--------------------------------------------------+
+Current Style (Inter Black):
+┌─────────────────────────────────────┐
+│      MASTER THE CRAFT               │  <-- Clean, geometric, corporate
+│      THESE COURSES COUNT            │
+│      EARN YOUR DEGREE               │
+└─────────────────────────────────────┘
+
+New Style (Permanent Marker):
+┌─────────────────────────────────────┐
+│      𝕸𝖆𝖘𝖙𝖊𝖗 𝖙𝖍𝖊 𝕮𝖗𝖆𝖋𝖙               │  <-- Hand-drawn, edgy, urban
+│      These Courses Count            │
+│      Earn Your Degree               │
+└─────────────────────────────────────┘
 ```
 
-When time is running low (under 10 seconds), the timer will pulse red to create urgency.
+The graffiti font applies only to major headings (h1, h2, h3), keeping body text clean and readable.
 
 ## Implementation Details
 
-### 1. New State Variables
+### 1. Add Permanent Marker Font
 
-```typescript
-// Per-question timer state
-const [questionTimeRemaining, setQuestionTimeRemaining] = useState(60);
-const [questionStartTime, setQuestionStartTime] = useState<number>(0);
-const PER_QUESTION_SECONDS = 60;
+Update `index.html` to load the new font alongside Inter:
+
+```html
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Permanent+Marker&display=swap" rel="stylesheet">
 ```
 
-### 2. Reset Timer on Question Change
+### 2. Update Tailwind Configuration
+
+Add the new font family in `tailwind.config.ts`:
 
 ```typescript
-// Reset timer when question changes
-useEffect(() => {
-  if (step === "quiz") {
-    setQuestionStartTime(Date.now());
-    setQuestionTimeRemaining(PER_QUESTION_SECONDS);
-  }
-}, [step, currentQuestionIndex]);
+fontFamily: {
+  sans: ['Inter', 'system-ui', 'sans-serif'],
+  display: ['Inter', 'system-ui', 'sans-serif'],
+  urban: ['Permanent Marker', 'cursive'],  // NEW
+},
 ```
 
-### 3. Per-Question Countdown
+### 3. Update CSS Heading Classes
 
-```typescript
-// Per-question countdown timer
-useEffect(() => {
-  if (step !== "quiz" || questionStartTime === 0) return;
-  
-  const interval = setInterval(() => {
-    const elapsed = Math.floor((Date.now() - questionStartTime) / 1000);
-    const remaining = Math.max(0, PER_QUESTION_SECONDS - elapsed);
-    setQuestionTimeRemaining(remaining);
-    
-    if (remaining <= 0) {
-      clearInterval(interval);
-      handleQuestionTimeExpired();
-    }
-  }, 1000);
-  
-  return () => clearInterval(interval);
-}, [step, questionStartTime, currentQuestionIndex]);
+Modify heading styles in `src/index.css` to use the graffiti font:
+
+```css
+.heading-display {
+  font-family: 'Permanent Marker', cursive;
+  @apply tracking-tight uppercase;
+  letter-spacing: 0.02em;
+}
+
+.heading-1 {
+  @apply heading-display text-5xl md:text-7xl lg:text-8xl leading-[0.95];
+}
+
+.heading-2 {
+  @apply heading-display text-4xl md:text-5xl lg:text-6xl leading-tight;
+}
+
+.heading-3 {
+  @apply heading-display text-3xl md:text-4xl leading-tight;
+}
 ```
 
-### 4. Auto-Advance on Timeout
+Note: Permanent Marker has slightly different line-height needs, so minor adjustments are included.
 
-```typescript
-const handleQuestionTimeExpired = useCallback(() => {
-  // If on last question, finish the quiz
-  if (currentQuestionIndex === shuffledQuestions.length - 1) {
-    handleFinishQuiz();
-  } else {
-    // Auto-advance to next question
-    setCurrentQuestionIndex(prev => prev + 1);
-  }
-}, [currentQuestionIndex, shuffledQuestions.length]);
-```
+## Pages Affected
 
-### 5. Update Timer Display
+All pages using `heading-1`, `heading-2`, or `heading-3` classes will automatically get the new urban style:
 
-```typescript
-// In the quiz step JSX
-<div className={cn(
-  "flex items-center gap-2 px-3 py-1 text-sm font-bold transition-colors rounded",
-  questionTimeRemaining <= 10 
-    ? "text-destructive bg-destructive/10 border border-destructive/50 animate-pulse" 
-    : "text-muted-foreground"
-)}>
-  {questionTimeRemaining <= 10 && <AlertTriangle className="w-4 h-4" />}
-  <Clock className="w-4 h-4" />
-  {formatTimeRemaining(questionTimeRemaining)}
-</div>
-```
+| Page | Headers That Change |
+|------|---------------------|
+| `/academics` | "MASTER THE CRAFT", "THESE COURSES COUNT", "READY TO START?" |
+| `/` (Index) | "HOODTORIAL UNIVERSITY", "EARN YOUR DEGREE", "DROPS FROM THE DEAN'S OFFICE" |
+| `/degrees` | "EARN YOUR DEGREE", "WATCH YOUR PROGRESS" |
+| `/shop` | "GEAR UP" |
+| `/community` | "Community Access Required" |
+| `/auth` | "HOODTORIAL UNIVERSITY" |
+| `/student` | "Welcome back" |
+| All Section Headers | Via `SectionHeader` component |
 
-### 6. Add Timer Progress Bar
+## Color Theme Preservation
 
-Add a visual progress bar showing time depletion:
+All existing color classes continue to work perfectly with the new font:
+- `text-gold-gradient` - Gold gradient on emphasized words
+- `text-neon-gradient` - Neon purple/pink gradient 
+- `text-glow` - Glowing text effect
+- `text-foreground` - Standard white text
 
-```typescript
-// Below the question counter
-<Progress
-  value={(questionTimeRemaining / PER_QUESTION_SECONDS) * 100}
-  className={cn(
-    "h-1 mb-2",
-    questionTimeRemaining <= 10 && "bg-destructive/20 [&>div]:bg-destructive"
-  )}
-/>
-```
-
-### 7. Update Assessment Info Text
-
-Update the info card in the experience step:
-
-```typescript
-<li className="flex items-center gap-2">
-  <Clock className="w-4 h-4 text-muted-foreground" />
-  60 seconds per question
-</li>
-<li>• Questions auto-advance when time expires</li>
-```
+The graffiti font + existing colors = authentic street art aesthetic.
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/pages/Assessment.tsx` | Replace global timer with per-question timer logic |
+| `index.html` | Add Permanent Marker to Google Fonts import |
+| `tailwind.config.ts` | Add `font-urban` utility class |
+| `src/index.css` | Update `.heading-display` to use Permanent Marker with adjusted line-heights |
 
-## Edge Cases Handled
+## Expected Result
 
-- **Last question timeout**: Triggers `handleFinishQuiz()` instead of advancing
-- **Unanswered questions**: Counted as incorrect in scoring (already handled)
-- **Manual navigation**: Timer resets when moving between questions
-- **Going back**: Can revisit previous questions, timer resets
-
-## Expected User Experience
-
-1. User starts quiz
-2. Each question shows a 60-second countdown
-3. Timer resets when advancing to next question
-4. If timer hits 0, question is skipped and auto-advances
-5. Last 10 seconds: timer turns red and pulses
-6. User can still navigate back to previous questions
-7. On last question timeout: quiz auto-submits
+Headers will transform from clean corporate typography to bold, hand-drawn street art style - giving the site an authentic urban film school vibe that matches the "Hustle Meets Hollywood" brand identity, while the neon gold and purple colors create that graffiti-meets-cinema aesthetic.
 
