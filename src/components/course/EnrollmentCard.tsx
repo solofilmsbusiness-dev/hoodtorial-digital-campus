@@ -11,6 +11,7 @@ interface EnrollmentCardProps {
   maxSlots: number;
   onEnroll: () => void;
   isLoading?: boolean;
+  requiresSubscription?: boolean;
 }
 
 export function EnrollmentCard({

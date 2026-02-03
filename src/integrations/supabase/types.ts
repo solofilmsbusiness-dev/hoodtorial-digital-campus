@@ -467,7 +467,12 @@ export type Database = {
           instagram_url: string | null
           location: string | null
           membership_tier: Database["public"]["Enums"]["membership_tier"]
+          subscription_ends_at: string | null
+          subscription_started_at: string | null
+          subscription_status: string | null
           tiktok_url: string | null
+          trial_ends_at: string | null
+          trial_started_at: string | null
           twitter_url: string | null
           updated_at: string
           user_id: string
@@ -483,7 +488,12 @@ export type Database = {
           instagram_url?: string | null
           location?: string | null
           membership_tier?: Database["public"]["Enums"]["membership_tier"]
+          subscription_ends_at?: string | null
+          subscription_started_at?: string | null
+          subscription_status?: string | null
           tiktok_url?: string | null
+          trial_ends_at?: string | null
+          trial_started_at?: string | null
           twitter_url?: string | null
           updated_at?: string
           user_id: string
@@ -499,7 +509,12 @@ export type Database = {
           instagram_url?: string | null
           location?: string | null
           membership_tier?: Database["public"]["Enums"]["membership_tier"]
+          subscription_ends_at?: string | null
+          subscription_started_at?: string | null
+          subscription_status?: string | null
           tiktok_url?: string | null
+          trial_ends_at?: string | null
+          trial_started_at?: string | null
           twitter_url?: string | null
           updated_at?: string
           user_id?: string
@@ -643,6 +658,7 @@ export type Database = {
         Args: { _quiz_id: string; _user_id: string }
         Returns: number
       }
+      has_paid_access: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

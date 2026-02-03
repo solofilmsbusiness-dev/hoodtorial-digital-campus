@@ -17,12 +17,15 @@ import { useToast } from "@/hooks/use-toast";
 import { useEnrollments } from "@/hooks/useEnrollments";
 import { useLessonProgress } from "@/hooks/useLessonProgress";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSubscription } from "@/hooks/useSubscription";
+import { TrialBanner, SubscriptionGate } from "@/components/subscription";
 
 const CourseDetail = () => {
   const { code } = useParams<{ code: string }>();
   const course = getCourseByCode(code || "");
   const { user } = useAuth();
   const { toast } = useToast();
+  const { hasAccess, isTrialing, trialDaysRemaining } = useSubscription();
   
   const [activeLesson, setActiveLesson] = useState<Lesson | undefined>(
     course?.modules[0]?.lessons[0]
@@ -184,6 +187,9 @@ const CourseDetail = () => {
 
   return (
     <PageLayout>
+      {/* Trial Banner */}
+      {isTrialing && <TrialBanner />}
+
       {/* Quiz Modal Overlay */}
       {activeQuiz && (
         <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm overflow-y-auto">
@@ -286,24 +292,25 @@ const CourseDetail = () => {
 
       {/* Course Content */}
       <Section className="py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Video Player Area */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Enrollment Card for non-enrolled users */}
-            {!enrolled && (
-              <EnrollmentCard
-                course={course}
-                isEnrolled={false}
-                canEnroll={canEnroll}
-                slotsRemaining={slotsRemaining}
-                maxSlots={maxSlots}
-                onEnroll={handleEnroll}
-                isLoading={enrolling}
-              />
-            )}
+        <SubscriptionGate>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Video Player Area */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Enrollment Card for non-enrolled users */}
+              {!enrolled && (
+                <EnrollmentCard
+                  course={course}
+                  isEnrolled={false}
+                  canEnroll={canEnroll && hasAccess}
+                  slotsRemaining={slotsRemaining}
+                  maxSlots={maxSlots}
+                  onEnroll={handleEnroll}
+                  isLoading={enrolling}
+                />
+              )}
 
-            {/* Progression info */}
-            <ProgressionInfo isEnrolled={enrolled} />
+              {/* Progression info */}
+              <ProgressionInfo isEnrolled={enrolled} />
 
             {activeLesson && enrolled ? (
               <>
@@ -374,9 +381,10 @@ const CourseDetail = () => {
                   />
                 </div>
               )}
+              </div>
             </div>
           </div>
-        </div>
+        </SubscriptionGate>
       </Section>
     </PageLayout>
   );
