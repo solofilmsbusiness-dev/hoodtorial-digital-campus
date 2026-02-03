@@ -5,6 +5,7 @@ export interface Quiz {
   title: string;
   questions: number;
   passingScore: number;
+  timeLimitMinutes?: number; // Time limit in minutes (default: 1 min per question)
 }
 
 export interface Lesson {

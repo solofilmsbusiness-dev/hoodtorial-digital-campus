@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Clock, Trophy } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock, Trophy, AlertTriangle, Shuffle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,8 +16,20 @@ import { useAssessmentResults } from "@/hooks/useAssessmentResults";
 import { courses } from "@/data/courses";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
+import { 
+  shuffleArray, 
+  shuffleQuestionOptions, 
+  getDefaultTimeLimit,
+  formatTimeRemaining,
+  type ShuffledQuestion 
+} from "@/lib/quizUtils";
 
-type Step = "welcome" | "interests" | "experience" | "quiz" | "results";
+type Step = "welcome" | "interests" | "experience" | "quiz" | "results" | "expired";
+
+// Extend ShuffledQuestion for assessment (includes department)
+interface ShuffledAssessmentQuestion extends ShuffledQuestion {
+  department: string;
+}
 
 export default function Assessment() {
   const navigate = useNavigate();
@@ -30,9 +42,10 @@ export default function Assessment() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [startTime, setStartTime] = useState<number>(0);
-  const [elapsedTime, setElapsedTime] = useState(0);
+  const [remainingTime, setRemainingTime] = useState(0);
   const [saving, setSaving] = useState(false);
   const [isRetaking, setIsRetaking] = useState(false);
+  const [shuffledQuestions, setShuffledQuestions] = useState<ShuffledAssessmentQuestion[]>([]);
   const [finalResults, setFinalResults] = useState<{
     departmentScores: Record<string, number>;
     totalScore: number;
@@ -40,7 +53,7 @@ export default function Assessment() {
   } | null>(null);
 
   // Filter questions based on selected interests (5-6 per department)
-  const quizQuestions = useMemo(() => {
+  const baseQuestions = useMemo(() => {
     const questionsPerDepartment: Record<string, AssessmentQuestion[]> = {};
 
     assessmentQuestions.forEach((q) => {
@@ -55,22 +68,91 @@ export default function Assessment() {
     // Take 5-6 questions per selected interest
     const selected: AssessmentQuestion[] = [];
     Object.values(questionsPerDepartment).forEach((deptQuestions) => {
-      const shuffled = [...deptQuestions].sort(() => Math.random() - 0.5);
+      const shuffled = shuffleArray(deptQuestions);
       selected.push(...shuffled.slice(0, 6));
     });
 
-    return selected.sort(() => Math.random() - 0.5);
+    return selected;
   }, [interests]);
 
-  // Timer for quiz
+  // Calculate time limit (45 seconds per question for assessments)
+  const timeLimitSeconds = useMemo(() => {
+    const minutes = getDefaultTimeLimit(baseQuestions.length, true);
+    return minutes * 60;
+  }, [baseQuestions.length]);
+
+  // Initialize shuffled questions when starting quiz
+  const initializeQuiz = useCallback(() => {
+    // Shuffle question order
+    const shuffledOrder = shuffleArray(baseQuestions);
+    
+    // Shuffle options for each question
+    const randomized: ShuffledAssessmentQuestion[] = shuffledOrder.map(q => {
+      const shuffled = shuffleQuestionOptions({
+        id: q.id,
+        question: q.question,
+        options: q.options,
+        correctAnswer: q.correctAnswer,
+      });
+      return {
+        ...shuffled,
+        department: q.department,
+      };
+    });
+    
+    setShuffledQuestions(randomized);
+    setAnswers({});
+    setCurrentQuestionIndex(0);
+    setStartTime(Date.now());
+    setRemainingTime(timeLimitSeconds);
+    setStep("quiz");
+  }, [baseQuestions, timeLimitSeconds]);
+
+  // Countdown timer
   useEffect(() => {
-    if (step === "quiz" && startTime > 0) {
-      const interval = setInterval(() => {
-        setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
-      }, 1000);
-      return () => clearInterval(interval);
+    if (step !== "quiz" || startTime === 0) return;
+    
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      const remaining = Math.max(0, timeLimitSeconds - elapsed);
+      setRemainingTime(remaining);
+      
+      if (remaining <= 0) {
+        clearInterval(interval);
+        handleTimeExpired();
+      }
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [step, startTime, timeLimitSeconds]);
+
+  const handleTimeExpired = useCallback(async () => {
+    setStep("expired");
+    
+    // Calculate and save results
+    const results = calculateResults();
+    setSaving(true);
+
+    const { data, error } = await saveAssessmentResult({
+      interests,
+      experience_level: experienceLevel,
+      department_scores: results.departmentScores,
+      total_score: results.totalScore,
+      time_taken_seconds: timeLimitSeconds,
+    });
+
+    setSaving(false);
+
+    if (error) {
+      console.error("Failed to save assessment:", error);
     }
-  }, [step, startTime]);
+
+    setFinalResults({
+      departmentScores: results.departmentScores,
+      totalScore: results.totalScore,
+      recommendedCourses: data?.recommended_courses || [],
+    });
+  }, [interests, experienceLevel, timeLimitSeconds]);
 
   const handleInterestToggle = (id: string) => {
     setInterests((prev) => {
@@ -85,12 +167,12 @@ export default function Assessment() {
   };
 
   const handleAnswerSelect = (answerIndex: number) => {
-    const question = quizQuestions[currentQuestionIndex];
+    const question = shuffledQuestions[currentQuestionIndex];
     setAnswers((prev) => ({ ...prev, [question.id]: answerIndex }));
 
     // Auto-advance after short delay
     setTimeout(() => {
-      if (currentQuestionIndex < quizQuestions.length - 1) {
+      if (currentQuestionIndex < shuffledQuestions.length - 1) {
         setCurrentQuestionIndex((prev) => prev + 1);
       }
     }, 300);
@@ -99,12 +181,13 @@ export default function Assessment() {
   const calculateResults = () => {
     const departmentScores: Record<string, { correct: number; total: number }> = {};
 
-    quizQuestions.forEach((q) => {
+    shuffledQuestions.forEach((q) => {
       if (!departmentScores[q.department]) {
         departmentScores[q.department] = { correct: 0, total: 0 };
       }
       departmentScores[q.department].total++;
-      if (answers[q.id] === q.correctAnswer) {
+      // Use shuffledCorrectAnswer for comparison
+      if (answers[q.id] === q.shuffledCorrectAnswer) {
         departmentScores[q.department].correct++;
       }
     });
@@ -126,6 +209,7 @@ export default function Assessment() {
 
   const handleFinishQuiz = async () => {
     const { departmentScores, totalScore } = calculateResults();
+    const elapsedTime = Math.round((Date.now() - startTime) / 1000);
 
     setSaving(true);
 
@@ -151,11 +235,8 @@ export default function Assessment() {
     setStep("results");
   };
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
+  const isTimeWarning = remainingTime > 0 && remainingTime <= 120; // 2 minutes warning
+  const timeLimitMinutes = Math.ceil(timeLimitSeconds / 60);
 
   const recommendedCourseDetails = useMemo(() => {
     if (!finalResults?.recommendedCourses) return [];
@@ -306,7 +387,7 @@ export default function Assessment() {
                       </div>
                       <h3 className="font-semibold mb-2">Answer Questions</h3>
                       <p className="text-sm text-muted-foreground">
-                        Quick knowledge check across your interests
+                        Timed knowledge check across your interests
                       </p>
                     </CardContent>
                   </Card>
@@ -405,16 +486,31 @@ export default function Assessment() {
               ))}
             </div>
 
+            {/* Assessment info */}
+            <Card className="max-w-2xl mx-auto border-accent/50 bg-accent/5">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-2 text-accent mb-3">
+                  <Shuffle className="w-5 h-5" />
+                  <span className="font-semibold">Assessment Info</span>
+                </div>
+                <ul className="text-sm text-muted-foreground space-y-2">
+                  <li className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-muted-foreground" />
+                    Timed assessment (~{Math.ceil((baseQuestions.length * 45) / 60)} minutes)
+                  </li>
+                  <li>• Questions and answers are randomized for fairness</li>
+                  <li>• Your quiz will auto-submit when time expires</li>
+                </ul>
+              </CardContent>
+            </Card>
+
             <div className="flex justify-between">
               <Button variant="ghost" onClick={() => setStep("interests")}>
                 <ArrowLeft className="mr-2 w-4 h-4" />
                 Back
               </Button>
               <Button
-                onClick={() => {
-                  setStep("quiz");
-                  setStartTime(Date.now());
-                }}
+                onClick={initializeQuiz}
                 disabled={!canProceedFromExperience}
               >
                 Start Quiz
@@ -425,44 +521,51 @@ export default function Assessment() {
         )}
 
         {/* Quiz Step */}
-        {step === "quiz" && quizQuestions.length > 0 && (
+        {step === "quiz" && shuffledQuestions.length > 0 && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div className="text-sm text-muted-foreground">
-                Question {currentQuestionIndex + 1} of {quizQuestions.length}
+                Question {currentQuestionIndex + 1} of {shuffledQuestions.length}
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className={cn(
+                "flex items-center gap-2 px-3 py-1 text-sm font-bold transition-colors rounded",
+                isTimeWarning 
+                  ? "text-destructive bg-destructive/10 border border-destructive/50 animate-pulse" 
+                  : "text-muted-foreground"
+              )}>
+                {isTimeWarning && <AlertTriangle className="w-4 h-4" />}
                 <Clock className="w-4 h-4" />
-                {formatTime(elapsedTime)}
+                {formatTimeRemaining(remainingTime)}
               </div>
             </div>
 
             <Progress
-              value={((currentQuestionIndex + 1) / quizQuestions.length) * 100}
+              value={((currentQuestionIndex + 1) / shuffledQuestions.length) * 100}
               className="h-2"
             />
 
             <Card>
               <CardHeader>
                 <div className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
-                  {departmentInfo[quizQuestions[currentQuestionIndex].department as keyof typeof departmentInfo]?.name}
+                  {departmentInfo[shuffledQuestions[currentQuestionIndex].department as keyof typeof departmentInfo]?.name}
                 </div>
                 <CardTitle className="text-xl">
-                  {quizQuestions[currentQuestionIndex].question}
+                  {shuffledQuestions[currentQuestionIndex].question}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {quizQuestions[currentQuestionIndex].options.map((option, index) => (
+                {shuffledQuestions[currentQuestionIndex].shuffledOptions.map((option, index) => (
                   <button
                     key={index}
                     onClick={() => handleAnswerSelect(index)}
                     className={cn(
                       "w-full p-4 text-left rounded-lg border-2 transition-all",
-                      answers[quizQuestions[currentQuestionIndex].id] === index
+                      answers[shuffledQuestions[currentQuestionIndex].id] === index
                         ? "border-primary bg-primary/10"
                         : "border-border hover:border-primary/50 hover:bg-accent/50"
                     )}
                   >
+                    <span className="font-bold mr-2">{String.fromCharCode(65 + index)}.</span>
                     {option}
                   </button>
                 ))}
@@ -482,22 +585,95 @@ export default function Assessment() {
                 {currentQuestionIndex === 0 ? "Back to Experience" : "Previous"}
               </Button>
 
-              {currentQuestionIndex === quizQuestions.length - 1 ? (
+              {currentQuestionIndex === shuffledQuestions.length - 1 ? (
                 <Button
                   onClick={handleFinishQuiz}
-                  disabled={Object.keys(answers).length < quizQuestions.length || saving}
+                  disabled={Object.keys(answers).length < shuffledQuestions.length || saving}
                 >
                   {saving ? "Saving..." : "Finish Assessment"}
                 </Button>
               ) : (
                 <Button
                   onClick={() => setCurrentQuestionIndex((prev) => prev + 1)}
-                  disabled={!answers[quizQuestions[currentQuestionIndex].id]}
+                  disabled={answers[shuffledQuestions[currentQuestionIndex].id] === undefined}
                 >
                   Next
                   <ArrowRight className="ml-2 w-4 h-4" />
                 </Button>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Time Expired Step */}
+        {step === "expired" && finalResults && (
+          <div className="space-y-8">
+            <div className="text-center space-y-4">
+              <div className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
+                <Clock className="w-10 h-10 text-destructive" />
+              </div>
+              <h2 className="text-3xl font-bold">Time's Up!</h2>
+              <p className="text-lg text-muted-foreground">
+                Your assessment has been automatically submitted.
+              </p>
+              <p className="text-lg text-muted-foreground">
+                Your score: <span className="text-primary font-bold">{finalResults.totalScore}%</span>
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {Object.keys(answers).length} of {shuffledQuestions.length} questions answered
+              </p>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Your Strengths by Department</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResultsChart scores={finalResults.departmentScores} />
+              </CardContent>
+            </Card>
+
+            <RecommendedCoursesProgress recommendedCourses={finalResults.recommendedCourses} />
+
+            <div className="space-y-4">
+              <h3 className="text-xl font-semibold">Recommended Courses for You</h3>
+              <div className="grid gap-4">
+                {recommendedCourseDetails.map((course) => (
+                  <Card key={course!.code} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-4 flex items-center justify-between">
+                      <div>
+                        <div className="text-xs text-muted-foreground">{course!.code}</div>
+                        <h4 className="font-semibold">{course!.title}</h4>
+                        <p className="text-sm text-muted-foreground">{course!.department} • {course!.level}</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/course/${course!.code}`)}
+                      >
+                        View Course
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button
+                size="lg"
+                onClick={() => navigate(recommendedCourseDetails[0] ? `/course/${recommendedCourseDetails[0].code}` : "/academics")}
+              >
+                Start Your Journey
+                <ArrowRight className="ml-2 w-5 h-5" />
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => navigate("/student")}
+              >
+                Go to Dashboard
+              </Button>
             </div>
           </div>
         )}
@@ -515,11 +691,6 @@ export default function Assessment() {
               <p className="text-lg text-muted-foreground">
                 Your overall readiness score: <span className="text-primary font-bold">{finalResults.totalScore}%</span>
               </p>
-              {elapsedTime > 0 && (
-                <p className="text-sm text-muted-foreground">
-                  Completed in {formatTime(elapsedTime)}
-                </p>
-              )}
             </div>
 
             {/* Show comparison if this was a retake */}
