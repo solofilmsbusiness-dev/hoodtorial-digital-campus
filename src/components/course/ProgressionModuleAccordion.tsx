@@ -18,6 +18,7 @@ interface ProgressionModuleAccordionProps {
   canAttemptQuiz: (quizId: string) => boolean;
   moduleProgress: { completed: number; total: number; percent: number };
   defaultOpen?: boolean;
+  getWatchPercentage?: (lessonId: string) => number;
 }
 
 export function ProgressionModuleAccordion({
@@ -33,6 +34,7 @@ export function ProgressionModuleAccordion({
   canAttemptQuiz,
   moduleProgress,
   defaultOpen = false,
+  getWatchPercentage,
 }: ProgressionModuleAccordionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
@@ -104,6 +106,7 @@ export function ProgressionModuleAccordion({
           {module.lessons.map((lesson, lessonIndex) => {
             const unlocked = isContentUnlocked(moduleIndex, lessonIndex, "lesson");
             const completed = isLessonCompleted(lesson.id);
+            const watchPercentage = getWatchPercentage?.(lesson.id) || 0;
 
             return (
               <LockedLessonCard
@@ -113,6 +116,7 @@ export function ProgressionModuleAccordion({
                 isActive={activeLesson?.id === lesson.id}
                 isUnlocked={unlocked}
                 isCompleted={completed}
+                watchPercentage={watchPercentage}
                 onClick={() => onLessonSelect(lesson)}
               />
             );

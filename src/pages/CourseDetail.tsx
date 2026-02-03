@@ -11,7 +11,7 @@ import {
 } from "@/components/course";
 import { Badge } from "@/components/ui/badge";
 import { getCourseByCode, getTotalLessonsCount, getTotalQuizzesCount, type Lesson, type Quiz } from "@/data/courses";
-import { ArrowLeft, Clock, BookOpen, Award, CheckCircle2, X, Lock } from "lucide-react";
+import { ArrowLeft, Clock, BookOpen, Award, CheckCircle2, X, Lock, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useEnrollments } from "@/hooks/useEnrollments";
@@ -19,6 +19,8 @@ import { useLessonProgress } from "@/hooks/useLessonProgress";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
 import { TrialBanner, SubscriptionGate } from "@/components/subscription";
+import { useVideoProgress } from "@/hooks/useVideoProgress";
+import { Progress } from "@/components/ui/progress";
 
 const CourseDetail = () => {
   const { code } = useParams<{ code: string }>();
@@ -32,6 +34,18 @@ const CourseDetail = () => {
   );
   const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null);
   const [enrolling, setEnrolling] = useState(false);
+
+  // Video progress tracking
+  const videoProgress = useVideoProgress({
+    courseCode: course?.code || "",
+    lessonId: activeLesson?.id || "",
+    onComplete: () => {
+      toast({
+        title: "Lesson Complete! 🎉",
+        description: "You've watched enough of this video. Progress saved!",
+      });
+    },
+  });
 
   // Enrollment state
   const { 
@@ -52,6 +66,7 @@ const CourseDetail = () => {
     canAttemptQuiz,
     getModuleProgress,
     markLessonComplete,
+    getWatchPercentage,
   } = useLessonProgress(course);
 
   const enrollment = course ? getEnrollment(course.code) : undefined;
@@ -147,13 +162,27 @@ const CourseDetail = () => {
       });
       return;
     }
-    if (activeLesson) {
-      await markLessonComplete(course.code, activeLesson.id, 0);
-      toast({
-        title: "Lesson Completed!",
-        description: "Your progress has been saved.",
-      });
+    
+    if (!activeLesson) return;
+
+    // For video lessons, require 90% watch
+    if (activeLesson.type === "video") {
+      if (videoProgress.watchPercentage < 90 && !videoProgress.isCompleted) {
+        toast({
+          title: "Watch More Video",
+          description: `Watch at least 90% of the video to complete this lesson. Currently: ${videoProgress.watchPercentage}%`,
+          variant: "destructive",
+        });
+        return;
+      }
     }
+
+    // For non-video lessons (reading, practice), allow manual completion
+    await markLessonComplete(course.code, activeLesson.id, 0);
+    toast({
+      title: "Lesson Completed!",
+      description: "Your progress has been saved.",
+    });
   };
 
   const handleLessonSelect = (lesson: Lesson) => {
@@ -314,18 +343,77 @@ const CourseDetail = () => {
 
             {activeLesson && enrolled ? (
               <>
-                <VideoPlayer lesson={activeLesson} />
+                <VideoPlayer 
+                  lesson={activeLesson} 
+                  onProgress={videoProgress.updateProgress}
+                  initialTime={videoProgress.getResumePosition()}
+                  watchPercentage={videoProgress.watchPercentage}
+                  isCompleted={videoProgress.isCompleted}
+                />
                 <div className="border-2 border-border p-6 bg-card/50">
                   <h2 className="heading-4 text-foreground mb-2">{activeLesson.title}</h2>
                   <p className="text-muted-foreground text-sm">
-                    This lesson covers essential concepts and practical techniques. Complete the
-                    lesson and move on to the next one to continue your progress.
+                    {activeLesson.type === "video" 
+                      ? "Watch 90% of the video to complete this lesson and unlock the next content."
+                      : "Complete this lesson and move on to the next one to continue your progress."
+                    }
                   </p>
+
+                  {/* Progress indicator for video lessons */}
+                  {activeLesson.type === "video" && (
+                    <div className="mt-4 p-4 bg-muted/50 border border-border">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-foreground">Watch Progress</span>
+                        <span className={cn(
+                          "text-sm font-bold",
+                          videoProgress.isCompleted ? "text-accent" : "text-primary"
+                        )}>
+                          {videoProgress.watchPercentage}%
+                        </span>
+                      </div>
+                      <Progress value={videoProgress.watchPercentage} className="h-2" />
+                      {videoProgress.isCompleted ? (
+                        <p className="text-xs text-accent mt-2 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Lesson complete! You can proceed to the next content.
+                        </p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Watch at least 90% to complete this lesson
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   <div className="flex gap-4 mt-6">
-                    <button onClick={handleMarkComplete} className="btn-brutal">
-                      Mark Complete
-                      <CheckCircle2 className="ml-2 h-5 w-5" />
-                    </button>
+                    {activeLesson.type === "video" ? (
+                      <button 
+                        onClick={handleMarkComplete} 
+                        disabled={!videoProgress.isCompleted && videoProgress.watchPercentage < 90}
+                        className={cn(
+                          "btn-brutal",
+                          (!videoProgress.isCompleted && videoProgress.watchPercentage < 90) && 
+                          "opacity-50 cursor-not-allowed"
+                        )}
+                      >
+                        {videoProgress.isCompleted || videoProgress.watchPercentage >= 90 ? (
+                          <>
+                            Complete Lesson
+                            <CheckCircle2 className="ml-2 h-5 w-5" />
+                          </>
+                        ) : (
+                          <>
+                            <Play className="mr-2 h-5 w-5" />
+                            Watch Video ({videoProgress.watchPercentage}%)
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      <button onClick={handleMarkComplete} className="btn-brutal">
+                        Mark Complete
+                        <CheckCircle2 className="ml-2 h-5 w-5" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </>
@@ -362,6 +450,7 @@ const CourseDetail = () => {
                   canAttemptQuiz={canAttemptQuiz}
                   moduleProgress={getModuleProgress(module)}
                   defaultOpen={index === 0}
+                  getWatchPercentage={getWatchPercentage}
                 />
               ))}
 

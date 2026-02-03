@@ -207,6 +207,15 @@ export function useLessonProgress(course: Course | undefined) {
     [courseProgress]
   );
 
+  // Get watch percentage for a specific lesson
+  const getWatchPercentage = useCallback(
+    (lessonId: string) => {
+      const data = courseProgress.lessonMap.get(lessonId);
+      return data?.watchPercentage || 0;
+    },
+    [courseProgress]
+  );
+
   return {
     isContentUnlocked,
     updateWatchProgress,
@@ -215,6 +224,7 @@ export function useLessonProgress(course: Course | undefined) {
     canAttemptQuiz,
     getModuleProgress,
     isLessonCompleted,
+    getWatchPercentage,
     markLessonComplete,
     watchThreshold: WATCH_THRESHOLD,
   };
