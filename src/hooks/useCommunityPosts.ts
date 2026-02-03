@@ -77,12 +77,12 @@ export function useCommunityPosts(filters?: {
 
       if (!postsData || postsData.length === 0) return [];
 
-      // Fetch profiles for authors
+      // Fetch profiles for authors (using limited public view for privacy)
       const userIds = [...new Set(postsData.map(p => p.user_id))];
       const { data: profiles } = await supabase
-        .from('profiles')
+        .from('profiles_public' as any)
         .select('user_id, display_name, avatar_url')
-        .in('user_id', userIds);
+        .in('user_id', userIds) as { data: { user_id: string; display_name: string | null; avatar_url: string | null }[] | null };
 
       // Fetch likes count for each post
       const postIds = postsData.map(p => p.id);
