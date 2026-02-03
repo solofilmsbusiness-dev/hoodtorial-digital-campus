@@ -1,6 +1,6 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState, useEffect } from "react";
 
-// Create a celebratory "success" chime using Web Audio API
+const SOUND_MUTED_KEY = "hoodtorial-celebration-sound-muted";
 function createSuccessChime(audioContext: AudioContext) {
   const now = audioContext.currentTime;
   
@@ -96,6 +96,21 @@ function createTickSound(audioContext: AudioContext, pitch: number = 1) {
 
 export function useCelebrationSound() {
   const audioContextRef = useRef<AudioContext | null>(null);
+  const [isMuted, setIsMuted] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem(SOUND_MUTED_KEY) === "true";
+    }
+    return false;
+  });
+
+  // Persist mute preference
+  useEffect(() => {
+    localStorage.setItem(SOUND_MUTED_KEY, String(isMuted));
+  }, [isMuted]);
+
+  const toggleMute = useCallback(() => {
+    setIsMuted((prev) => !prev);
+  }, []);
 
   const getAudioContext = useCallback(() => {
     if (!audioContextRef.current) {
@@ -110,31 +125,34 @@ export function useCelebrationSound() {
   }, []);
 
   const playSuccessChime = useCallback(() => {
+    if (isMuted) return;
     try {
       const ctx = getAudioContext();
       createSuccessChime(ctx);
     } catch (error) {
       console.debug("Sound playback failed:", error);
     }
-  }, [getAudioContext]);
+  }, [getAudioContext, isMuted]);
 
   const playLevelUp = useCallback(() => {
+    if (isMuted) return;
     try {
       const ctx = getAudioContext();
       createLevelUpSound(ctx);
     } catch (error) {
       console.debug("Sound playback failed:", error);
     }
-  }, [getAudioContext]);
+  }, [getAudioContext, isMuted]);
 
   const playTick = useCallback((pitch: number = 1) => {
+    if (isMuted) return;
     try {
       const ctx = getAudioContext();
       createTickSound(ctx, pitch);
     } catch (error) {
       console.debug("Sound playback failed:", error);
     }
-  }, [getAudioContext]);
+  }, [getAudioContext, isMuted]);
 
-  return { playSuccessChime, playLevelUp, playTick };
+  return { playSuccessChime, playLevelUp, playTick, isMuted, toggleMute };
 }
