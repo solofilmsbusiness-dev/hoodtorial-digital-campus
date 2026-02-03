@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Video, FileText, Dumbbell, Info } from "lucide-react";
+import { Video, FileText, Dumbbell, Info, Play } from "lucide-react";
 import type { DbLesson } from "@/hooks/useAdminCourseContent";
 
 interface LessonDialogProps {
@@ -41,6 +41,30 @@ const lessonTypes = [
   { value: "practice", label: "Practice", icon: Dumbbell },
 ];
 
+// Extract video ID from various URL formats
+function getVideoEmbed(url: string): { type: "youtube" | "vimeo" | "direct" | null; embedUrl: string | null } {
+  if (!url) return { type: null, embedUrl: null };
+
+  // YouTube
+  const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  if (ytMatch) {
+    return { type: "youtube", embedUrl: `https://www.youtube.com/embed/${ytMatch[1]}` };
+  }
+
+  // Vimeo
+  const vimeoMatch = url.match(/(?:vimeo\.com\/)(\d+)/);
+  if (vimeoMatch) {
+    return { type: "vimeo", embedUrl: `https://player.vimeo.com/video/${vimeoMatch[1]}` };
+  }
+
+  // Direct video files
+  if (url.match(/\.(mp4|webm|ogg)(\?|$)/i)) {
+    return { type: "direct", embedUrl: url };
+  }
+
+  return { type: null, embedUrl: null };
+}
+
 export function LessonDialog({
   open,
   onOpenChange,
@@ -53,6 +77,7 @@ export function LessonDialog({
   const [duration, setDuration] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [description, setDescription] = useState("");
+  const [content, setContent] = useState("");
 
   useEffect(() => {
     if (lesson) {
@@ -61,12 +86,14 @@ export function LessonDialog({
       setDuration(lesson.duration || "");
       setVideoUrl(lesson.video_url || "");
       setDescription(lesson.description || "");
+      setContent(lesson.content || "");
     } else {
       setTitle("");
       setType("video");
       setDuration("");
       setVideoUrl("");
       setDescription("");
+      setContent("");
     }
   }, [lesson, open]);
 
@@ -78,14 +105,17 @@ export function LessonDialog({
       duration: duration || undefined,
       video_url: videoUrl || undefined,
       description: description || undefined,
+      content: content || undefined,
     });
   };
 
   const isEdit = !!lesson;
 
+  const videoEmbed = useMemo(() => getVideoEmbed(videoUrl), [videoUrl]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit Lesson" : "Add Lesson"}</DialogTitle>
         </DialogHeader>
@@ -145,6 +175,50 @@ export function LessonDialog({
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <Info className="h-3 w-3" />
                 Supports YouTube, Vimeo, or direct .mp4/.webm URLs
+              </p>
+
+              {/* Video Preview */}
+              {videoEmbed.embedUrl && (
+                <div className="mt-3 border rounded-lg overflow-hidden bg-black aspect-video">
+                  {videoEmbed.type === "direct" ? (
+                    <video
+                      src={videoEmbed.embedUrl}
+                      controls
+                      className="w-full h-full"
+                    />
+                  ) : (
+                    <iframe
+                      src={videoEmbed.embedUrl}
+                      className="w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  )}
+                </div>
+              )}
+
+              {videoUrl && !videoEmbed.embedUrl && (
+                <div className="mt-3 border rounded-lg p-4 bg-muted/50 flex items-center justify-center gap-2 text-muted-foreground">
+                  <Play className="h-4 w-4" />
+                  <span className="text-sm">Preview not available for this URL format</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {(type === "reading" || type === "practice") && (
+            <div className="space-y-2">
+              <Label htmlFor="lesson-content">Content</Label>
+              <Textarea
+                id="lesson-content"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="Write the lesson content here. Supports markdown formatting..."
+                rows={8}
+                className="font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                Supports markdown formatting for rich text
               </p>
             </div>
           )}
