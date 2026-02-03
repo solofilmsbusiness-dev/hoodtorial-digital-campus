@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import {
   Sheet,
@@ -12,18 +13,41 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   BookOpen,
   CheckCircle,
+  ChevronDown,
+  ChevronRight,
   Clock,
   ExternalLink,
   GraduationCap,
+  Loader2,
   MapPin,
+  RotateCcw,
   Target,
+  Trash2,
   Trophy,
   XCircle,
 } from "lucide-react";
 import { useStudentDetails, type StudentDetails } from "@/hooks/useAdminStudents";
+import { useAdminQuizManagement, type QuizResultDetail } from "@/hooks/useAdminQuizManagement";
 import { Database } from "@/integrations/supabase/types";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
 
@@ -34,13 +58,47 @@ interface StudentDetailSheetProps {
   onManageRoles: (userId: string, roles: AppRole[], displayName: string) => void;
 }
 
+type ConfirmAction = 
+  | { type: "removeEnrollment"; courseCode: string; courseTitle: string }
+  | { type: "resetQuiz"; quizResultId: string; quizId: string }
+  | { type: "resetAllQuizzes" };
+
 export function StudentDetailSheet({
   userId,
   open,
   onOpenChange,
   onManageRoles,
 }: StudentDetailSheetProps) {
-  const { data: student, isLoading } = useStudentDetails(userId);
+  const { data: student, isLoading, refetch } = useStudentDetails(userId);
+  const { 
+    fetchQuizResultsWithAnswers, 
+    deleteQuizResult, 
+    deleteAllQuizResults, 
+    deleteEnrollment,
+    isDeleting 
+  } = useAdminQuizManagement();
+
+  const [quizResults, setQuizResults] = useState<QuizResultDetail[]>([]);
+  const [loadingQuizResults, setLoadingQuizResults] = useState(false);
+  const [expandedQuizzes, setExpandedQuizzes] = useState<Set<string>>(new Set());
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmAction | null>(null);
+
+  // Fetch detailed quiz results when sheet opens
+  useEffect(() => {
+    if (open && userId) {
+      setLoadingQuizResults(true);
+      fetchQuizResultsWithAnswers(userId)
+        .then(setQuizResults)
+        .catch((err) => {
+          console.error("Error fetching quiz results:", err);
+          toast.error("Failed to load quiz details");
+        })
+        .finally(() => setLoadingQuizResults(false));
+    } else {
+      setQuizResults([]);
+      setExpandedQuizzes(new Set());
+    }
+  }, [open, userId, fetchQuizResultsWithAnswers]);
 
   const getInitials = (name: string | null, id: string) => {
     if (name) {
@@ -85,227 +143,489 @@ export function StudentDetailSheet({
     return <Badge variant="outline">No Sub</Badge>;
   };
 
+  const toggleQuizExpanded = (quizResultId: string) => {
+    setExpandedQuizzes((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(quizResultId)) {
+        newSet.delete(quizResultId);
+      } else {
+        newSet.add(quizResultId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleConfirmAction = async () => {
+    if (!confirmDialog || !userId) return;
+
+    try {
+      if (confirmDialog.type === "removeEnrollment") {
+        const result = await deleteEnrollment(userId, confirmDialog.courseCode);
+        if (result.success) {
+          toast.success(`Removed enrollment from ${confirmDialog.courseTitle}`);
+          refetch();
+        } else {
+          throw result.error;
+        }
+      } else if (confirmDialog.type === "resetQuiz") {
+        const result = await deleteQuizResult(confirmDialog.quizResultId, userId);
+        if (result.success) {
+          toast.success("Quiz result reset successfully");
+          setQuizResults((prev) => prev.filter((r) => r.id !== confirmDialog.quizResultId));
+          refetch();
+        } else {
+          throw result.error;
+        }
+      } else if (confirmDialog.type === "resetAllQuizzes") {
+        const result = await deleteAllQuizResults(userId);
+        if (result.success) {
+          toast.success("All quiz results reset successfully");
+          setQuizResults([]);
+          refetch();
+        } else {
+          throw result.error;
+        }
+      }
+    } catch (error) {
+      console.error("Action failed:", error);
+      toast.error("Action failed. Please try again.");
+    } finally {
+      setConfirmDialog(null);
+    }
+  };
+
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-lg">
-        <SheetHeader>
-          <SheetTitle>Student Details</SheetTitle>
-        </SheetHeader>
+    <>
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent className="w-full sm:max-w-xl">
+          <SheetHeader>
+            <SheetTitle>Student Details</SheetTitle>
+          </SheetHeader>
 
-        {isLoading ? (
-          <div className="space-y-4 mt-6">
-            <div className="flex items-center gap-4">
-              <Skeleton className="h-16 w-16 rounded-full" />
-              <div className="space-y-2">
-                <Skeleton className="h-5 w-32" />
-                <Skeleton className="h-4 w-24" />
+          {isLoading ? (
+            <div className="space-y-4 mt-6">
+              <div className="flex items-center gap-4">
+                <Skeleton className="h-16 w-16 rounded-full" />
+                <div className="space-y-2">
+                  <Skeleton className="h-5 w-32" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
               </div>
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-24 w-full" />
             </div>
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-24 w-full" />
-          </div>
-        ) : student ? (
-          <ScrollArea className="h-[calc(100vh-120px)] mt-6 pr-4">
-            <div className="space-y-6">
-              {/* Profile Header */}
-              <div className="flex items-start gap-4">
-                <Avatar className="h-16 w-16">
-                  <AvatarImage src={student.avatarUrl || undefined} />
-                  <AvatarFallback className="bg-primary text-primary-foreground text-lg">
-                    {getInitials(student.displayName, student.id)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-lg truncate">
-                    {student.displayName || "Unnamed Student"}
-                  </h3>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    {student.location && (
-                      <>
-                        <MapPin className="h-3.5 w-3.5" />
-                        <span>{student.location}</span>
-                        <span>•</span>
-                      </>
-                    )}
-                    <span>Member since {format(new Date(student.enrolledAt), "MMM yyyy")}</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    <Badge variant="outline" className={getTierColor(student.membershipTier)}>
-                      <GraduationCap className="h-3 w-3 mr-1" />
-                      {student.membershipTier}
-                    </Badge>
-                    {student.roles.map((role) => (
-                      <Badge key={role} variant={getRoleBadgeVariant(role)}>
-                        {role}
+          ) : student ? (
+            <ScrollArea className="h-[calc(100vh-120px)] mt-6 pr-4">
+              <div className="space-y-6">
+                {/* Profile Header */}
+                <div className="flex items-start gap-4">
+                  <Avatar className="h-16 w-16">
+                    <AvatarImage src={student.avatarUrl || undefined} />
+                    <AvatarFallback className="bg-primary text-primary-foreground text-lg">
+                      {getInitials(student.displayName, student.id)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-lg truncate">
+                      {student.displayName || "Unnamed Student"}
+                    </h3>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      {student.location && (
+                        <>
+                          <MapPin className="h-3.5 w-3.5" />
+                          <span>{student.location}</span>
+                          <span>•</span>
+                        </>
+                      )}
+                      <span>Member since {format(new Date(student.enrolledAt), "MMM yyyy")}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      <Badge variant="outline" className={getTierColor(student.membershipTier)}>
+                        <GraduationCap className="h-3 w-3 mr-1" />
+                        {student.membershipTier}
                       </Badge>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {student.bio && (
-                <p className="text-sm text-muted-foreground">{student.bio}</p>
-              )}
-
-              <Separator />
-
-              {/* Subscription Status */}
-              <div className="space-y-2">
-                <h4 className="font-medium flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
-                  Subscription
-                </h4>
-                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      {getStatusBadge(student.subscriptionStatus, student.trialEndsAt)}
-                    </div>
-                    {student.subscriptionStatus === "trial" && student.trialEndsAt && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {new Date(student.trialEndsAt) > new Date()
-                          ? `Ends ${format(new Date(student.trialEndsAt), "MMM d, yyyy")}`
-                          : `Ended ${format(new Date(student.trialEndsAt), "MMM d, yyyy")}`}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Assessment Results */}
-              <div className="space-y-2">
-                <h4 className="font-medium flex items-center gap-2">
-                  <Target className="h-4 w-4" />
-                  Assessment Results
-                </h4>
-                {student.assessmentResult ? (
-                  <div className="p-3 rounded-lg bg-muted/50 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Experience Level</span>
-                      <Badge variant="secondary">{student.assessmentResult.experienceLevel}</Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Score</span>
-                      <span className="font-medium">{student.assessmentResult.totalScore}/100</span>
-                    </div>
-                    {student.assessmentResult.interests.length > 0 && (
-                      <div>
-                        <span className="text-sm text-muted-foreground">Interests</span>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {student.assessmentResult.interests.map((interest) => (
-                            <Badge key={interest} variant="outline" className="text-xs">
-                              {interest}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted/50">
-                    No assessment completed yet
-                  </p>
-                )}
-              </div>
-
-              <Separator />
-
-              {/* Enrolled Courses */}
-              <div className="space-y-2">
-                <h4 className="font-medium flex items-center gap-2">
-                  <BookOpen className="h-4 w-4" />
-                  Enrolled Courses ({student.enrollments.length})
-                </h4>
-                {student.enrollments.length > 0 ? (
-                  <div className="space-y-2">
-                    {student.enrollments.map((enrollment) => (
-                      <div
-                        key={enrollment.courseCode}
-                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                      >
-                        <div>
-                          <p className="font-medium text-sm">{enrollment.courseCode}</p>
-                          <p className="text-xs text-muted-foreground">{enrollment.courseTitle}</p>
-                        </div>
-                        <Badge
-                          variant={enrollment.status === "active" ? "default" : "secondary"}
-                          className="capitalize"
-                        >
-                          {enrollment.status}
+                      {student.roles.map((role) => (
+                        <Badge key={role} variant={getRoleBadgeVariant(role)}>
+                          {role}
                         </Badge>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted/50">
-                    No courses enrolled
-                  </p>
+                </div>
+
+                {student.bio && (
+                  <p className="text-sm text-muted-foreground">{student.bio}</p>
                 )}
-              </div>
 
-              <Separator />
+                <Separator />
 
-              {/* Quiz Performance */}
-              <div className="space-y-2">
-                <h4 className="font-medium flex items-center gap-2">
-                  <Trophy className="h-4 w-4" />
-                  Quiz Performance
-                </h4>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="p-3 rounded-lg bg-muted/50 text-center">
-                    <div className="flex items-center justify-center gap-1 text-green-500">
-                      <CheckCircle className="h-4 w-4" />
-                      <span className="font-semibold text-lg">{student.quizStats.passed}</span>
+                {/* Subscription Status */}
+                <div className="space-y-2">
+                  <h4 className="font-medium flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Subscription
+                  </h4>
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        {getStatusBadge(student.subscriptionStatus, student.trialEndsAt)}
+                      </div>
+                      {student.subscriptionStatus === "trial" && student.trialEndsAt && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {new Date(student.trialEndsAt) > new Date()
+                            ? `Ends ${format(new Date(student.trialEndsAt), "MMM d, yyyy")}`
+                            : `Ended ${format(new Date(student.trialEndsAt), "MMM d, yyyy")}`}
+                        </p>
+                      )}
                     </div>
-                    <p className="text-xs text-muted-foreground">Passed</p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-muted/50 text-center">
-                    <div className="flex items-center justify-center gap-1 text-red-500">
-                      <XCircle className="h-4 w-4" />
-                      <span className="font-semibold text-lg">{student.quizStats.failed}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Failed</p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-muted/50 text-center">
-                    <span className="font-semibold text-lg">{student.quizStats.passRate}%</span>
-                    <p className="text-xs text-muted-foreground">Pass Rate</p>
                   </div>
                 </div>
-                <div className="p-3 rounded-lg bg-muted/50">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Lessons Completed</span>
-                    <span className="font-medium">{student.lessonsCompleted}</span>
+
+                <Separator />
+
+                {/* Assessment Results */}
+                <div className="space-y-2">
+                  <h4 className="font-medium flex items-center gap-2">
+                    <Target className="h-4 w-4" />
+                    Assessment Results
+                  </h4>
+                  {student.assessmentResult ? (
+                    <div className="p-3 rounded-lg bg-muted/50 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Experience Level</span>
+                        <Badge variant="secondary">{student.assessmentResult.experienceLevel}</Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Score</span>
+                        <span className="font-medium">{student.assessmentResult.totalScore}/100</span>
+                      </div>
+                      {student.assessmentResult.interests.length > 0 && (
+                        <div>
+                          <span className="text-sm text-muted-foreground">Interests</span>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {student.assessmentResult.interests.map((interest) => (
+                              <Badge key={interest} variant="outline" className="text-xs">
+                                {interest}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted/50">
+                      No assessment completed yet
+                    </p>
+                  )}
+                </div>
+
+                <Separator />
+
+                {/* Enrolled Courses with Remove Action */}
+                <div className="space-y-2">
+                  <h4 className="font-medium flex items-center gap-2">
+                    <BookOpen className="h-4 w-4" />
+                    Enrolled Courses ({student.enrollments.length})
+                  </h4>
+                  {student.enrollments.length > 0 ? (
+                    <div className="space-y-2">
+                      {student.enrollments.map((enrollment) => (
+                        <div
+                          key={enrollment.courseCode}
+                          className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm">{enrollment.courseCode}</p>
+                            <p className="text-xs text-muted-foreground truncate">{enrollment.courseTitle}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Enrolled {format(new Date(enrollment.enrolledAt), "MMM d, yyyy")}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant={enrollment.status === "active" ? "default" : "secondary"}
+                              className="capitalize"
+                            >
+                              {enrollment.status}
+                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => setConfirmDialog({
+                                type: "removeEnrollment",
+                                courseCode: enrollment.courseCode,
+                                courseTitle: enrollment.courseTitle,
+                              })}
+                              disabled={isDeleting}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted/50">
+                      No courses enrolled
+                    </p>
+                  )}
+                </div>
+
+                <Separator />
+
+                {/* Quiz Results with Reset Actions */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium flex items-center gap-2">
+                      <Trophy className="h-4 w-4" />
+                      Quiz Results
+                    </h4>
+                    {quizResults.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => setConfirmDialog({ type: "resetAllQuizzes" })}
+                        disabled={isDeleting}
+                      >
+                        <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                        Reset All
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Quiz Stats Summary */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="p-3 rounded-lg bg-muted/50 text-center">
+                      <div className="flex items-center justify-center gap-1 text-green-500">
+                        <CheckCircle className="h-4 w-4" />
+                        <span className="font-semibold text-lg">{student.quizStats.passed}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Passed</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-muted/50 text-center">
+                      <div className="flex items-center justify-center gap-1 text-red-500">
+                        <XCircle className="h-4 w-4" />
+                        <span className="font-semibold text-lg">{student.quizStats.failed}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Failed</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-muted/50 text-center">
+                      <span className="font-semibold text-lg">{student.quizStats.passRate}%</span>
+                      <p className="text-xs text-muted-foreground">Pass Rate</p>
+                    </div>
+                  </div>
+
+                  {/* Detailed Quiz Results */}
+                  {loadingQuizResults ? (
+                    <div className="flex items-center justify-center p-4">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : quizResults.length > 0 ? (
+                    <div className="space-y-2">
+                      {quizResults.map((result) => (
+                        <Collapsible
+                          key={result.id}
+                          open={expandedQuizzes.has(result.id)}
+                          onOpenChange={() => toggleQuizExpanded(result.id)}
+                        >
+                          <div className="rounded-lg border bg-card">
+                            <div className="flex items-center justify-between p-3">
+                              <CollapsibleTrigger className="flex items-center gap-2 flex-1 text-left">
+                                {expandedQuizzes.has(result.id) ? (
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                )}
+                                <div>
+                                  <p className="font-medium text-sm">
+                                    {result.courseCode} - {result.quizId}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {format(new Date(result.createdAt), "MMM d, yyyy 'at' h:mm a")}
+                                    {result.attemptNumber && ` • Attempt #${result.attemptNumber}`}
+                                  </p>
+                                </div>
+                              </CollapsibleTrigger>
+                              <div className="flex items-center gap-2">
+                                <Badge
+                                  variant={result.passed ? "default" : "destructive"}
+                                  className={cn(
+                                    result.passed
+                                      ? "bg-green-500/10 text-green-500 border-green-500/20"
+                                      : ""
+                                  )}
+                                >
+                                  {result.score}/{result.totalQuestions} ({Math.round((result.score / result.totalQuestions) * 100)}%)
+                                </Badge>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setConfirmDialog({
+                                      type: "resetQuiz",
+                                      quizResultId: result.id,
+                                      quizId: result.quizId,
+                                    });
+                                  }}
+                                  disabled={isDeleting}
+                                >
+                                  <RotateCcw className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                            
+                            <CollapsibleContent>
+                              {result.answers.length > 0 ? (
+                                <div className="px-3 pb-3 border-t pt-3 space-y-2">
+                                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                    Question Breakdown
+                                  </p>
+                                  {result.answers.map((answer, idx) => (
+                                    <div
+                                      key={answer.questionId}
+                                      className={cn(
+                                        "p-2 rounded text-sm",
+                                        answer.isCorrect
+                                          ? "bg-green-500/5 border border-green-500/20"
+                                          : "bg-red-500/5 border border-red-500/20"
+                                      )}
+                                    >
+                                      <div className="flex items-start gap-2">
+                                        {answer.isCorrect ? (
+                                          <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                                        ) : (
+                                          <XCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                          <p className="font-medium text-xs">Q{idx + 1}: {answer.questionText}</p>
+                                          {!answer.isCorrect && answer.options.length > 0 && (
+                                            <div className="mt-1 space-y-0.5 text-xs">
+                                              <p className="text-red-500">
+                                                Your answer: {answer.selectedAnswer >= 0 && answer.selectedAnswer < answer.options.length
+                                                  ? `${String.fromCharCode(65 + answer.selectedAnswer)}. ${answer.options[answer.selectedAnswer]}`
+                                                  : "No answer"}
+                                              </p>
+                                              <p className="text-green-600">
+                                                Correct: {answer.correctAnswer >= 0 && answer.correctAnswer < answer.options.length
+                                                  ? `${String.fromCharCode(65 + answer.correctAnswer)}. ${answer.options[answer.correctAnswer]}`
+                                                  : "Unknown"}
+                                              </p>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="px-3 pb-3 border-t pt-3">
+                                  <p className="text-xs text-muted-foreground italic">
+                                    No detailed answer data available for this attempt (recorded before answer tracking was enabled)
+                                  </p>
+                                </div>
+                              )}
+                            </CollapsibleContent>
+                          </div>
+                        </Collapsible>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted/50">
+                      No quiz attempts yet
+                    </p>
+                  )}
+
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Lessons Completed</span>
+                      <span className="font-medium">{student.lessonsCompleted}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <Separator />
+                <Separator />
 
-              {/* Actions */}
-              <div className="flex flex-col gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => onManageRoles(student.id, student.roles, student.displayName || "Student")}
-                >
-                  Manage Roles
-                </Button>
-                <Button variant="ghost" asChild>
-                  <a href={`/profile/${student.id}`} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    View Public Profile
-                  </a>
-                </Button>
+                {/* Actions */}
+                <div className="flex flex-col gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => onManageRoles(student.id, student.roles, student.displayName || "Student")}
+                  >
+                    Manage Roles
+                  </Button>
+                  <Button variant="ghost" asChild>
+                    <a href={`/profile/${student.id}`} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      View Public Profile
+                    </a>
+                  </Button>
+                </div>
               </div>
+            </ScrollArea>
+          ) : (
+            <div className="flex items-center justify-center h-48 text-muted-foreground">
+              Student not found
             </div>
-          </ScrollArea>
-        ) : (
-          <div className="flex items-center justify-center h-48 text-muted-foreground">
-            Student not found
-          </div>
-        )}
-      </SheetContent>
-    </Sheet>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={!!confirmDialog} onOpenChange={() => setConfirmDialog(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmDialog?.type === "removeEnrollment" && "Remove Enrollment"}
+              {confirmDialog?.type === "resetQuiz" && "Reset Quiz Result"}
+              {confirmDialog?.type === "resetAllQuizzes" && "Reset All Quiz Results"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmDialog?.type === "removeEnrollment" && (
+                <>
+                  Are you sure you want to remove this student from{" "}
+                  <strong>{confirmDialog.courseTitle}</strong>? This action cannot be undone.
+                  The student's progress data will be preserved.
+                </>
+              )}
+              {confirmDialog?.type === "resetQuiz" && (
+                <>
+                  Are you sure you want to reset the quiz result for{" "}
+                  <strong>{confirmDialog.quizId}</strong>? This will delete this attempt and allow
+                  the student to retake the quiz.
+                </>
+              )}
+              {confirmDialog?.type === "resetAllQuizzes" && (
+                <>
+                  <strong className="text-destructive">Warning:</strong> This will delete ALL quiz
+                  results for this student. This action cannot be undone.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmAction}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                "Confirm"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
