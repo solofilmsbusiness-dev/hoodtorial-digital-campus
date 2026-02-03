@@ -158,24 +158,37 @@ export function useLessonProgress(course: Course | undefined) {
     [quizResults]
   );
 
+  // For progression/unlocking - respects Test Mode bypass
   const isQuizPassed = useCallback(
     (quizId: string) => {
-      // Test mode: treat all quizzes as passed
+      // Test mode: treat all quizzes as passed for progression
       if (isTestModeEnabled) return true;
       return courseProgress.quizMap.get(quizId)?.passed || false;
     },
     [courseProgress, isTestModeEnabled]
   );
 
+  // For display/retake logic - always returns real status
+  const isQuizActuallyPassed = useCallback(
+    (quizId: string) => {
+      return courseProgress.quizMap.get(quizId)?.passed || false;
+    },
+    [courseProgress]
+  );
+
   const canAttemptQuiz = useCallback(
     (quizId: string) => {
-      // Test mode: always allow quiz attempts
-      if (isTestModeEnabled) return true;
+      // In Test Mode: unlimited attempts, only blocked if actually passed
+      if (isTestModeEnabled) {
+        const reallyPassed = courseProgress.quizMap.get(quizId)?.passed || false;
+        return !reallyPassed; // Can retry if not actually passed
+      }
+      // Normal mode
       const attempts = getQuizAttempts(quizId);
       const passed = isQuizPassed(quizId);
       return !passed && attempts < 3;
     },
-    [getQuizAttempts, isQuizPassed, isTestModeEnabled]
+    [getQuizAttempts, isQuizPassed, isTestModeEnabled, courseProgress]
   );
 
   // Calculate module completion percentage
@@ -234,6 +247,7 @@ export function useLessonProgress(course: Course | undefined) {
     updateWatchProgress,
     getQuizAttempts,
     isQuizPassed,
+    isQuizActuallyPassed,
     canAttemptQuiz,
     getModuleProgress,
     isLessonCompleted,

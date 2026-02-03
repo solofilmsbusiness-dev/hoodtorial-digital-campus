@@ -14,6 +14,7 @@ interface ProgressionModuleAccordionProps {
   isContentUnlocked: (moduleIndex: number, lessonIndex: number, type?: "lesson" | "quiz") => boolean;
   isLessonCompleted: (lessonId: string) => boolean;
   isQuizPassed: (quizId: string) => boolean;
+  isQuizActuallyPassed?: (quizId: string) => boolean;
   getQuizAttempts: (quizId: string) => number;
   canAttemptQuiz: (quizId: string) => boolean;
   moduleProgress: { completed: number; total: number; percent: number };
@@ -30,6 +31,7 @@ export function ProgressionModuleAccordion({
   isContentUnlocked,
   isLessonCompleted,
   isQuizPassed,
+  isQuizActuallyPassed,
   getQuizAttempts,
   canAttemptQuiz,
   moduleProgress,
@@ -127,7 +129,7 @@ export function ProgressionModuleAccordion({
               quiz={module.quiz}
               type="module"
               isUnlocked={isContentUnlocked(moduleIndex, module.lessons.length, "quiz")}
-              isPassed={isQuizPassed(module.quiz.id)}
+              isPassed={isQuizActuallyPassed?.(module.quiz.id) ?? isQuizPassed(module.quiz.id)}
               attemptCount={getQuizAttempts(module.quiz.id)}
               maxAttempts={3}
               onClick={onQuizClick ? () => onQuizClick(module.quiz!) : undefined}
