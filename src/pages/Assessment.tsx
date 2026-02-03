@@ -22,7 +22,7 @@ type Step = "welcome" | "interests" | "experience" | "quiz" | "results";
 export default function Assessment() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { saveAssessmentResult, loading: resultsLoading } = useAssessmentResults();
+  const { saveAssessmentResult, latestResult, hasCompletedAssessment, loading: resultsLoading } = useAssessmentResults();
 
   const [step, setStep] = useState<Step>("welcome");
   const [interests, setInterests] = useState<string[]>([]);
@@ -32,6 +32,7 @@ export default function Assessment() {
   const [startTime, setStartTime] = useState<number>(0);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [isRetaking, setIsRetaking] = useState(false);
   const [finalResults, setFinalResults] = useState<{
     departmentScores: Record<string, number>;
     totalScore: number;
@@ -228,54 +229,114 @@ export default function Assessment() {
         {/* Welcome Step */}
         {step === "welcome" && (
           <div className="text-center space-y-8">
-            <div className="space-y-4">
-              <h1 className="text-4xl md:text-5xl font-bold">Welcome to Your Assessment</h1>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                This quick assessment will help us understand your current knowledge and interests.
-                Based on your results, we'll recommend the perfect courses to start your filmmaking journey.
-              </p>
-            </div>
+            {/* Returning User Skip Option */}
+            {hasCompletedAssessment && !isRetaking && latestResult && (
+              <Card className="border-primary/30 bg-primary/5">
+                <CardContent className="pt-6 space-y-4">
+                  <div className="flex items-center justify-center gap-2 text-primary">
+                    <Trophy className="w-6 h-6" />
+                    <span className="font-semibold">You've already completed an assessment!</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Your last score was <span className="font-bold text-foreground">{latestResult.total_score}%</span>. 
+                    You can view your previous results or retake the assessment for updated recommendations.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    <Button
+                      variant="default"
+                      onClick={() => {
+                        setFinalResults({
+                          departmentScores: latestResult.department_scores as Record<string, number>,
+                          totalScore: latestResult.total_score,
+                          recommendedCourses: latestResult.recommended_courses,
+                        });
+                        setStep("results");
+                      }}
+                    >
+                      View My Results
+                      <ArrowRight className="ml-2 w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsRetaking(true)}
+                    >
+                      Retake Assessment
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => navigate("/academics")}
+                    >
+                      Skip to Courses
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
-            <div className="grid md:grid-cols-3 gap-6 py-8">
-              <Card>
-                <CardContent className="pt-6 text-center">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                    <span className="text-2xl font-bold text-primary">1</span>
-                  </div>
-                  <h3 className="font-semibold mb-2">Choose Interests</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Select 2-3 areas you want to focus on
+            {(!hasCompletedAssessment || isRetaking) && (
+              <>
+                <div className="space-y-4">
+                  <h1 className="text-4xl md:text-5xl font-bold">
+                    {isRetaking ? "Retake Your Assessment" : "Welcome to Your Assessment"}
+                  </h1>
+                  <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                    {isRetaking 
+                      ? "Start fresh to update your course recommendations based on your current knowledge."
+                      : "This quick assessment will help us understand your current knowledge and interests. Based on your results, we'll recommend the perfect courses to start your filmmaking journey."
+                    }
                   </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6 text-center">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                    <span className="text-2xl font-bold text-primary">2</span>
-                  </div>
-                  <h3 className="font-semibold mb-2">Answer Questions</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Quick knowledge check across your interests
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6 text-center">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                    <span className="text-2xl font-bold text-primary">3</span>
-                  </div>
-                  <h3 className="font-semibold mb-2">Get Recommendations</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Personalized course path based on your results
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+                </div>
 
-            <Button size="lg" onClick={() => setStep("interests")} className="px-8">
-              Start Assessment
-              <ArrowRight className="ml-2 w-5 h-5" />
-            </Button>
+                <div className="grid md:grid-cols-3 gap-6 py-8">
+                  <Card>
+                    <CardContent className="pt-6 text-center">
+                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                        <span className="text-2xl font-bold text-primary">1</span>
+                      </div>
+                      <h3 className="font-semibold mb-2">Choose Interests</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Select 2-3 areas you want to focus on
+                      </p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6 text-center">
+                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                        <span className="text-2xl font-bold text-primary">2</span>
+                      </div>
+                      <h3 className="font-semibold mb-2">Answer Questions</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Quick knowledge check across your interests
+                      </p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6 text-center">
+                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                        <span className="text-2xl font-bold text-primary">3</span>
+                      </div>
+                      <h3 className="font-semibold mb-2">Get Recommendations</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Personalized course path based on your results
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <Button size="lg" onClick={() => setStep("interests")} className="px-8">
+                    {isRetaking ? "Start Fresh" : "Start Assessment"}
+                    <ArrowRight className="ml-2 w-5 h-5" />
+                  </Button>
+                  {isRetaking && (
+                    <Button size="lg" variant="ghost" onClick={() => setIsRetaking(false)}>
+                      <ArrowLeft className="mr-2 w-5 h-5" />
+                      Go Back
+                    </Button>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         )}
 
