@@ -6,9 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
-import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, Film } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import heroLogo from "@/assets/hero-logo.png";
+import heroVideo from "@/assets/hero-video.mp4";
+import { motion } from "framer-motion";
+import { FilmCountdown } from "@/components/auth/FilmCountdown";
+import { RotatingQuotes } from "@/components/auth/RotatingQuotes";
+import { SocialProof } from "@/components/auth/SocialProof";
+import { FilmOverlay } from "@/components/auth/FilmOverlay";
 
 const emailSchema = z.string().email("Please enter a valid email address");
 const passwordSchema = z.string().min(4, "Password must be at least 4 characters");
@@ -148,161 +154,248 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center overflow-hidden bg-noise relative">
-      {/* Background effects */}
-      <div className="absolute inset-0 bg-grid" />
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/50 to-background" />
-      
-      {/* Animated orbs */}
-      <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[150px] animate-pulse" />
-      <div className="absolute bottom-1/3 right-1/4 w-[400px] h-[400px] bg-neon-purple/5 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: "1s" }} />
-      <div className="absolute top-1/2 right-1/3 w-[300px] h-[300px] bg-neon-pink/5 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: "2s" }} />
+    <div className="min-h-screen flex flex-col lg:flex-row overflow-hidden">
+      {/* Film Countdown Overlay */}
+      <FilmCountdown />
 
-      <div className="container-wide relative z-10 py-8 md:py-12">
-        <div className="max-w-md mx-auto flex flex-col items-center">
-          {/* University Logo */}
-          <div className="animate-reveal">
+      {/* Left: Cinematic Visual Side */}
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
+        {/* Background Video */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+        >
+          <source src={heroVideo} type="video/mp4" />
+        </video>
+
+        {/* Film Overlay Effects */}
+        <FilmOverlay />
+
+        {/* Rotating Quotes */}
+        <RotatingQuotes />
+
+        {/* Film reel decoration */}
+        <motion.div
+          initial={{ opacity: 0, rotate: -180 }}
+          animate={{ opacity: 0.1, rotate: 0 }}
+          transition={{ duration: 2, delay: 4 }}
+          className="absolute top-20 left-1/2 -translate-x-1/2 z-10"
+        >
+          <Film className="w-32 h-32 text-primary" />
+        </motion.div>
+      </div>
+
+      {/* Mobile: Compact Video Hero */}
+      <div className="lg:hidden relative h-48 overflow-hidden">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+        >
+          <source src={heroVideo} type="video/mp4" />
+        </video>
+        <div className="absolute inset-0 bg-gradient-to-b from-background/50 via-background/70 to-background z-10" />
+        
+        {/* Mobile Logo */}
+        <div className="absolute inset-0 z-20 flex items-center justify-center">
+          <motion.img
+            src={heroLogo}
+            alt="Hoodtorial University"
+            className="h-20 w-auto logo-glow"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, delay: 3.5 }}
+          />
+        </div>
+      </div>
+
+      {/* Right: Form Side */}
+      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center px-6 py-12 lg:py-0 bg-background relative">
+        {/* Background effects */}
+        <div className="absolute inset-0 bg-grid opacity-50" />
+        <div className="absolute top-1/4 right-1/4 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[150px]" />
+        <div className="absolute bottom-1/3 left-1/4 w-[300px] h-[300px] bg-neon-purple/5 rounded-full blur-[120px]" />
+
+        <div className="w-full max-w-md relative z-10">
+          {/* Desktop Logo */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 3.5 }}
+            className="hidden lg:block text-center mb-8"
+          >
             <img 
               src={heroLogo} 
-              alt="Hoodtorial University - Class of 2025" 
-              className="h-[120px] sm:h-[160px] lg:h-[200px] w-auto animate-logo-pulse"
+              alt="Hoodtorial University" 
+              className="h-24 w-auto mx-auto animate-logo-pulse"
             />
-          </div>
+          </motion.div>
 
           {/* University Name */}
-          <h1 className="heading-3 md:heading-2 text-center mt-6">
-            <span className="block animate-reveal stagger-1">HOODTORIAL</span>
-            <span className="block text-gold-gradient text-glow animate-reveal stagger-2">UNIVERSITY</span>
-          </h1>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 3.7 }}
+            className="text-center mb-2"
+          >
+            <h1 className="heading-3 lg:heading-2">
+              <span className="block">HOODTORIAL</span>
+              <span className="block text-gold-gradient text-glow">UNIVERSITY</span>
+            </h1>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground mt-2">
+              Where Hustle Meets Hollywood
+            </p>
+          </motion.div>
 
-          {/* Tagline */}
-          <p className="text-xs md:text-sm font-bold uppercase tracking-[0.2em] text-muted-foreground text-center mt-3 animate-reveal stagger-3">
-            Where Hustle Meets Hollywood
-          </p>
-
-          {/* Form Card */}
-          <div className="w-full mt-8 card-urban p-6 md:p-8 animate-reveal stagger-4">
-            <div className="text-center mb-6">
-              <h2 
-                key={isSignUp ? 'signup' : 'signin'} 
-                className="heading-4 text-foreground animate-fade-in"
-              >
-                {isSignUp ? "Join the University" : "Welcome Back"}
-              </h2>
-              <p 
-                key={isSignUp ? 'signup-desc' : 'signin-desc'} 
-                className="text-sm text-muted-foreground mt-1 animate-fade-in"
-                style={{ animationDelay: '50ms' }}
-              >
-                {isSignUp 
-                  ? "Create your account to start your journey" 
-                  : "Sign in to access your Student Center"}
-              </p>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Display Name (Sign Up only) */}
-              <div 
-                className={`space-y-2 overflow-hidden transition-all duration-300 ease-out ${
-                  isSignUp ? 'max-h-24 opacity-100' : 'max-h-0 opacity-0'
-                }`}
-              >
-                <Label htmlFor="displayName" className="text-xs font-bold uppercase tracking-wide">
-                  Display Name
-                </Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="displayName"
-                    type="text"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder="Your name"
-                    className="pl-10 bg-background border-2 border-border focus:border-primary"
-                    tabIndex={isSignUp ? 0 : -1}
-                  />
-                </div>
-                {errors.displayName && (
-                  <p className="text-sm text-destructive">{errors.displayName}</p>
-                )}
+          {/* Glass-Morphism Form Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 3.9 }}
+            className="mt-8 relative"
+          >
+            {/* Animated border glow */}
+            <div className="absolute -inset-[1px] bg-gradient-to-r from-primary via-neon-purple to-primary rounded-lg opacity-30 blur-sm animate-border-flow" />
+            
+            <div className="relative backdrop-blur-xl bg-card/60 border border-border/50 rounded-lg p-6 md:p-8 shadow-2xl">
+              <div className="text-center mb-6">
+                <h2 
+                  key={isSignUp ? 'signup' : 'signin'} 
+                  className="heading-4 text-foreground"
+                >
+                  {isSignUp ? "Join the University" : "Welcome Back"}
+                </h2>
+                <p 
+                  key={isSignUp ? 'signup-desc' : 'signin-desc'} 
+                  className="text-sm text-muted-foreground mt-1"
+                >
+                  {isSignUp 
+                    ? "Create your account to start your journey" 
+                    : "Sign in to access your Student Center"}
+                </p>
               </div>
 
-              {/* Email */}
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wide">
-                  Email
-                </Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    className="pl-10 bg-background border-2 border-border focus:border-primary"
-                  />
+              <form onSubmit={handleSubmit} className="space-y-5">
+                {/* Display Name (Sign Up only) */}
+                <div 
+                  className={`space-y-2 overflow-hidden transition-all duration-300 ease-out ${
+                    isSignUp ? 'max-h-24 opacity-100' : 'max-h-0 opacity-0'
+                  }`}
+                >
+                  <Label htmlFor="displayName" className="text-xs font-bold uppercase tracking-wide">
+                    Display Name
+                  </Label>
+                  <div className="relative group">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                    <Input
+                      id="displayName"
+                      type="text"
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      placeholder="Your name"
+                      className="pl-10 bg-background/50 border-2 border-border focus:border-primary transition-all"
+                      tabIndex={isSignUp ? 0 : -1}
+                    />
+                  </div>
+                  {errors.displayName && (
+                    <p className="text-sm text-destructive">{errors.displayName}</p>
+                  )}
                 </div>
-                {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email}</p>
-                )}
-              </div>
 
-              {/* Password */}
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-xs font-bold uppercase tracking-wide">
-                  Password
-                </Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="pl-10 pr-10 bg-background border-2 border-border focus:border-primary"
-                  />
+                {/* Email */}
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wide">
+                    Email
+                  </Label>
+                  <div className="relative group">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                    <Input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      className="pl-10 bg-background/50 border-2 border-border focus:border-primary transition-all"
+                    />
+                  </div>
+                  {errors.email && (
+                    <p className="text-sm text-destructive">{errors.email}</p>
+                  )}
+                </div>
+
+                {/* Password */}
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-xs font-bold uppercase tracking-wide">
+                    Password
+                  </Label>
+                  <div className="relative group">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="pl-10 pr-10 bg-background/50 border-2 border-border focus:border-primary transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  {errors.password && (
+                    <p className="text-sm text-destructive">{errors.password}</p>
+                  )}
+                </div>
+
+                {/* Submit Button */}
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full btn-brutal group relative overflow-hidden"
+                >
+                  <span className="relative z-10">
+                    {loading ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Film className="w-4 h-4 animate-spin" />
+                        Rolling...
+                      </span>
+                    ) : (
+                      isSignUp ? "Create Account" : "Sign In"
+                    )}
+                  </span>
+                </Button>
+              </form>
+
+              {/* Toggle Sign In/Up */}
+              <div className="mt-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  {isSignUp ? "Already have an account?" : "Don't have an account?"}
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    onClick={() => {
+                      setIsSignUp(!isSignUp);
+                      setErrors({});
+                    }}
+                    className="ml-2 text-primary font-bold hover:underline"
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {isSignUp ? "Sign In" : "Sign Up"}
                   </button>
-                </div>
-                {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password}</p>
-                )}
+                </p>
               </div>
-
-              {/* Submit Button */}
-              <Button
-                type="submit"
-                disabled={loading}
-                className="w-full btn-brutal"
-              >
-                {loading ? "Loading..." : isSignUp ? "Create Account" : "Sign In"}
-              </Button>
-            </form>
-
-            {/* Toggle Sign In/Up */}
-            <div className="mt-6 text-center">
-              <p className="text-sm text-muted-foreground">
-                {isSignUp ? "Already have an account?" : "Don't have an account?"}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsSignUp(!isSignUp);
-                    setErrors({});
-                  }}
-                  className="ml-2 text-primary font-bold hover:underline"
-                >
-                  {isSignUp ? "Sign In" : "Sign Up"}
-                </button>
-              </p>
             </div>
-          </div>
+          </motion.div>
+
+          {/* Social Proof */}
+          <SocialProof />
         </div>
       </div>
     </div>
