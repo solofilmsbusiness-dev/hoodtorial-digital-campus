@@ -46,18 +46,26 @@ function CommentItem({ comment, onLike, onReply, onDelete, depth = 0 }: CommentI
   };
 
   const getRoleBadge = () => {
-    if (comment.is_instructor_comment || comment.user_role === 'admin' || comment.user_role === 'professor') {
+    if (comment.user_role === 'admin') {
+      return (
+        <Badge className="bg-destructive/20 text-destructive text-xs">
+          <GraduationCap className="h-3 w-3 mr-1" />
+          Admin
+        </Badge>
+      );
+    }
+    if (comment.user_role === 'professor') {
       return (
         <Badge className="bg-primary/20 text-primary text-xs">
-          <Shield className="h-3 w-3 mr-1" />
-          Instructor
+          <GraduationCap className="h-3 w-3 mr-1" />
+          Professor
         </Badge>
       );
     }
     if (comment.user_role === 'moderator') {
       return (
         <Badge className="bg-accent/20 text-accent text-xs">
-          <GraduationCap className="h-3 w-3 mr-1" />
+          <Shield className="h-3 w-3 mr-1" />
           Moderator
         </Badge>
       );
