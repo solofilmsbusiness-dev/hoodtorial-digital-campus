@@ -82,7 +82,6 @@ export default {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         display: ['Inter', 'system-ui', 'sans-serif'],
-        urban: ['Permanent Marker', 'cursive'],
       },
       keyframes: {
         "accordion-down": {
