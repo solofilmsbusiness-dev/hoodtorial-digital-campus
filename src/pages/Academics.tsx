@@ -35,6 +35,12 @@ const Academics = () => {
     return matchesDepartment && matchesSearch;
   });
 
+  // Sort: available courses first, coming soon last
+  const sortedCourses = [...filteredCourses].sort((a, b) => {
+    if (a.isComingSoon === b.isComingSoon) return 0;
+    return a.isComingSoon ? 1 : -1;
+  });
+
   const activeDepartment = departments.find(d => d.id === activeFilter);
 
   const totalCredits = filteredCourses.reduce((acc, c) => acc + c.credits, 0);
@@ -222,7 +228,7 @@ const Academics = () => {
           </div>
         ) : viewMode === "grid" ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredCourses.map((course, index) => (
+            {sortedCourses.map((course, index) => (
               <div 
                 key={course.code} 
                 className="animate-reveal"
@@ -234,7 +240,7 @@ const Academics = () => {
           </div>
         ) : (
           <div className="space-y-3">
-            {filteredCourses.map((course, index) => (
+            {sortedCourses.map((course, index) => (
               <div 
                 key={course.code} 
                 className="animate-reveal"
