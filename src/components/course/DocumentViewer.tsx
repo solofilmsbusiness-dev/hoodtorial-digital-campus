@@ -1,5 +1,6 @@
 import { FileText, Download, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 interface DocumentViewerProps {
@@ -13,7 +14,6 @@ function getFileNameFromUrl(url: string): string {
     const urlObj = new URL(url);
     const pathname = urlObj.pathname;
     const fileName = pathname.split("/").pop() || "document";
-    // Remove the timestamp prefix if present (e.g., "1234567890-abc123.pdf" -> "document.pdf")
     const cleanName = fileName.replace(/^\d+-[a-z0-9]+-?/, "");
     return cleanName || fileName;
   } catch {
@@ -27,65 +27,40 @@ function isPdf(url: string): boolean {
 
 export function DocumentViewer({ documentUrl, title, className }: DocumentViewerProps) {
   const fileName = getFileNameFromUrl(documentUrl);
-  const showEmbed = isPdf(documentUrl);
+  const fileType = isPdf(documentUrl) ? "PDF Document" : "Document";
+
+  const handleOpenDocument = () => {
+    window.open(documentUrl, "_blank", "noopener,noreferrer");
+  };
 
   return (
     <div className={cn("space-y-4", className)}>
-      {/* Header with download option */}
-      <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary/10 rounded-lg">
-            <FileText className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <p className="font-medium">{title || fileName}</p>
-            <p className="text-sm text-muted-foreground">
-              {showEmbed ? "PDF Document" : "Document"}
-            </p>
-          </div>
+      <Card
+        className="flex flex-col items-center justify-center p-12 cursor-pointer hover:bg-accent/50 transition-colors border-2 border-dashed"
+        onClick={handleOpenDocument}
+      >
+        <div className="p-4 bg-primary/10 rounded-full mb-6">
+          <FileText className="h-12 w-12 text-primary" />
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <a href={documentUrl} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Open
-            </a>
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <a href={documentUrl} download={fileName}>
-              <Download className="h-4 w-4 mr-2" />
-              Download
-            </a>
-          </Button>
-        </div>
-      </div>
-
-      {/* PDF Embed */}
-      {showEmbed && (
-        <div className="border rounded-lg overflow-hidden bg-muted">
-          <iframe
-            src={`${documentUrl}#toolbar=1&navpanes=0`}
-            className="w-full h-[600px] md:h-[800px]"
-            title={title || "Document viewer"}
-          />
-        </div>
-      )}
-
-      {/* Non-PDF fallback */}
-      {!showEmbed && (
-        <div className="border rounded-lg p-8 bg-muted/30 text-center">
-          <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-          <p className="text-muted-foreground mb-4">
-            This document type cannot be previewed in the browser.
-          </p>
-          <Button asChild>
-            <a href={documentUrl} download={fileName}>
-              <Download className="h-4 w-4 mr-2" />
-              Download to View
-            </a>
-          </Button>
-        </div>
-      )}
+        <h3 className="text-xl font-semibold mb-2">{title || fileName}</h3>
+        <p className="text-muted-foreground mb-6 flex items-center gap-2">
+          {fileType} — Click to open
+          <ExternalLink className="h-4 w-4" />
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
+          asChild
+        >
+          <a href={documentUrl} download={fileName}>
+            <Download className="h-4 w-4 mr-2" />
+            Download
+          </a>
+        </Button>
+      </Card>
     </div>
   );
 }
