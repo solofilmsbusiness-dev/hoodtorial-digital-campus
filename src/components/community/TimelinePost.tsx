@@ -3,7 +3,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Heart, MessageSquare, Bookmark, Award, Play, ChevronDown, ChevronUp } from "lucide-react";
+import { Heart, MessageSquare, Bookmark, Award, Play, ChevronDown, ChevronUp, GraduationCap, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CommunityPost, CommentPreview } from "@/hooks/useCommunityPosts";
 import { motion, AnimatePresence } from "framer-motion";
@@ -87,9 +87,29 @@ export function TimelinePost({
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-sm text-foreground truncate">
-            {post.author?.display_name || "Anonymous"}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="font-bold text-sm text-foreground truncate">
+              {post.author?.display_name || "Anonymous"}
+            </p>
+            {post.author?.role === 'admin' && (
+              <Badge className="bg-destructive/20 text-destructive text-xs">
+                <GraduationCap className="h-3 w-3 mr-1" />
+                Admin
+              </Badge>
+            )}
+            {post.author?.role === 'professor' && (
+              <Badge className="bg-primary/20 text-primary text-xs">
+                <GraduationCap className="h-3 w-3 mr-1" />
+                Professor
+              </Badge>
+            )}
+            {post.author?.role === 'moderator' && (
+              <Badge className="bg-accent/20 text-accent text-xs">
+                <Shield className="h-3 w-3 mr-1" />
+                Moderator
+              </Badge>
+            )}
+          </div>
           <p className="text-xs text-muted-foreground">
             {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
           </p>

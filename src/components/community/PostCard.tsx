@@ -14,7 +14,9 @@ import {
   MoreVertical,
   Trash2,
   Film,
-  Image as ImageIcon
+  Image as ImageIcon,
+  GraduationCap,
+  Shield
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -82,6 +84,24 @@ export function PostCard({ post, onLike, onFollow, onDelete, onClick }: PostCard
                 <span className="font-bold text-foreground">
                   {post.author?.display_name || "Anonymous Student"}
                 </span>
+                {post.author?.role === 'admin' && (
+                  <Badge className="bg-destructive/20 text-destructive text-xs">
+                    <GraduationCap className="h-3 w-3 mr-1" />
+                    Admin
+                  </Badge>
+                )}
+                {post.author?.role === 'professor' && (
+                  <Badge className="bg-primary/20 text-primary text-xs">
+                    <GraduationCap className="h-3 w-3 mr-1" />
+                    Professor
+                  </Badge>
+                )}
+                {post.author?.role === 'moderator' && (
+                  <Badge className="bg-accent/20 text-accent text-xs">
+                    <Shield className="h-3 w-3 mr-1" />
+                    Moderator
+                  </Badge>
+                )}
                 {post.is_pinned && (
                   <Pin className="h-3 w-3 text-primary" />
                 )}

@@ -35,6 +35,7 @@ export interface CommunityPost {
   author?: {
     display_name: string | null;
     avatar_url: string | null;
+    role?: 'admin' | 'professor' | 'moderator' | 'student' | null;
   };
   likes_count?: number;
   comments_count?: number;
@@ -104,6 +105,22 @@ export function useCommunityPosts(filters?: {
         .select('user_id, display_name, avatar_url')
         .in('user_id', userIds) as { data: { user_id: string; display_name: string | null; avatar_url: string | null }[] | null };
 
+      // Fetch user roles for authors
+      const { data: userRolesData } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .in('user_id', userIds);
+
+      const userRolesMap = (userRolesData || []).reduce((acc, r) => {
+        // Prioritize admin > professor > moderator > student
+        const priority = { admin: 4, professor: 3, moderator: 2, student: 1 };
+        const currentRole = acc[r.user_id];
+        if (!currentRole || priority[r.role as keyof typeof priority] > priority[currentRole as keyof typeof priority]) {
+          acc[r.user_id] = r.role;
+        }
+        return acc;
+      }, {} as Record<string, string>);
+
       // Fetch likes count for each post
       const postIds = postsData.map(p => p.id);
       const { data: likesData } = await supabase
@@ -148,9 +165,12 @@ export function useCommunityPosts(filters?: {
       }, {} as Record<string, number>);
 
       const profilesMap = (profiles || []).reduce((acc, p) => {
-        acc[p.user_id] = p;
+        acc[p.user_id] = {
+          ...p,
+          role: userRolesMap[p.user_id] as 'admin' | 'professor' | 'moderator' | 'student' | undefined,
+        };
         return acc;
-      }, {} as Record<string, { display_name: string | null; avatar_url: string | null }>);
+      }, {} as Record<string, { display_name: string | null; avatar_url: string | null; role?: 'admin' | 'professor' | 'moderator' | 'student' }>);
 
       // Fetch comment previews if requested
       let commentPreviews: Record<string, CommentPreview[]> = {};
