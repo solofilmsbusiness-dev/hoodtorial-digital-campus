@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useSubscription } from "@/hooks/useSubscription";
 
 export interface Enrollment {
   id: string;
@@ -17,6 +18,7 @@ const MAX_ACTIVE_COURSES = 3;
 export function useEnrollments() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { hasAccess } = useSubscription();
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -79,6 +81,15 @@ export function useEnrollments() {
         return { error: new Error("Not authenticated"), data: null };
       }
 
+      if (!hasAccess) {
+        toast({
+          title: "Subscription required",
+          description: "Start your free trial or subscribe to enroll in courses.",
+          variant: "destructive",
+        });
+        return { error: new Error("No paid access"), data: null };
+      }
+
       if (!canEnroll) {
         toast({
           title: "Enrollment limit reached",
@@ -130,7 +141,7 @@ export function useEnrollments() {
         return { error: err as Error, data: null };
       }
     },
-    [user, canEnroll, toast]
+    [user, canEnroll, hasAccess, toast]
   );
 
   const completeCourse = useCallback(

@@ -5,6 +5,8 @@ import { ArrowRight, BookOpen, Clock, Award, Users, LayoutGrid, List, Search, X 
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { courses, departments } from "@/data/courses";
+import { TrialBanner } from "@/components/subscription";
+import { useSubscription } from "@/hooks/useSubscription";
 
 const stats = [
   { icon: BookOpen, value: "16", label: "Total Courses" },
@@ -14,6 +16,7 @@ const stats = [
 ];
 
 const Academics = () => {
+  const { isTrialing } = useSubscription();
   const [activeFilter, setActiveFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
@@ -36,6 +39,9 @@ const Academics = () => {
 
   return (
     <PageLayout>
+      {/* Trial Banner */}
+      {isTrialing && <TrialBanner />}
+
       {/* Hero */}
       <section className="relative pt-32 pb-20 overflow-hidden bg-noise">
         <div className="absolute inset-0 bg-grid" />

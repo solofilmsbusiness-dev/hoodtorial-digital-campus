@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AdminRoute } from "@/components/auth/AdminRoute";
+import { PaidRoute } from "@/components/auth/PaidRoute";
 import Index from "./pages/Index";
 import Degrees from "./pages/Degrees";
 import Academics from "./pages/Academics";
@@ -44,7 +45,11 @@ const App = () => (
             <Route path="/degrees" element={<Degrees />} />
             <Route path="/skill-tree/:path" element={<SkillTree />} />
             <Route path="/academics" element={<Academics />} />
-            <Route path="/course/:code" element={<CourseDetail />} />
+            <Route path="/course/:code" element={
+              <PaidRoute>
+                <CourseDetail />
+              </PaidRoute>
+            } />
             <Route path="/enrollment" element={<Enrollment />} />
             <Route path="/faculty" element={<Faculty />} />
             <Route path="/about" element={<About />} />
