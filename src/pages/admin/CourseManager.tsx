@@ -12,7 +12,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Pencil, Eye, Lock, Database, Loader2 } from "lucide-react";
+import { Plus, Pencil, Eye, Lock, Database, Loader2, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,6 +46,7 @@ export default function CourseManager() {
 
   // Filter states
   const [searchQuery, setSearchQuery] = useState("");
+  const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
   const [levelFilter, setLevelFilter] = useState<LevelFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
@@ -148,6 +159,28 @@ export default function CourseManager() {
       toast({ 
         title: "Failed to update course", 
         description: "Courses may need to be initialized first.",
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const deleteCourse = useMutation({
+    mutationFn: async (courseId: string) => {
+      const { error } = await supabase
+        .from("courses")
+        .delete()
+        .eq("id", courseId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-courses"] });
+      toast({ title: "Course deleted successfully" });
+    },
+    onError: (error) => {
+      console.error("Delete course error:", error);
+      toast({ 
+        title: "Failed to delete course", 
+        description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive" 
       });
     },
@@ -357,6 +390,16 @@ export default function CourseManager() {
                               <Pencil className="h-4 w-4" />
                             </Link>
                           </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => setCourseToDelete(course)}
+                            disabled={isUsingStaticData}
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            title="Delete course"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -366,6 +409,34 @@ export default function CourseManager() {
             </Table>
           </CardContent>
         </Card>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={!!courseToDelete} onOpenChange={() => setCourseToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Course</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete "{courseToDelete?.title}" ({courseToDelete?.code})?
+                This will also delete all modules, lessons, and quizzes associated with this course.
+                This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (courseToDelete) {
+                    deleteCourse.mutate(courseToDelete.id);
+                    setCourseToDelete(null);
+                  }
+                }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AdminLayout>
   );
