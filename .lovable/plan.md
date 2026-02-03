@@ -1,91 +1,97 @@
 
-# Fix: New Courses Not Showing & Edit Subsections Not Working
+# Fix: Course Actions 404 and Student Detail Sheet Glitching
 
-## Problem Analysis
+## Problem 1: Course Actions Causing 404
 
-### Issue 1: New Courses Don't Appear on Academics Page
+**Root Cause**: In `CourseManager.tsx`, the "View" button links to `/course/${course.code}`. When navigating, if the course code is missing or empty, it results in `/course/` which triggers the NotFound page.
 
-**Root Cause**: The `useCourseStatus` hook only iterates over static courses from `src/data/courses.ts`. When a new course is created in admin, it exists only in the database, so it's never included in the loop.
+The issue is that when clicking "View" for a course that exists in static data but not yet in the database, the course object's `code` might be working, but the actual problem is that the route `/course/:code` expects the CourseDetail page to find the course via `getCourseByCode()` which only searches static data. New courses created in admin exist only in the database and are not found.
 
-Current logic (broken):
-```typescript
-// Only loops through static courses
-const coursesWithStatus = staticCourses.map((course) => {
-  const dbStatus = dbCourses?.find((db) => db.code === course.code);
-  ...
-});
-```
-
-### Issue 2: Cannot Edit Course Subsections (Modules, Lessons, Videos)
-
-**Root Cause**: In `CourseEditor.tsx`, the Modules section only renders when `dbCourse` exists:
-```typescript
-{!isNew && dbCourse && (
-  <ModulesSection courseId={dbCourse.id} />
-)}
-```
-
-When editing a static course that hasn't been saved to the database yet, `dbCourse` is `null`, so the modules section is hidden.
+**Fix**: Update CourseManager to check if a course exists before navigation, or show a toast for courses not yet viewable.
 
 ---
 
-## Solution
+## Problem 2: StudentDetailSheet Infinite Re-render Loop
 
-### Phase 1: Fix Academics Page to Show Database Courses
+**Root Cause**: The `fetchQuizResultsWithAnswers` function in `useAdminQuizManagement.ts` is not memoized with `useCallback`. This causes:
 
-**File: `src/hooks/useCourseStatus.ts`**
+1. Every render of `StudentDetailSheet` gets a new function reference
+2. The `useEffect` depends on this function
+3. Effect runs, sets state, triggers re-render
+4. New function reference, effect runs again... infinite loop!
 
-Change the logic to:
-1. Fetch ALL courses from the database (not just status)
-2. For courses in static data, merge with DB status
-3. For courses ONLY in database, include them too
-4. This ensures newly created courses appear on the Academics page
+This explains the "glitching and flashing" behavior.
 
-New approach:
+**Fix**: Wrap `fetchQuizResultsWithAnswers` in `useCallback` to maintain a stable reference.
+
+---
+
+## Implementation Plan
+
+### File 1: `src/hooks/useAdminQuizManagement.ts`
+
+**Change**: Wrap `fetchQuizResultsWithAnswers` function in `useCallback` to prevent infinite re-renders.
+
+Before:
 ```typescript
-// Start with database courses
-const dbBasedCourses = dbCourses.map(dbCourse => {
-  const staticCourse = staticCourses.find(s => s.code === dbCourse.code);
-  if (staticCourse) {
-    // Merge static + db
-    return { ...staticCourse, isPublished, isComingSoon };
-  }
-  // Create course from DB only (new courses)
-  return { 
-    code: dbCourse.code,
-    title: dbCourse.title,
-    // ... map other fields
-    isPublished, 
-    isComingSoon 
-  };
-});
+const fetchQuizResultsWithAnswers = async (userId: string) => { ... }
 ```
 
-### Phase 2: Fix Course Editor to Show Modules After Initial Save
-
-**File: `src/pages/admin/CourseEditor.tsx`**
-
-The issue is that when editing a static course, `dbCourse` is `null` until the admin saves it. But the modules section requires a database ID.
-
-Two-part fix:
-1. After saving a new course, refetch the data and show the modules section
-2. For existing static courses being edited, prompt admin to "Save" first before adding modules
-
-Add a message when `dbCourse` is null:
+After:
 ```typescript
-{!isNew && !dbCourse && !isLoading && (
-  <Card>
-    <CardContent className="py-8 text-center text-muted-foreground">
-      <p>Save the course first to add modules and lessons.</p>
-    </CardContent>
-  </Card>
+const fetchQuizResultsWithAnswers = useCallback(async (userId: string) => { ... }, []);
+```
+
+Also wrap the delete functions with `useCallback` for consistency and performance.
+
+### File 2: `src/pages/admin/CourseManager.tsx`
+
+**Change**: Add safety check for empty course codes and provide better navigation feedback.
+
+Current:
+```tsx
+<Link to={`/course/${course.code}`}>
+```
+
+Improved:
+- Check if the course code is valid before rendering the link
+- For newly created admin courses that don't exist in static data, show a different action (preview not available) or navigate to the editor instead
+
+---
+
+## Technical Details
+
+### useCallback Fix
+
+```typescript
+import { useState, useCallback } from "react";  // Add useCallback import
+
+// Wrap the function
+const fetchQuizResultsWithAnswers = useCallback(async (userId: string): Promise<QuizResultDetail[]> => {
+  // ... existing implementation
+}, []);  // Empty dependency array - function doesn't depend on external values
+```
+
+### CourseManager Link Safety
+
+Option A - Disable view for courses not in static catalog:
+```tsx
+{staticCourses.some(s => s.code === course.code) ? (
+  <Button variant="ghost" size="icon" asChild>
+    <Link to={`/course/${course.code}`}>
+      <Eye className="h-4 w-4" />
+    </Link>
+  </Button>
+) : (
+  <Button variant="ghost" size="icon" disabled title="Preview not available">
+    <Eye className="h-4 w-4 opacity-50" />
+  </Button>
 )}
 ```
 
-Also invalidate the course-status query after save:
-```typescript
-queryClient.invalidateQueries({ queryKey: ["course-status"] });
-```
+Option B - Always link but let CourseDetail handle it gracefully (current behavior is fine since CourseDetail shows "Course Not Found")
+
+Recommended: Option A for better UX - admin knows immediately if preview is available.
 
 ---
 
@@ -93,48 +99,15 @@ queryClient.invalidateQueries({ queryKey: ["course-status"] });
 
 | File | Change |
 |------|--------|
-| `src/hooks/useCourseStatus.ts` | Fetch full course data from DB, include DB-only courses, merge with static data for backward compatibility |
-| `src/pages/admin/CourseEditor.tsx` | Add helpful message when modules section is hidden, invalidate course-status query on save |
-
----
-
-## Data Flow After Fix
-
-```
-Admin Creates Course → Database
-                          ↓
-                    useCourseStatus
-                          ↓
-                    Academics Page
-                    (now includes DB-only courses)
-```
-
----
-
-## Technical Details
-
-### Updated useCourseStatus Hook Logic
-
-1. Fetch all fields from courses table (not just code/status)
-2. Build course list from database as primary source
-3. For each DB course, check if matching static course exists for additional fields (modules, lessons count, etc.)
-4. For DB-only courses, construct Course object from DB fields
-5. Apply same published/locked filtering
-
-### Database Fields Available
-
-The `courses` table already has:
-- `code`, `title`, `description`, `department_id`, `credits`, `level`, `duration`
-- `is_published`, `is_locked`
-
-This is enough to display courses on the Academics page without static data.
+| `src/hooks/useAdminQuizManagement.ts` | Wrap async functions in `useCallback` to prevent infinite re-renders |
+| `src/pages/admin/CourseManager.tsx` | Add visual indicator for courses without preview |
 
 ---
 
 ## Summary
 
-This fix ensures:
-1. New courses created in admin immediately appear on the Academics page
-2. Status changes (Coming Soon, Published) reflect in real-time
-3. Course subsections (modules, lessons, video links) can be edited after initial save
-4. Backward compatibility with existing static course data
+This fix addresses:
+1. **Infinite re-render loop** - The main cause of "glitching and flashing" when viewing student details
+2. **404 confusion** - Better UX for admin when viewing courses not yet in the public catalog
+
+The key insight is that the `useEffect` in StudentDetailSheet depends on `fetchQuizResultsWithAnswers`, and without `useCallback`, that function gets a new identity on every render, causing the effect to re-run continuously.
