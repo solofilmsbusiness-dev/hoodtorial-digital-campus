@@ -117,17 +117,17 @@
 /* Typography - Urban & Bold */
 @layer components {
   .heading-display {
-    @apply font-black tracking-tighter uppercase;
-    font-family: 'Inter', system-ui, sans-serif;
-    letter-spacing: -0.05em;
+    font-family: 'Permanent Marker', cursive;
+    @apply tracking-tight uppercase;
+    letter-spacing: 0.02em;
   }
 
   .heading-1 {
-    @apply heading-display text-5xl md:text-7xl lg:text-8xl leading-[0.85];
+    @apply heading-display text-5xl md:text-7xl lg:text-8xl leading-[0.95];
   }
 
   .heading-2 {
-    @apply heading-display text-4xl md:text-5xl lg:text-6xl leading-[0.9];
+    @apply heading-display text-4xl md:text-5xl lg:text-6xl leading-tight;
   }
 
   .heading-3 {
