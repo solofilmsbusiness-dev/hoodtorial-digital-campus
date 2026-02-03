@@ -6,6 +6,8 @@ export interface Quiz {
   questions: number;
   passingScore: number;
   timeLimitMinutes?: number; // Time limit in minutes (default: 1 min per question)
+  perQuestionSeconds?: number; // Time per question in seconds (default: 60)
+  usePerQuestionTimer?: boolean; // Enable per-question timer mode (default: true)
 }
 
 export interface Lesson {

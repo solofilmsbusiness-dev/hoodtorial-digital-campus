@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { 
   ChevronLeft, 
@@ -20,6 +20,7 @@ import {
   getGradingData,
   getDefaultTimeLimit,
   formatTimeRemaining,
+  getPerQuestionTime,
   type ShuffledQuestion 
 } from "@/lib/quizUtils";
 import { useQuizResults } from "@/hooks/useQuizResults";
@@ -48,8 +49,17 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
   const [startTime, setStartTime] = useState<number | null>(null);
   const [remainingTime, setRemainingTime] = useState<number>(0);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Per-question timer state
+  const [questionStartTime, setQuestionStartTime] = useState<number | null>(null);
+  const [questionRemainingTime, setQuestionRemainingTime] = useState<number>(0);
+  const isAutoAdvancing = useRef(false);
 
-  // Calculate time limit (from quiz or default 1 min per question)
+  // Timer mode configuration - default to per-question mode
+  const usePerQuestionMode = quiz.usePerQuestionTimer ?? true;
+  const perQuestionTime = getPerQuestionTime(quiz.perQuestionSeconds);
+
+  // Calculate time limit for global mode (from quiz or default 1 min per question)
   const timeLimitSeconds = useMemo(() => {
     const minutes = quiz.timeLimitMinutes ?? getDefaultTimeLimit(originalQuestions.length);
     return minutes * 60;
@@ -62,7 +72,11 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
     [answers, shuffledQuestions]
   );
   const passed = score >= quiz.passingScore;
-  const isTimeWarning = remainingTime > 0 && remainingTime <= 120; // 2 minutes warning
+  
+  // Time warnings
+  const isTimeWarning = usePerQuestionMode 
+    ? questionRemainingTime > 0 && questionRemainingTime <= 10
+    : remainingTime > 0 && remainingTime <= 120;
 
   // Initialize shuffled questions when quiz starts
   const handleStartQuiz = useCallback(() => {
@@ -73,28 +87,87 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
     setShowExplanation(false);
     setStartTime(Date.now());
     setRemainingTime(timeLimitSeconds);
+    
+    // Initialize per-question timer
+    if (usePerQuestionMode) {
+      setQuestionStartTime(Date.now());
+      setQuestionRemainingTime(perQuestionTime);
+    }
+    
     setState("playing");
-  }, [originalQuestions, timeLimitSeconds]);
+  }, [originalQuestions, timeLimitSeconds, usePerQuestionMode, perQuestionTime]);
 
-  // Countdown timer
-  useEffect(() => {
-    if (state !== "playing" || !startTime) return;
+  // Handle finishing the quiz
+  const handleFinishQuiz = useCallback(async () => {
+    setState("results");
     
-    const interval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      const remaining = Math.max(0, timeLimitSeconds - elapsed);
-      setRemainingTime(remaining);
+    // Save to database if user is logged in
+    if (user && startTime) {
+      setIsSaving(true);
+      const timeTaken = Math.round((Date.now() - startTime) / 1000);
+      const gradingData = getGradingData(answers, shuffledQuestions);
       
-      if (remaining <= 0) {
-        clearInterval(interval);
-        // Auto-submit on time expiration
-        handleTimeExpired();
-      }
-    }, 1000);
+      // Convert shuffled questions back to original for saving
+      const originalQuestionsForSave = shuffledQuestions.map(sq => ({
+        id: sq.id,
+        question: sq.question,
+        options: sq.originalOptions,
+        correctAnswer: sq.originalCorrectAnswer,
+        explanation: sq.explanation,
+      }));
+      
+      // Convert shuffled answers to original indices
+      const originalAnswers: Record<string, number> = {};
+      gradingData.forEach(gd => {
+        if (gd.selectedAnswer >= 0) {
+          originalAnswers[gd.questionId] = gd.selectedAnswer;
+        }
+      });
+      
+      await saveQuizResult(
+        {
+          quiz_id: quiz.id,
+          course_code: courseCode,
+          score,
+          total_questions: shuffledQuestions.length,
+          passed,
+          time_taken_seconds: timeTaken,
+        },
+        originalQuestionsForSave as QuizQuestion[],
+        originalAnswers
+      );
+      
+      setIsSaving(false);
+    }
     
-    return () => clearInterval(interval);
-  }, [state, startTime, timeLimitSeconds]);
+    onComplete?.(score, passed);
+  }, [user, startTime, quiz.id, courseCode, score, shuffledQuestions, passed, saveQuizResult, onComplete, answers]);
 
+  // Handle question timeout (per-question mode)
+  const handleQuestionTimeout = useCallback(() => {
+    if (isAutoAdvancing.current) return;
+    isAutoAdvancing.current = true;
+    
+    // Mark as skipped if no answer selected
+    if (currentQuestion && answers[currentQuestion.id] === undefined) {
+      setAnswers(prev => ({ ...prev, [currentQuestion.id]: -1 }));
+    }
+    
+    // Auto-advance to next question or finish
+    if (currentIndex < shuffledQuestions.length - 1) {
+      setCurrentIndex(prev => prev + 1);
+      setQuestionStartTime(Date.now());
+      setQuestionRemainingTime(perQuestionTime);
+    } else {
+      handleFinishQuiz();
+    }
+    
+    setTimeout(() => {
+      isAutoAdvancing.current = false;
+    }, 100);
+  }, [currentQuestion, currentIndex, shuffledQuestions.length, perQuestionTime, answers, handleFinishQuiz]);
+
+  // Handle global time expired
   const handleTimeExpired = useCallback(async () => {
     setState("expired");
     
@@ -141,6 +214,42 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
     }
   }, [user, startTime, timeLimitSeconds, answers, shuffledQuestions, quiz, courseCode, saveQuizResult, onComplete]);
 
+  // Per-question countdown timer
+  useEffect(() => {
+    if (state !== "playing" || !questionStartTime || !usePerQuestionMode) return;
+    
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - questionStartTime) / 1000);
+      const remaining = Math.max(0, perQuestionTime - elapsed);
+      setQuestionRemainingTime(remaining);
+      
+      if (remaining <= 0) {
+        clearInterval(interval);
+        handleQuestionTimeout();
+      }
+    }, 100); // Update more frequently for smoother countdown
+    
+    return () => clearInterval(interval);
+  }, [state, questionStartTime, perQuestionTime, usePerQuestionMode, handleQuestionTimeout]);
+
+  // Global countdown timer (when not using per-question mode)
+  useEffect(() => {
+    if (state !== "playing" || !startTime || usePerQuestionMode) return;
+    
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      const remaining = Math.max(0, timeLimitSeconds - elapsed);
+      setRemainingTime(remaining);
+      
+      if (remaining <= 0) {
+        clearInterval(interval);
+        handleTimeExpired();
+      }
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [state, startTime, timeLimitSeconds, usePerQuestionMode, handleTimeExpired]);
+
   const handleSelectAnswer = useCallback((optionIndex: number) => {
     if (state === "review") return;
     if (currentQuestion) {
@@ -148,66 +257,31 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
     }
   }, [currentQuestion, state]);
 
-  const handleFinishQuiz = useCallback(async () => {
-    setState("results");
-    
-    // Save to database if user is logged in
-    if (user && startTime) {
-      setIsSaving(true);
-      const timeTaken = Math.round((Date.now() - startTime) / 1000);
-      const gradingData = getGradingData(answers, shuffledQuestions);
-      
-      // Convert shuffled questions back to original for saving
-      const originalQuestionsForSave = shuffledQuestions.map(sq => ({
-        id: sq.id,
-        question: sq.question,
-        options: sq.originalOptions,
-        correctAnswer: sq.originalCorrectAnswer,
-        explanation: sq.explanation,
-      }));
-      
-      // Convert shuffled answers to original indices
-      const originalAnswers: Record<string, number> = {};
-      gradingData.forEach(gd => {
-        if (gd.selectedAnswer >= 0) {
-          originalAnswers[gd.questionId] = gd.selectedAnswer;
-        }
-      });
-      
-      await saveQuizResult(
-        {
-          quiz_id: quiz.id,
-          course_code: courseCode,
-          score,
-          total_questions: shuffledQuestions.length,
-          passed,
-          time_taken_seconds: timeTaken,
-        },
-        originalQuestionsForSave as QuizQuestion[],
-        originalAnswers
-      );
-      
-      setIsSaving(false);
-    }
-    
-    onComplete?.(score, passed);
-  }, [user, startTime, quiz.id, courseCode, score, shuffledQuestions, passed, saveQuizResult, onComplete, answers]);
-
   const handleNext = useCallback(() => {
     setShowExplanation(false);
     if (currentIndex < shuffledQuestions.length - 1) {
       setCurrentIndex(prev => prev + 1);
+      // Reset per-question timer
+      if (usePerQuestionMode) {
+        setQuestionStartTime(Date.now());
+        setQuestionRemainingTime(perQuestionTime);
+      }
     } else {
       handleFinishQuiz();
     }
-  }, [currentIndex, shuffledQuestions.length, handleFinishQuiz]);
+  }, [currentIndex, shuffledQuestions.length, handleFinishQuiz, usePerQuestionMode, perQuestionTime]);
 
   const handlePrev = useCallback(() => {
     setShowExplanation(false);
     if (currentIndex > 0) {
       setCurrentIndex(prev => prev - 1);
+      // Reset per-question timer when going back
+      if (usePerQuestionMode) {
+        setQuestionStartTime(Date.now());
+        setQuestionRemainingTime(perQuestionTime);
+      }
     }
-  }, [currentIndex]);
+  }, [currentIndex, usePerQuestionMode, perQuestionTime]);
 
   const handleRestart = useCallback(() => {
     setAnswers({});
@@ -215,6 +289,8 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
     setShowExplanation(false);
     setStartTime(null);
     setRemainingTime(0);
+    setQuestionStartTime(null);
+    setQuestionRemainingTime(0);
     setIsSaving(false);
     setShuffledQuestions([]);
     setState("intro");
@@ -226,7 +302,7 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
     setState("review");
   }, []);
 
-  const answeredCount = Object.keys(answers).length;
+  const answeredCount = Object.keys(answers).filter(k => answers[k] !== -1).length;
   const progress = shuffledQuestions.length > 0 ? (answeredCount / shuffledQuestions.length) * 100 : 0;
   const timeLimitDisplay = quiz.timeLimitMinutes ?? getDefaultTimeLimit(originalQuestions.length);
 
@@ -234,6 +310,14 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
   const correctCount = useMemo(() => {
     return shuffledQuestions.filter(q => answers[q.id] === q.shuffledCorrectAnswer).length;
   }, [answers, shuffledQuestions]);
+
+  // Calculate progress ring offset for per-question timer
+  const progressRingOffset = useMemo(() => {
+    if (!usePerQuestionMode || perQuestionTime === 0) return 100;
+    const circumference = 2 * Math.PI * 16; // radius = 16
+    const progress = questionRemainingTime / perQuestionTime;
+    return circumference * (1 - progress);
+  }, [questionRemainingTime, perQuestionTime, usePerQuestionMode]);
 
   // No questions available
   if (originalQuestions.length === 0) {
@@ -332,9 +416,29 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
               <div className="text-muted-foreground">To Pass</div>
             </div>
             <div className="p-4 border border-border bg-muted/30">
-              <div className="text-2xl font-black text-neon-purple">{timeLimitDisplay}</div>
-              <div className="text-muted-foreground">Minutes</div>
+              <div className="text-2xl font-black text-neon-purple">
+                {usePerQuestionMode ? perQuestionTime : timeLimitDisplay}
+              </div>
+              <div className="text-muted-foreground">
+                {usePerQuestionMode ? "Sec/Q" : "Minutes"}
+              </div>
             </div>
+          </div>
+
+          {/* Timer mode notice */}
+          <div className="mb-6 p-4 border border-destructive/50 bg-destructive/5 text-sm">
+            <div className="flex items-center gap-2 text-destructive mb-2">
+              <Clock className="w-4 h-4" />
+              <span className="font-bold">
+                {usePerQuestionMode ? "Per-Question Timer" : "Timed Quiz"}
+              </span>
+            </div>
+            <p className="text-muted-foreground text-left">
+              {usePerQuestionMode 
+                ? `Each question has a ${perQuestionTime}-second time limit. Unanswered questions will auto-advance when time runs out.`
+                : `You have ${timeLimitDisplay} minutes to complete all questions.`
+              }
+            </p>
           </div>
 
           {/* Anti-cheat notice */}
@@ -449,7 +553,51 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
           <span className="text-xs font-bold uppercase tracking-wide px-3 py-1 bg-neon-purple/20 text-neon-purple border border-neon-purple/50">
             Review Mode
           </span>
+        ) : usePerQuestionMode ? (
+          // Per-question timer with circular progress
+          <div className="flex items-center gap-3">
+            <div className="relative w-12 h-12">
+              <svg className="w-12 h-12 transform -rotate-90">
+                {/* Background circle */}
+                <circle
+                  cx="24"
+                  cy="24"
+                  r="16"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  fill="none"
+                  className="text-muted"
+                />
+                {/* Progress circle */}
+                <circle
+                  cx="24"
+                  cy="24"
+                  r="16"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  fill="none"
+                  strokeDasharray={2 * Math.PI * 16}
+                  strokeDashoffset={progressRingOffset}
+                  strokeLinecap="round"
+                  className={cn(
+                    "transition-all duration-100",
+                    isTimeWarning ? "text-destructive" : "text-primary"
+                  )}
+                />
+              </svg>
+              <span className={cn(
+                "absolute inset-0 flex items-center justify-center text-sm font-black",
+                isTimeWarning ? "text-destructive animate-pulse" : "text-foreground"
+              )}>
+                {questionRemainingTime}
+              </span>
+            </div>
+            {isTimeWarning && (
+              <AlertTriangle className="w-5 h-5 text-destructive animate-pulse" />
+            )}
+          </div>
         ) : (
+          // Global timer
           <div className={cn(
             "flex items-center gap-2 px-3 py-1 text-sm font-bold transition-colors",
             isTimeWarning 
@@ -551,7 +699,15 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
           Previous
         </button>
 
-        {/* Removed "Check Answer" button for anti-cheat */}
+        {/* Per-question mode: show skip button */}
+        {state === "playing" && usePerQuestionMode && selectedAnswer === undefined && (
+          <button
+            onClick={handleNext}
+            className="px-4 py-2 text-sm font-bold text-muted-foreground hover:text-foreground border border-border hover:border-primary transition-colors"
+          >
+            Skip
+          </button>
+        )}
 
         {state === "review" && currentIndex === shuffledQuestions.length - 1 ? (
           <button onClick={handleRestart} className="btn-brutal inline-flex items-center gap-2">
@@ -561,10 +717,10 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
         ) : (
           <button
             onClick={handleNext}
-            disabled={state === "playing" && selectedAnswer === undefined}
+            disabled={state === "playing" && selectedAnswer === undefined && !usePerQuestionMode}
             className={cn(
               "flex items-center gap-2 px-4 py-2 font-bold transition-colors",
-              (state === "playing" && selectedAnswer === undefined)
+              (state === "playing" && selectedAnswer === undefined && !usePerQuestionMode)
                 ? "text-muted-foreground/50 cursor-not-allowed" 
                 : "btn-brutal"
             )}
