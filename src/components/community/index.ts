@@ -15,3 +15,5 @@ export { FeedGrid } from "./FeedGrid";
 export { ViewToggle } from "./ViewToggle";
 export { StreakBadge } from "./StreakBadge";
 export { Leaderboard } from "./Leaderboard";
+export { TimelinePost } from "./TimelinePost";
+export { CreatePostPrompt } from "./CreatePostPrompt";

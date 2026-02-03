@@ -28,6 +28,7 @@ import {
   ViewToggle,
   StreakBadge,
   Leaderboard,
+  CreatePostPrompt,
 } from "@/components/community";
 import { ViewMode } from "@/components/community/ViewToggle";
 import { useCommunityPosts, PostCategory, CommunityPost } from "@/hooks/useCommunityPosts";
@@ -45,7 +46,7 @@ export default function Community() {
   const [courseFilter, setCourseFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showGuidelines, setShowGuidelines] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [viewMode, setViewMode] = useState<ViewMode>('timeline');
   const [showFilters, setShowFilters] = useState(false);
   const [isSubmittingChallenge, setIsSubmittingChallenge] = useState(false);
 
@@ -73,14 +74,11 @@ export default function Community() {
     toggleLike, 
     toggleFollow,
     deletePost 
-  } = useCommunityPosts(
-    categoryFilter !== "all" 
-      ? { 
-          category: categoryFilter,
-          following_only: viewMode === 'following'
-        } 
-      : { following_only: viewMode === 'following' }
-  );
+  } = useCommunityPosts({
+    ...(categoryFilter !== "all" ? { category: categoryFilter } : {}),
+    following_only: viewMode === 'following',
+    include_comment_previews: viewMode === 'timeline',
+  });
 
   // Filter posts by search and course
   const filteredPosts = posts.filter(post => {
@@ -366,6 +364,16 @@ export default function Community() {
                 </Select>
               </div>
 
+              {/* Create post prompt (for timeline view) */}
+              {viewMode === 'timeline' && !showCreateForm && (
+                <CreatePostPrompt
+                  onOpen={() => {
+                    setIsSubmittingChallenge(false);
+                    setShowCreateForm(true);
+                  }}
+                />
+              )}
+
               {/* Create post form */}
               <AnimatePresence>
                 {showCreateForm && (
@@ -413,18 +421,27 @@ export default function Community() {
                     </Button>
                   )}
                 </div>
-              ) : viewMode === 'grid' || viewMode === 'following' ? (
+              ) : viewMode === 'timeline' ? (
                 <FeedGrid
                   posts={sortedPosts}
-                  variant={viewMode === 'following' ? 'feed' : 'grid'}
+                  variant="timeline"
+                  onLike={(postId) => toggleLike.mutate(postId)}
+                  onSave={(postId) => toggleFollow.mutate(postId)}
+                  onClick={(post) => setSelectedPost(post)}
+                />
+              ) : viewMode === 'grid' ? (
+                <FeedGrid
+                  posts={sortedPosts}
+                  variant="grid"
                   onLike={(postId) => toggleLike.mutate(postId)}
                   onClick={(post) => setSelectedPost(post)}
                 />
               ) : (
                 <FeedGrid
                   posts={sortedPosts}
-                  variant="feed"
+                  variant="timeline"
                   onLike={(postId) => toggleLike.mutate(postId)}
+                  onSave={(postId) => toggleFollow.mutate(postId)}
                   onClick={(post) => setSelectedPost(post)}
                 />
               )}
