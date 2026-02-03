@@ -1,221 +1,171 @@
 
-# Paid Access & 3-Day Trial Implementation
+# Mandatory Assessment Requirement Implementation
 
 ## Overview
 
-This plan implements paid access control for courses with a 3-day free trial. Users will only be able to access courses if they have an active subscription OR are within their trial period.
+This plan adds a requirement for new users to complete the entry assessment before accessing any protected content in the app. Users who haven't taken the assessment will be redirected to the `/assessment` page.
 
-## Current State
+## Current Flow
 
-- Profiles have a `membership_tier` field but no subscription status
-- No payment integration exists
-- Anyone with an account can enroll in courses
-- No trial tracking mechanism
-
-## Database Changes
-
-### 1. Add Subscription Fields to Profiles Table
-
-```sql
-ALTER TABLE public.profiles
-ADD COLUMN subscription_status text DEFAULT 'trial'
-  CHECK (subscription_status IN ('trial', 'active', 'cancelled', 'expired')),
-ADD COLUMN trial_started_at timestamptz DEFAULT now(),
-ADD COLUMN trial_ends_at timestamptz DEFAULT (now() + interval '3 days'),
-ADD COLUMN subscription_started_at timestamptz,
-ADD COLUMN subscription_ends_at timestamptz;
+```text
+Sign Up → Verify Email → Sign In → Redirect to /assessment (but can navigate away)
 ```
 
-Fields:
-- `subscription_status`: Current state of the subscription
-- `trial_started_at`: When the user started their trial
-- `trial_ends_at`: When the trial expires (3 days after signup)
-- `subscription_started_at`: When paid subscription began
-- `subscription_ends_at`: When paid subscription expires
+## Proposed Flow
 
-### 2. Create Access Check Function
-
-```sql
-CREATE OR REPLACE FUNCTION public.has_paid_access(_user_id uuid)
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT CASE 
-    WHEN _user_id IS NULL THEN false
-    ELSE EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE user_id = _user_id
-      AND (
-        -- Active paid subscription
-        (subscription_status = 'active' AND (subscription_ends_at IS NULL OR subscription_ends_at > now()))
-        OR
-        -- Within trial period
-        (subscription_status = 'trial' AND trial_ends_at > now())
-      )
-    )
-  END
-$$;
+```text
+Sign Up → Verify Email → Sign In → Forced to /assessment → Complete → Full access
 ```
 
-### 3. Update is_enrolled_student Function
+## Implementation Strategy
 
-Modify the existing function to also check for paid access:
+### Option A: Create an AssessmentRoute Component (Recommended)
 
-```sql
-CREATE OR REPLACE FUNCTION public.is_enrolled_student(_user_id uuid)
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT CASE 
-    WHEN _user_id IS NULL THEN false
-    ELSE (
-      -- Must have paid access (trial or subscription)
-      has_paid_access(_user_id)
-      AND
-      -- Must have at least one active enrollment
-      EXISTS (
-        SELECT 1 FROM public.enrollments
-        WHERE user_id = _user_id AND status = 'active'
-      )
-    )
-  END
-$$;
-```
+Create a new route wrapper that extends `ProtectedRoute` to also check if the user has completed the assessment. This is the cleanest approach since it's explicit about which routes require assessment completion.
 
-### 4. Update RLS on Enrollments Table
+### Changes Required
 
-Add policy to prevent enrollment without paid access:
+#### 1. Create AssessmentRequiredRoute Component
 
-```sql
--- Drop existing insert policy if any
-DROP POLICY IF EXISTS "Users can enroll in courses" ON public.enrollments;
-
--- New insert policy requiring paid access
-CREATE POLICY "Users with paid access can enroll"
-  ON public.enrollments FOR INSERT
-  WITH CHECK (
-    auth.uid() = user_id 
-    AND has_paid_access(auth.uid())
-  );
-```
-
-## Frontend Changes
-
-### 1. Create Subscription Hook
-
-New file: `src/hooks/useSubscription.ts`
+A new route component that:
+- First checks if user is logged in (like ProtectedRoute)
+- Then checks if user has completed assessment using `useAssessmentResults`
+- If not completed, redirects to `/assessment` with a toast notification
 
 ```typescript
-// Hook to manage subscription state and access checks
-export function useSubscription() {
-  // Fetches subscription status from profile
-  // Provides: isTrialing, isPaid, hasAccess, trialDaysRemaining
-  // Handles trial expiry warnings
+// src/components/auth/AssessmentRequiredRoute.tsx
+export function AssessmentRequiredRoute({ children }) {
+  const { user, loading: authLoading } = useAuth();
+  const { hasCompletedAssessment, loading: assessmentLoading } = useAssessmentResults();
+  
+  if (!user) → redirect to /auth
+  if (!hasCompletedAssessment) → redirect to /assessment with toast
+  return children
 }
 ```
 
-### 2. Create PaidRoute Component
+#### 2. Update Route Wrappers in App.tsx
 
-New file: `src/components/auth/PaidRoute.tsx`
+Replace `ProtectedRoute` with `AssessmentRequiredRoute` for routes that should require assessment completion:
+
+| Route | Current | New |
+|-------|---------|-----|
+| `/student` | `ProtectedRoute` | `AssessmentRequiredRoute` |
+| `/student/profile` | `ProtectedRoute` | `AssessmentRequiredRoute` |
+| `/student/grades` | `ProtectedRoute` | `AssessmentRequiredRoute` |
+| `/community` | `ProtectedRoute` | `AssessmentRequiredRoute` |
+
+The `/assessment` route stays as `ProtectedRoute` (not `AssessmentRequiredRoute`) to avoid redirect loops.
+
+#### 3. Update PaidRoute to Also Check Assessment
+
+Modify `PaidRoute` to include assessment check before the paid access check:
 
 ```typescript
-// Similar to ProtectedRoute but also checks for paid access
-// Redirects to /enrollment if no active subscription or trial
+// Updated flow:
+1. Check user is logged in
+2. Check assessment is completed → redirect to /assessment if not
+3. Check paid access → redirect to /enrollment if not
 ```
 
-### 3. Update Course Pages
+This ensures course pages also require assessment completion.
 
-| File | Change |
-|------|--------|
-| `src/App.tsx` | Wrap course-related routes with `PaidRoute` |
-| `src/pages/CourseDetail.tsx` | Show subscription required message if no access |
-| `src/pages/Academics.tsx` | Show upgrade banner for trial/non-paid users |
+#### 4. Clean Up Auth.tsx Redirect Logic
 
-### 4. Add Trial Banner Component
-
-New file: `src/components/subscription/TrialBanner.tsx`
-
-Displays:
-- Trial days remaining for trial users
-- Upgrade prompt when trial is about to expire
-- Expired trial message with CTA to subscribe
-
-### 5. Update Enrollment Flow
-
-| File | Change |
-|------|--------|
-| `src/hooks/useEnrollments.ts` | Check paid access before allowing enrollment |
-| `src/components/course/EnrollmentCard.tsx` | Show subscription required if no access |
-
-## User Experience Flow
-
-```text
-1. New User Signs Up
-   └── Profile created with subscription_status = 'trial'
-   └── trial_ends_at = now() + 3 days
-   
-2. During Trial (3 days)
-   └── Full access to all course content
-   └── Trial banner shows days remaining
-   
-3. Trial Expires
-   └── subscription_status remains 'trial'
-   └── trial_ends_at is in the past
-   └── has_paid_access() returns false
-   └── User redirected to /enrollment
-   
-4. User Subscribes
-   └── subscription_status = 'active'
-   └── subscription_started_at = now()
-   └── subscription_ends_at set based on plan
-```
+The existing redirect logic in `Auth.tsx` can remain as a helpful first-time redirect, but the route guards will now enforce the requirement globally.
 
 ## Files to Create
 
 | File | Purpose |
 |------|---------|
-| `src/hooks/useSubscription.ts` | Subscription state management |
-| `src/components/auth/PaidRoute.tsx` | Route protection for paid content |
-| `src/components/subscription/TrialBanner.tsx` | Trial status display |
-| `src/components/subscription/SubscriptionGate.tsx` | Paywall component |
-| `supabase/migrations/xxx_add_subscription_fields.sql` | Database changes |
+| `src/components/auth/AssessmentRequiredRoute.tsx` | New route guard requiring assessment |
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/App.tsx` | Add PaidRoute wrapper to course routes |
-| `src/pages/CourseDetail.tsx` | Add subscription check and paywall |
-| `src/pages/Academics.tsx` | Add trial/subscription banner |
-| `src/hooks/useEnrollments.ts` | Add paid access check |
-| `src/hooks/useProfile.ts` | Include subscription fields |
+| `src/App.tsx` | Update routes to use AssessmentRequiredRoute |
+| `src/components/auth/PaidRoute.tsx` | Add assessment check |
+| `src/components/auth/index.ts` | Export new component |
 
-## Future Payment Integration
+## User Experience
 
-This plan prepares the data model for Stripe integration. When ready:
+1. **New user signs up** → Email verified → Logs in
+2. **Tries to access /student** → Redirected to /assessment with message "Please complete your entry assessment first"
+3. **Completes assessment** → Can now access all protected content
+4. **Existing users** who completed assessment → No change, normal access
 
-1. Enable Stripe connector
-2. Create checkout flow
-3. Add webhook to update `subscription_status` and dates
-4. Handle subscription renewal and cancellation
+## Edge Cases Handled
 
-## Security Considerations
+- Direct URL access to protected routes → Redirected to assessment
+- Browser back button after assessment redirect → Assessment page shown
+- Returning users who already completed → Normal access
+- Assessment page itself → Uses ProtectedRoute, not AssessmentRequiredRoute (prevents loop)
 
-- `has_paid_access()` uses `SECURITY DEFINER` to prevent RLS bypass
-- Enrollment RLS policy enforces paid access at database level
-- Trial dates are set server-side to prevent manipulation
-- Subscription status can only be updated by backend/admin
+## Technical Details
 
-## Technical Notes
+### AssessmentRequiredRoute Component
 
-- Trial period is set to 3 days as requested
-- Trial starts automatically at profile creation
-- No payment method required for trial
-- Access is blocked immediately when trial expires
-- Admins/moderators bypass paid access checks for testing
+```typescript
+import { Navigate, useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useAssessmentResults } from "@/hooks/useAssessmentResults";
+import { useToast } from "@/hooks/use-toast";
+import { useEffect, useRef } from "react";
+
+interface AssessmentRequiredRouteProps {
+  children: React.ReactNode;
+}
+
+export function AssessmentRequiredRoute({ children }: AssessmentRequiredRouteProps) {
+  const { user, loading: authLoading } = useAuth();
+  const { hasCompletedAssessment, loading: assessmentLoading } = useAssessmentResults();
+  const location = useLocation();
+  const { toast } = useToast();
+  const hasShownToast = useRef(false);
+
+  const loading = authLoading || assessmentLoading;
+
+  useEffect(() => {
+    if (!loading && user && !hasCompletedAssessment && !hasShownToast.current) {
+      hasShownToast.current = true;
+      toast({
+        title: "Assessment Required",
+        description: "Please complete your entry assessment to continue.",
+      });
+    }
+  }, [loading, user, hasCompletedAssessment, toast]);
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  if (!user) {
+    return <Navigate to="/auth" state={{ from: location }} replace />;
+  }
+
+  if (!hasCompletedAssessment) {
+    return <Navigate to="/assessment" state={{ from: location }} replace />;
+  }
+
+  return <>{children}</>;
+}
+```
+
+### Updated PaidRoute
+
+```typescript
+export function PaidRoute({ children }: PaidRouteProps) {
+  const { user, loading: authLoading } = useAuth();
+  const { hasCompletedAssessment, loading: assessmentLoading } = useAssessmentResults();
+  const { hasAccess, loading: subLoading } = useSubscription();
+  
+  // ... loading state ...
+  
+  if (!user) → redirect to /auth
+  if (!hasCompletedAssessment) → redirect to /assessment  
+  if (!hasAccess) → redirect to /enrollment
+  
+  return children
+}
+```
