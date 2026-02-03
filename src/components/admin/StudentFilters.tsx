@@ -10,7 +10,7 @@ import { Search } from "lucide-react";
 
 export type SubscriptionFilter = "all" | "trial" | "active" | "expired";
 export type TierFilter = "all" | "freshman" | "sophomore" | "graduate";
-export type RoleFilter = "all" | "admin" | "moderator" | "student";
+export type RoleFilter = "all" | "admin" | "professor" | "moderator" | "student";
 export type SortOption = "newest" | "oldest" | "name-asc" | "name-desc" | "quiz-rate" | "courses";
 
 interface StudentFiltersProps {
@@ -81,6 +81,7 @@ export function StudentFilters({
         <SelectContent>
           <SelectItem value="all">All Roles</SelectItem>
           <SelectItem value="admin">Admin</SelectItem>
+          <SelectItem value="professor">Professor</SelectItem>
           <SelectItem value="moderator">Moderator</SelectItem>
           <SelectItem value="student">Student</SelectItem>
         </SelectContent>

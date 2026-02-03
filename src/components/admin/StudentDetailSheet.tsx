@@ -111,6 +111,8 @@ export function StudentDetailSheet({
     switch (role) {
       case "admin":
         return "destructive";
+      case "professor":
+        return "default";
       case "moderator":
         return "secondary";
       default:
