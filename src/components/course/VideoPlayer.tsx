@@ -1,10 +1,11 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import { Play, Volume2, Maximize, Settings, CheckCircle2 } from "lucide-react";
+import { Play, Volume2, Maximize, Settings, CheckCircle2, RotateCcw } from "lucide-react";
 import Player from "@vimeo/player";
 import type { Lesson } from "@/data/courses";
 import { getVideoType, getYouTubeId, getVimeoId, getYouTubeEmbedUrl, getVimeoEmbedUrl } from "@/lib/videoUtils";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface VideoPlayerProps {
   lesson: Lesson;
@@ -31,6 +32,8 @@ export function VideoPlayer({
   const vimeoPlayerRef = useRef<Player | null>(null);
   const youtubeIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [hasSetInitialTime, setHasSetInitialTime] = useState(false);
+  const [showResumeIndicator, setShowResumeIndicator] = useState(false);
+  const resumeIndicatorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Format seconds to MM:SS
   const formatTime = (seconds: number) => {
@@ -55,6 +58,11 @@ export function VideoPlayer({
     if (initialTime > 0 && !hasSetInitialTime) {
       videoRef.current.currentTime = initialTime;
       setHasSetInitialTime(true);
+      // Show resume indicator
+      setShowResumeIndicator(true);
+      resumeIndicatorTimeoutRef.current = setTimeout(() => {
+        setShowResumeIndicator(false);
+      }, 4000);
     }
   }, [initialTime, hasSetInitialTime]);
 
@@ -85,6 +93,11 @@ export function VideoPlayer({
             if (initialTime > 0 && !hasSetInitialTime) {
               event.target.seekTo(initialTime, true);
               setHasSetInitialTime(true);
+              // Show resume indicator
+              setShowResumeIndicator(true);
+              resumeIndicatorTimeoutRef.current = setTimeout(() => {
+                setShowResumeIndicator(false);
+              }, 4000);
             }
             // Start polling for progress
             youtubeIntervalRef.current = setInterval(() => {
@@ -125,6 +138,11 @@ export function VideoPlayer({
     if (initialTime > 0 && !hasSetInitialTime) {
       player.setCurrentTime(initialTime).then(() => {
         setHasSetInitialTime(true);
+        // Show resume indicator
+        setShowResumeIndicator(true);
+        resumeIndicatorTimeoutRef.current = setTimeout(() => {
+          setShowResumeIndicator(false);
+        }, 4000);
       });
     }
 
@@ -138,10 +156,45 @@ export function VideoPlayer({
     };
   }, [videoType, onProgress, initialTime, hasSetInitialTime]);
 
-  // Reset hasSetInitialTime when lesson changes
+  // Reset states when lesson changes
   useEffect(() => {
     setHasSetInitialTime(false);
+    setShowResumeIndicator(false);
+    if (resumeIndicatorTimeoutRef.current) {
+      clearTimeout(resumeIndicatorTimeoutRef.current);
+    }
   }, [lesson.id]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (resumeIndicatorTimeoutRef.current) {
+        clearTimeout(resumeIndicatorTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const renderResumeIndicator = () => {
+    if (!showResumeIndicator || initialTime <= 0) return null;
+
+    return (
+      <AnimatePresence>
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          className="absolute top-4 left-1/2 -translate-x-1/2 z-10"
+        >
+          <div className="flex items-center gap-2 px-4 py-2 bg-primary border-2 border-primary-foreground/20 shadow-lg">
+            <RotateCcw className="w-4 h-4 text-primary-foreground animate-spin" style={{ animationDuration: '2s' }} />
+            <span className="text-sm font-bold text-primary-foreground">
+              Resuming from {formatTime(initialTime)}
+            </span>
+          </div>
+        </motion.div>
+      </AnimatePresence>
+    );
+  };
 
   const renderProgressOverlay = () => {
     if (!onProgress) return null;
@@ -157,11 +210,6 @@ export function VideoPlayer({
             <CheckCircle2 className="w-4 h-4 text-accent" />
           )}
         </div>
-        {initialTime > 0 && watchPercentage > 0 && watchPercentage < 90 && (
-          <div className="text-xs text-muted-foreground mt-1">
-            Resuming from {formatTime(initialTime)}
-          </div>
-        )}
       </div>
     );
   };
@@ -182,6 +230,7 @@ export function VideoPlayer({
             allowFullScreen
             title={lesson.title}
           />
+          {renderResumeIndicator()}
           {renderProgressOverlay()}
         </div>
       );
@@ -202,6 +251,7 @@ export function VideoPlayer({
             allowFullScreen
             title={lesson.title}
           />
+          {renderResumeIndicator()}
           {renderProgressOverlay()}
         </div>
       );
@@ -225,6 +275,7 @@ export function VideoPlayer({
           <source src={url} />
           Your browser does not support the video tag.
         </video>
+        {renderResumeIndicator()}
         {renderProgressOverlay()}
       </div>
     );
