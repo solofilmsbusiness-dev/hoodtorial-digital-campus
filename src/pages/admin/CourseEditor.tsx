@@ -229,6 +229,8 @@ export default function CourseEditor() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-courses"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-course", form.code] });
+      queryClient.invalidateQueries({ queryKey: ["course-status"] });
       toast({ title: isNew ? "Course created" : "Course updated" });
       if (isNew) {
         navigate(`/admin/courses/${form.code}`);
@@ -421,6 +423,15 @@ export default function CourseEditor() {
         {/* Modules Section */}
         {!isNew && dbCourse && (
           <ModulesSection courseId={dbCourse.id} />
+        )}
+
+        {/* Prompt to save before adding modules */}
+        {!isNew && !dbCourse && !isLoading && (
+          <Card>
+            <CardContent className="py-8 text-center text-muted-foreground">
+              <p>Save the course first to add modules and lessons.</p>
+            </CardContent>
+          </Card>
         )}
       </div>
     </AdminLayout>
