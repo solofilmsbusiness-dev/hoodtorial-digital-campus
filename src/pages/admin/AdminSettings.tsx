@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { SiteCustomization } from "@/components/admin/SiteCustomization";
 
 type DisplayDensity = "comfortable" | "compact" | "cozy";
 
@@ -88,6 +89,9 @@ export default function AdminSettings() {
   return (
     <AdminLayout title="Settings" description="Configure your admin preferences">
       <div className="grid gap-6 max-w-2xl">
+        {/* Site Customization - Login Page Media */}
+        <SiteCustomization />
+
         {/* Appearance Settings */}
         <Card>
           <CardHeader>
