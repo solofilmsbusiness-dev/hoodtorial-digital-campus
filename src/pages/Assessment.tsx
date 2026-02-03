@@ -5,14 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageLayout } from "@/components/layout";
-import { InterestCard, ExperienceCard, ResultsChart, ScoreComparison, RecommendedCoursesProgress } from "@/components/assessment";
+import { InterestCard, ExperienceCard, ResultsChart, ScoreComparison, RoadmapDisplay } from "@/components/assessment";
 import {
   assessmentQuestions,
   departmentInfo,
   experienceLevels,
   type AssessmentQuestion,
 } from "@/data/quizzes/assessment";
-import { useAssessmentResults } from "@/hooks/useAssessmentResults";
+import { useAssessmentResults, type LearningRoadmap } from "@/hooks/useAssessmentResults";
 import { courses } from "@/data/courses";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
@@ -34,7 +34,7 @@ interface ShuffledAssessmentQuestion extends ShuffledQuestion {
 export default function Assessment() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { saveAssessmentResult, latestResult, hasCompletedAssessment, loading: resultsLoading } = useAssessmentResults();
+  const { saveAssessmentResult, latestResult, latestRoadmap, hasCompletedAssessment, calculateRoadmap, loading: resultsLoading } = useAssessmentResults();
 
   const [step, setStep] = useState<Step>("welcome");
   const [interests, setInterests] = useState<string[]>([]);
@@ -50,26 +50,25 @@ export default function Assessment() {
     departmentScores: Record<string, number>;
     totalScore: number;
     recommendedCourses: string[];
+    roadmap: LearningRoadmap | null;
   } | null>(null);
 
-  // Filter questions based on selected interests (5-6 per department)
+  // Adaptive question selection: 2 beginner, 3 intermediate, 1 advanced per department
   const baseQuestions = useMemo(() => {
-    const questionsPerDepartment: Record<string, AssessmentQuestion[]> = {};
-
-    assessmentQuestions.forEach((q) => {
-      if (interests.includes(q.department)) {
-        if (!questionsPerDepartment[q.department]) {
-          questionsPerDepartment[q.department] = [];
-        }
-        questionsPerDepartment[q.department].push(q);
-      }
-    });
-
-    // Take 5-6 questions per selected interest
     const selected: AssessmentQuestion[] = [];
-    Object.values(questionsPerDepartment).forEach((deptQuestions) => {
-      const shuffled = shuffleArray(deptQuestions);
-      selected.push(...shuffled.slice(0, 6));
+
+    interests.forEach((dept) => {
+      const deptQuestions = assessmentQuestions.filter((q) => q.department === dept);
+      
+      // Group by difficulty
+      const beginner = shuffleArray(deptQuestions.filter((q) => q.difficulty === "beginner"));
+      const intermediate = shuffleArray(deptQuestions.filter((q) => q.difficulty === "intermediate"));
+      const advanced = shuffleArray(deptQuestions.filter((q) => q.difficulty === "advanced"));
+
+      // Progressive selection: 2 easy, 3 medium, 1 hard = 6 questions per department
+      selected.push(...beginner.slice(0, 2));
+      selected.push(...intermediate.slice(0, 3));
+      selected.push(...advanced.slice(0, 1));
     });
 
     return selected;
@@ -147,10 +146,12 @@ export default function Assessment() {
       console.error("Failed to save assessment:", error);
     }
 
+    const roadmap = calculateRoadmap(results.departmentScores, interests, experienceLevel);
     setFinalResults({
       departmentScores: results.departmentScores,
       totalScore: results.totalScore,
       recommendedCourses: data?.recommended_courses || [],
+      roadmap,
     });
   }, [interests, experienceLevel, timeLimitSeconds]);
 
@@ -227,10 +228,12 @@ export default function Assessment() {
       console.error("Failed to save assessment:", error);
     }
 
+    const roadmap = calculateRoadmap(departmentScores, interests, experienceLevel);
     setFinalResults({
       departmentScores,
       totalScore,
       recommendedCourses: data?.recommended_courses || [],
+      roadmap,
     });
     setStep("results");
   };
@@ -330,6 +333,7 @@ export default function Assessment() {
                           departmentScores: latestResult.department_scores as Record<string, number>,
                           totalScore: latestResult.total_score,
                           recommendedCourses: latestResult.recommended_courses,
+                          roadmap: latestRoadmap,
                         });
                         setStep("results");
                       }}
@@ -633,7 +637,7 @@ export default function Assessment() {
               </CardContent>
             </Card>
 
-            <RecommendedCoursesProgress recommendedCourses={finalResults.recommendedCourses} />
+            {finalResults.roadmap && <RoadmapDisplay roadmap={finalResults.roadmap} />}
 
             <div className="space-y-4">
               <h3 className="text-xl font-semibold">Recommended Courses for You</h3>
@@ -716,7 +720,7 @@ export default function Assessment() {
             )}
 
             {/* Learning Progress Indicator */}
-            <RecommendedCoursesProgress recommendedCourses={finalResults.recommendedCourses} />
+            {finalResults.roadmap && <RoadmapDisplay roadmap={finalResults.roadmap} />}
 
             <div className="space-y-4">
               <h3 className="text-xl font-semibold">Recommended Courses for You</h3>
