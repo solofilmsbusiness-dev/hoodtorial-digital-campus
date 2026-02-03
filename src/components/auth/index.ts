@@ -2,3 +2,7 @@ export { ProtectedRoute } from "./ProtectedRoute";
 export { AdminRoute } from "./AdminRoute";
 export { PaidRoute } from "./PaidRoute";
 export { AssessmentRequiredRoute } from "./AssessmentRequiredRoute";
+export { FilmCountdown } from "./FilmCountdown";
+export { FilmOverlay } from "./FilmOverlay";
+export { RotatingQuotes } from "./RotatingQuotes";
+export { SocialProof } from "./SocialProof";
