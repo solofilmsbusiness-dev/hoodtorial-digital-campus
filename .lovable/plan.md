@@ -1,151 +1,254 @@
 
+# Full Admin Course Content Management
 
-# Fix: Admin Student Quiz View and Course Status Toggles
-
-## Issues Identified
-
-### Issue 1: Course Status Toggles Not Working
-
-**Root Cause**: The `courses` table in the database is **empty**. The `CourseManager` page has a fallback that displays courses from static data (`src/data/courses.ts`) when no database records exist. However, when you click the toggle buttons, they try to update records in the database using the course `id` - but since no records exist, the update silently fails.
-
-The code attempts:
-```typescript
-const { error } = await supabase
-  .from("courses")
-  .update({ is_published })
-  .eq("id", id);  // This ID doesn't exist in the database
-```
-
-Since the courses are from static data, the `id` being used is actually the course code (e.g., `HU-101`), but there's no corresponding row in the database to update.
-
-**Solution**: Seed the database with course data from the static courses file. This will populate the `courses` table so that toggles work correctly. Additionally, we should show a clearer error when toggles fail.
+## Overview
+Enable complete administrative control over all course content including modules, lessons (with video embedding), and quiz questions. Admins will be able to create, edit, delete, and regenerate quiz questions for any course.
 
 ---
 
-### Issue 2: Admin Student Quiz View Error
+## Current State Analysis
 
-**Root Cause**: The quiz results display in `StudentDetailSheet.tsx` relies on `getQuizQuestions(result.quiz_id)` to fetch question details. The quiz questions are stored in static files organized by course/department. If a `quiz_id` format doesn't match the expected key in `quizQuestions` record, the function returns an empty array.
+### What Works Now
+- Module creation, editing, deletion, and reordering
+- Lesson creation with title, type, duration, and video URL
+- Video embedding support (YouTube, Vimeo, direct URLs)
 
-Looking at the code:
-```typescript
-const quizQuestions = getQuizQuestions(result.quiz_id);
-const resultAnswers = answersByResultId[result.id] || [];
-
-// If quizQuestions is empty, questions won't be found
-const question = quizQuestions.find((q) => q.id === answer.questionId);
-return {
-  questionText: question?.question || "Question not found",
-  // ...
-};
-```
-
-The issue could be:
-1. The `quiz_id` stored in the database doesn't match keys in `quizQuestions` record
-2. The `quiz_answers` table is empty (answers were saved before answer tracking was enabled)
-3. Question IDs don't match between what was saved and what's in static data
-
-**Solution**: 
-1. Add better handling for missing question data
-2. Add a fallback message when question details can't be found
-3. Ensure quiz IDs are consistent between database and static data
+### Current Limitations
+1. **Quizzes are static**: All quiz questions are stored in `src/data/quizzes/*.ts` files - not editable through admin panel
+2. **No quiz management**: Cannot add/remove/edit questions from admin
+3. **No database-backed quizzes**: No `quizzes` or `quiz_questions` tables exist
+4. **Module quizzes not linked**: Database modules don't have quiz associations
+5. **Lesson content field unused**: The `content` field in lessons exists but isn't editable in the dialog
 
 ---
 
 ## Implementation Plan
 
-### Phase 1: Seed Courses Database (Fixes Toggle Issue)
+### Phase 1: Database Schema - Quiz Tables
 
-Create a migration to populate the `courses` table from static data. This needs to be done once to enable course management features.
-
-**Files to modify**:
-- Create database seed migration with all courses from `src/data/courses.ts`
-
-**Alternatively** - Add an "Initialize Courses" button in CourseManager:
-- When clicked, inserts all static courses into the database
-- One-time action that enables full course management
-
-### Phase 2: Improve CourseManager Toggle Error Handling
-
-**File**: `src/pages/admin/CourseManager.tsx`
-
-Changes:
-1. Add proper error feedback when toggle fails
-2. Show explicit message that courses need to be seeded
-3. Add "Seed Courses" button when using static data
-
-```typescript
-// Better error handling for mutations
-onError: (error) => {
-  console.error("Toggle error:", error);
-  toast({ 
-    title: "Failed to update course", 
-    description: "Courses may need to be initialized in the database first.",
-    variant: "destructive" 
-  });
-},
+**New Table: `quizzes`**
+```sql
+CREATE TABLE public.quizzes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  module_id UUID REFERENCES public.modules(id) ON DELETE CASCADE,
+  course_id UUID REFERENCES public.courses(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  passing_score INTEGER NOT NULL DEFAULT 80,
+  time_limit_minutes INTEGER DEFAULT NULL,
+  is_final_exam BOOLEAN DEFAULT false,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
 ```
 
-### Phase 3: Fix Quiz Question Display
-
-**File**: `src/hooks/useAdminQuizManagement.ts`
-
-Changes:
-1. Add better null checking for question lookups
-2. Log warnings when questions aren't found
-3. Provide meaningful fallback data
-
-```typescript
-const answersWithDetails = resultAnswers.map((answer) => {
-  const question = quizQuestions.find((q) => q.id === answer.questionId);
-  
-  if (!question) {
-    console.warn(`Question not found: ${answer.questionId} in quiz ${result.quiz_id}`);
-  }
-  
-  return {
-    questionId: answer.questionId,
-    questionText: question?.question || `Question ${answer.questionId} (data not available)`,
-    options: question?.options || [],
-    selectedAnswer: answer.selectedAnswer,
-    correctAnswer: question?.correctAnswer ?? -1,
-    isCorrect: answer.isCorrect,
-  };
-});
+**New Table: `quiz_questions`**
+```sql
+CREATE TABLE public.quiz_questions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  quiz_id UUID REFERENCES public.quizzes(id) ON DELETE CASCADE NOT NULL,
+  question TEXT NOT NULL,
+  options JSONB NOT NULL DEFAULT '[]',
+  correct_answer INTEGER NOT NULL,
+  explanation TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
 ```
 
-### Phase 4: Add Course Seeding Functionality
+**RLS Policies**: Admin-only CRUD, students can view
 
-**File**: `src/pages/admin/CourseManager.tsx`
+---
 
-Add a button to seed courses when database is empty:
+### Phase 2: Enhanced Lesson Dialog
 
-```typescript
-const seedCourses = useMutation({
-  mutationFn: async () => {
-    const coursesToInsert = staticCourses.map((c) => ({
-      code: c.code,
-      title: c.title,
-      department_id: c.departmentId,
-      credits: c.credits,
-      level: c.level,
-      description: c.description,
-      is_published: true,
-      is_locked: false,
-      sort_order: 0,
-    }));
-    
-    const { error } = await supabase
-      .from("courses")
-      .insert(coursesToInsert);
-      
-    if (error) throw error;
-  },
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ["admin-courses"] });
-    toast({ title: "Courses initialized successfully!" });
-  },
-});
+Expand the existing `LessonDialog` to include:
+
+1. **Rich Content Editor** for reading/practice lessons
+2. **Video Preview** when URL is entered
+3. **Content field** for text-based lessons
+
+```text
++--------------------------------------------------+
+|              EDIT LESSON                          |
++--------------------------------------------------+
+| Title: [Introduction to Lighting                ]|
++--------------------------------------------------+
+| Type: [Video ▼]     Duration: [12 min          ]|
++--------------------------------------------------+
+| Video URL:                                        |
+| [https://youtube.com/watch?v=abc123             ]|
+|                                                   |
+| Preview:                                          |
+| +----------------------------------------------+ |
+| |  [YouTube Video Thumbnail/Embed]              | |
+| +----------------------------------------------+ |
++--------------------------------------------------+
+| Description:                                      |
+| [Learn the fundamentals of three-point lighting ]|
+| [and how to create depth with shadows...       ]|
++--------------------------------------------------+
+|                          [Cancel]  [Save Lesson] |
++--------------------------------------------------+
 ```
+
+---
+
+### Phase 3: Quiz Management in Module Editor
+
+Add quiz section to each module with full CRUD:
+
+```text
++--------------------------------------------------+
+| Module 1: Getting Started with iPhone Cinema     |
++--------------------------------------------------+
+| LESSONS:                                          |
+|   [≡] Video: Why iPhone for Filmmaking? (12 min) |
+|   [≡] Video: Essential Camera Settings (18 min)  |
+|   [+ Add Lesson]                                  |
+|                                                   |
+| MODULE QUIZ:                                      |
+|   Settings Quiz • 5 questions • 80% to pass      |
+|   [Edit Quiz] [Manage Questions]                  |
+|                                                   |
+|   OR if no quiz:                                  |
+|   [+ Add Quiz]                                    |
++--------------------------------------------------+
+```
+
+---
+
+### Phase 4: Quiz Editor Dialog
+
+Full quiz configuration:
+
+```text
++--------------------------------------------------+
+|              EDIT QUIZ                            |
++--------------------------------------------------+
+| Title: [Settings Quiz                           ]|
++--------------------------------------------------+
+| Passing Score: [80]%    Time Limit: [5] minutes  |
++--------------------------------------------------+
+|                          [Cancel]    [Save Quiz] |
++--------------------------------------------------+
+```
+
+---
+
+### Phase 5: Question Manager
+
+Dedicated interface for managing quiz questions:
+
+```text
++--------------------------------------------------+
+|    MANAGE QUESTIONS: Settings Quiz               |
++--------------------------------------------------+
+| Questions (5)                    [+ Add Question]|
+|                                  [Generate AI ▼] |
++--------------------------------------------------+
+| 1. What is the recommended frame rate for...     |
+|    [A] 30fps  [B] 24fps ✓  [C] 60fps  [D] 120fps|
+|    Explanation: 24fps is the standard...         |
+|    [Edit] [Delete] [↑] [↓]                       |
++--------------------------------------------------+
+| 2. Which iPhone camera setting controls...       |
+|    [A] ISO  [B] Shutter  [C] Exposure ✓  [D] WB |
+|    [Edit] [Delete] [↑] [↓]                       |
++--------------------------------------------------+
+| 3. What does 4K resolution refer to?             |
+|    ... (collapsed)                               |
++--------------------------------------------------+
+```
+
+---
+
+### Phase 6: Question Editor Dialog
+
+Add/edit individual questions:
+
+```text
++--------------------------------------------------+
+|           ADD/EDIT QUESTION                       |
++--------------------------------------------------+
+| Question:                                         |
+| [What is the recommended frame rate for         ]|
+| [cinematic footage on iPhone?                   ]|
++--------------------------------------------------+
+| Options:                                          |
+|   [A] [30fps                    ] [ ]            |
+|   [B] [24fps                    ] [●] Correct    |
+|   [C] [60fps                    ] [ ]            |
+|   [D] [120fps                   ] [ ]            |
+|   [+ Add Option]                                  |
++--------------------------------------------------+
+| Explanation (shown after answer):                 |
+| [24fps is the standard cinematic frame rate,    ]|
+| [giving footage that classic film look.         ]|
++--------------------------------------------------+
+|                        [Cancel]  [Save Question] |
++--------------------------------------------------+
+```
+
+---
+
+### Phase 7: AI Question Generation
+
+Generate questions using AI based on lesson content:
+
+```text
++--------------------------------------------------+
+|         GENERATE QUIZ QUESTIONS                   |
++--------------------------------------------------+
+| Topic: [iPhone Cinematography Settings          ]|
++--------------------------------------------------+
+| Number of questions: [5]                          |
+| Difficulty: [Beginner ▼]                          |
++--------------------------------------------------+
+| Context (optional):                               |
+| [Focus on frame rates, exposure, and resolution ]|
++--------------------------------------------------+
+|                     [Cancel]  [Generate Questions]|
++--------------------------------------------------+
+```
+
+After generation, questions appear in a preview where admin can:
+- Edit each question before saving
+- Remove unwanted questions
+- Regenerate individual questions
+
+---
+
+### Phase 8: Final Exam Management
+
+Add course-level final exam in CourseEditor:
+
+```text
++--------------------------------------------------+
+| FINAL EXAM                                        |
++--------------------------------------------------+
+| ☑ This course has a final exam                   |
+|                                                   |
+| Final Exam: iPhone Cinematography                |
+| 20 questions • 75% to pass • 20 min time limit   |
+| [Edit Exam] [Manage Questions]                    |
++--------------------------------------------------+
+```
+
+---
+
+## Data Migration Strategy
+
+### Option A: Seed from Static (One-Time)
+Create a migration script to import existing questions from static files into the new database tables. This preserves all 1,500+ existing questions.
+
+### Option B: Hybrid Approach
+- Keep static files as fallback
+- Database questions take priority
+- Gradually migrate as admins edit
+
+**Recommended**: Option A with backup - import all static data, keep static files as reference only.
 
 ---
 
@@ -153,17 +256,50 @@ const seedCourses = useMutation({
 
 | File | Action | Description |
 |------|--------|-------------|
-| `src/pages/admin/CourseManager.tsx` | Modify | Add seed courses button and better error handling |
-| `src/hooks/useAdminQuizManagement.ts` | Modify | Improve question lookup and error handling |
-| `src/components/admin/StudentDetailSheet.tsx` | Modify | Add better fallback for missing question data |
+| `supabase/migrations/xxx.sql` | Create | quizzes and quiz_questions tables |
+| `src/hooks/useAdminQuizContent.ts` | Create | Quiz CRUD operations |
+| `src/components/admin/QuizDialog.tsx` | Create | Quiz editor dialog |
+| `src/components/admin/QuestionDialog.tsx` | Create | Question editor dialog |
+| `src/components/admin/QuestionManager.tsx` | Create | Question list management |
+| `src/components/admin/QuizSection.tsx` | Create | Quiz display in module |
+| `src/components/admin/LessonDialog.tsx` | Modify | Add content editor, video preview |
+| `src/components/admin/SortableModuleItem.tsx` | Modify | Add quiz section |
+| `src/pages/admin/CourseEditor.tsx` | Modify | Add final exam section |
+| `supabase/functions/generate-questions/index.ts` | Create | AI question generation |
+
+---
+
+## Database Schema Diagram
+
+```text
+courses
+  │
+  ├── modules
+  │     │
+  │     ├── lessons (title, type, video_url, content, description)
+  │     │
+  │     └── quizzes (module_id, title, passing_score, time_limit)
+  │           │
+  │           └── quiz_questions (question, options[], correct_answer, explanation)
+  │
+  └── quizzes (course_id, is_final_exam = true)
+        │
+        └── quiz_questions
+```
 
 ---
 
 ## Summary
 
-1. **Course toggles failing**: The database has no course records. Solution is to add a "Seed Courses" button that populates the database from static data, enabling full course management.
+This implementation provides:
 
-2. **Quiz view errors**: Question lookups may fail if quiz IDs don't match or data is missing. Solution is to add better error handling and fallback displays for missing data.
+1. **Full Module Control**: Edit titles, reorder, delete
+2. **Full Lesson Control**: Edit all fields including video URLs and content
+3. **Video Embedding**: Preview videos directly in the editor
+4. **Full Quiz Control**: Create, edit, delete quizzes per module
+5. **Full Question Control**: Add, edit, delete, reorder questions
+6. **AI Generation**: Generate questions on any topic with one click
+7. **Custom Questions**: Add completely custom questions manually
+8. **Final Exam Management**: Manage course-level final exams
 
-Both fixes focus on graceful degradation and providing clear feedback to admins when data is missing or operations fail.
-
+All changes sync to the database in real-time and immediately reflect in the student-facing course pages.
