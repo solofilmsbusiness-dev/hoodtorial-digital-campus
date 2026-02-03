@@ -5,9 +5,7 @@ import { ChatWidget } from "@/components/chat";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { AdminRoute } from "@/components/auth/AdminRoute";
-import { PaidRoute } from "@/components/auth/PaidRoute";
+import { ProtectedRoute, AdminRoute, PaidRoute, AssessmentRequiredRoute } from "@/components/auth";
 import Index from "./pages/Index";
 import Degrees from "./pages/Degrees";
 import Academics from "./pages/Academics";
@@ -55,9 +53,9 @@ const App = () => (
             <Route path="/about" element={<About />} />
             <Route path="/shop" element={<Shop />} />
             <Route path="/community" element={
-              <ProtectedRoute>
+              <AssessmentRequiredRoute>
                 <Community />
-              </ProtectedRoute>
+              </AssessmentRequiredRoute>
             } />
             <Route path="/auth" element={<Auth />} />
             <Route path="/assessment" element={
@@ -66,19 +64,19 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/student" element={
-              <ProtectedRoute>
+              <AssessmentRequiredRoute>
                 <StudentCenter />
-              </ProtectedRoute>
+              </AssessmentRequiredRoute>
             } />
             <Route path="/student/profile" element={
-              <ProtectedRoute>
+              <AssessmentRequiredRoute>
                 <StudentProfile />
-              </ProtectedRoute>
+              </AssessmentRequiredRoute>
             } />
             <Route path="/student/grades" element={
-              <ProtectedRoute>
+              <AssessmentRequiredRoute>
                 <StudentGrades />
-              </ProtectedRoute>
+              </AssessmentRequiredRoute>
             } />
             <Route path="/admin" element={
               <AdminRoute>

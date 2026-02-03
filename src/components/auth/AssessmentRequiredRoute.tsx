@@ -1,23 +1,21 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useSubscription } from "@/hooks/useSubscription";
 import { useAssessmentResults } from "@/hooks/useAssessmentResults";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useRef } from "react";
 
-interface PaidRouteProps {
+interface AssessmentRequiredRouteProps {
   children: React.ReactNode;
 }
 
-export function PaidRoute({ children }: PaidRouteProps) {
+export function AssessmentRequiredRoute({ children }: AssessmentRequiredRouteProps) {
   const { user, loading: authLoading } = useAuth();
   const { hasCompletedAssessment, loading: assessmentLoading } = useAssessmentResults();
-  const { hasAccess, loading: subLoading } = useSubscription();
   const location = useLocation();
   const { toast } = useToast();
   const hasShownToast = useRef(false);
 
-  const loading = authLoading || assessmentLoading || subLoading;
+  const loading = authLoading || assessmentLoading;
 
   useEffect(() => {
     if (!loading && user && !hasCompletedAssessment && !hasShownToast.current) {
@@ -43,10 +41,6 @@ export function PaidRoute({ children }: PaidRouteProps) {
 
   if (!hasCompletedAssessment) {
     return <Navigate to="/assessment" state={{ from: location }} replace />;
-  }
-
-  if (!hasAccess) {
-    return <Navigate to="/enrollment" state={{ from: location, reason: "subscription" }} replace />;
   }
 
   return <>{children}</>;
