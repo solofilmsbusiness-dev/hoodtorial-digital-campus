@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageLayout } from "@/components/layout";
-import { InterestCard, ExperienceCard, ResultsChart } from "@/components/assessment";
+import { InterestCard, ExperienceCard, ResultsChart, ScoreComparison } from "@/components/assessment";
 import {
   assessmentQuestions,
   departmentInfo,
@@ -509,23 +509,40 @@ export default function Assessment() {
               <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
                 <Trophy className="w-10 h-10 text-primary" />
               </div>
-              <h2 className="text-3xl font-bold">Assessment Complete!</h2>
+              <h2 className="text-3xl font-bold">
+                {isRetaking ? "Retake Complete!" : "Assessment Complete!"}
+              </h2>
               <p className="text-lg text-muted-foreground">
                 Your overall readiness score: <span className="text-primary font-bold">{finalResults.totalScore}%</span>
               </p>
-              <p className="text-sm text-muted-foreground">
-                Completed in {formatTime(elapsedTime)}
-              </p>
+              {elapsedTime > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Completed in {formatTime(elapsedTime)}
+                </p>
+              )}
             </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Your Strengths by Department</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResultsChart scores={finalResults.departmentScores} />
-              </CardContent>
-            </Card>
+            {/* Show comparison if this was a retake */}
+            {isRetaking && latestResult && (
+              <ScoreComparison
+                previousScores={latestResult.department_scores as Record<string, number>}
+                currentScores={finalResults.departmentScores}
+                previousTotal={latestResult.total_score}
+                currentTotal={finalResults.totalScore}
+              />
+            )}
+
+            {/* Standard results chart when not comparing */}
+            {!isRetaking && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Your Strengths by Department</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResultsChart scores={finalResults.departmentScores} />
+                </CardContent>
+              </Card>
+            )}
 
             <div className="space-y-4">
               <h3 className="text-xl font-semibold">Recommended Courses for You</h3>
