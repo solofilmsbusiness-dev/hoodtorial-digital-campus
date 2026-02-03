@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageLayout } from "@/components/layout";
 import { useProfile } from "@/hooks/useProfile";
@@ -6,9 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { 
+  AvatarEditor, 
+  ThemePicker, 
+  CoverBanner, 
+  FavoriteFilmsInput 
+} from "@/components/profile";
 import { 
   User, 
   MapPin, 
@@ -17,8 +22,34 @@ import {
   Youtube, 
   Twitter, 
   ArrowLeft,
-  Save
+  Save,
+  Palette,
+  Film,
+  Clapperboard,
+  Globe,
+  Sparkles
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const FILMMAKING_STYLES = [
+  "Documentary",
+  "Narrative Fiction",
+  "Experimental",
+  "Music Video",
+  "Commercial",
+  "Animation",
+  "Horror",
+  "Comedy",
+  "Drama",
+  "Sci-Fi",
+  "Other",
+];
 
 export default function StudentProfile() {
   const { profile, loading, updateProfile } = useProfile();
@@ -27,18 +58,31 @@ export default function StudentProfile() {
   const [saving, setSaving] = useState(false);
   
   const [formData, setFormData] = useState({
-    display_name: profile?.display_name || "",
-    bio: profile?.bio || "",
-    location: profile?.location || "",
-    camera_gear: profile?.camera_gear || "",
-    instagram_url: profile?.instagram_url || "",
-    youtube_url: profile?.youtube_url || "",
-    twitter_url: profile?.twitter_url || "",
-    tiktok_url: profile?.tiktok_url || "",
+    display_name: "",
+    bio: "",
+    location: "",
+    camera_gear: "",
+    instagram_url: "",
+    youtube_url: "",
+    twitter_url: "",
+    tiktok_url: "",
+    // New creative fields
+    profile_accent_color: "#D4AF37",
+    avatar_border_style: "solid",
+    filmmaking_style: "",
+    favorite_films: [] as string[],
+    influences: "",
+    current_project: "",
+    portfolio_url: "",
+    imdb_url: "",
+    vimeo_url: "",
   });
 
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [bannerUrl, setBannerUrl] = useState<string | null>(null);
+
   // Update form data when profile loads
-  useState(() => {
+  useEffect(() => {
     if (profile) {
       setFormData({
         display_name: profile.display_name || "",
@@ -49,9 +93,20 @@ export default function StudentProfile() {
         youtube_url: profile.youtube_url || "",
         twitter_url: profile.twitter_url || "",
         tiktok_url: profile.tiktok_url || "",
+        profile_accent_color: (profile as any).profile_accent_color || "#D4AF37",
+        avatar_border_style: (profile as any).avatar_border_style || "solid",
+        filmmaking_style: (profile as any).filmmaking_style || "",
+        favorite_films: (profile as any).favorite_films || [],
+        influences: (profile as any).influences || "",
+        current_project: (profile as any).current_project || "",
+        portfolio_url: (profile as any).portfolio_url || "",
+        imdb_url: (profile as any).imdb_url || "",
+        vimeo_url: (profile as any).vimeo_url || "",
       });
+      setAvatarUrl(profile.avatar_url);
+      setBannerUrl((profile as any).cover_banner_url);
     }
-  });
+  }, [profile]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData((prev) => ({
@@ -64,7 +119,7 @@ export default function StudentProfile() {
     e.preventDefault();
     setSaving(true);
 
-    const { error } = await updateProfile(formData);
+    const { error } = await updateProfile(formData as any);
 
     if (error) {
       toast({
@@ -82,11 +137,6 @@ export default function StudentProfile() {
     setSaving(false);
   };
 
-  const getInitials = (name?: string | null) => {
-    if (!name) return "S";
-    return name.split(" ").map((n) => n.charAt(0)).join("").toUpperCase().slice(0, 2);
-  };
-
   if (loading) {
     return (
       <PageLayout>
@@ -99,21 +149,74 @@ export default function StudentProfile() {
 
   return (
     <PageLayout>
-      <div className="py-12 px-4">
-        <div className="container-wide max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="flex items-center gap-4 mb-8">
+      <div className="min-h-screen">
+        {/* Header */}
+        <div className="container-wide max-w-5xl mx-auto px-4 py-6">
+          <div className="flex items-center gap-4 mb-6">
             <button
               onClick={() => navigate("/student")}
               className="p-2 hover:bg-muted rounded-lg transition-colors"
             >
               <ArrowLeft className="h-6 w-6" />
             </button>
-            <h1 className="heading-2">Edit Profile</h1>
+            <div>
+              <h1 className="heading-2 flex items-center gap-2">
+                <Sparkles className="h-6 w-6 text-primary" />
+                Edit Profile
+              </h1>
+              <p className="text-muted-foreground text-sm">Make it uniquely you</p>
+            </div>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-8 pb-12">
+          {/* Cover Banner Section */}
+          <div className="container-wide max-w-5xl mx-auto px-4">
+            <Card className="card-urban overflow-visible">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Palette className="h-5 w-5 text-primary" />
+                  Cover & Avatar
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-8">
+                {/* Cover Banner */}
+                <CoverBanner
+                  currentBannerUrl={bannerUrl}
+                  onBannerChange={setBannerUrl}
+                />
+
+                {/* Avatar & Theme */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Avatar Editor */}
+                  <div className="flex flex-col items-center">
+                    <AvatarEditor
+                      currentAvatarUrl={avatarUrl}
+                      displayName={formData.display_name}
+                      accentColor={formData.profile_accent_color}
+                      borderStyle={formData.avatar_border_style}
+                      onAvatarChange={setAvatarUrl}
+                    />
+                  </div>
+
+                  {/* Theme Picker */}
+                  <ThemePicker
+                    accentColor={formData.profile_accent_color}
+                    borderStyle={formData.avatar_border_style}
+                    onAccentColorChange={(color) => 
+                      setFormData((prev) => ({ ...prev, profile_accent_color: color }))
+                    }
+                    onBorderStyleChange={(style) => 
+                      setFormData((prev) => ({ ...prev, avatar_border_style: style }))
+                    }
+                  />
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-8">
-            {/* Profile Picture & Basic Info */}
+          {/* Basic Info */}
+          <div className="container-wide max-w-5xl mx-auto px-4">
             <Card className="card-urban">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -122,20 +225,6 @@ export default function StudentProfile() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex items-center gap-6">
-                  <Avatar className="h-24 w-24 border-4 border-primary">
-                    <AvatarImage src={profile?.avatar_url || undefined} />
-                    <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-bold">
-                      {getInitials(formData.display_name || profile?.display_name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="text-muted-foreground text-sm mb-2">
-                      Profile picture upload coming soon
-                    </p>
-                  </div>
-                </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="display_name" className="text-sm font-bold uppercase tracking-wide">
@@ -198,13 +287,144 @@ export default function StudentProfile() {
                 </div>
               </CardContent>
             </Card>
+          </div>
 
-            {/* Social Links */}
+          {/* Creative Identity */}
+          <div className="container-wide max-w-5xl mx-auto px-4">
             <Card className="card-urban">
               <CardHeader>
-                <CardTitle>Social Links</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Clapperboard className="h-5 w-5 text-primary" />
+                  Creative Identity
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-bold uppercase tracking-wide">
+                      Filmmaking Style
+                    </Label>
+                    <Select
+                      value={formData.filmmaking_style}
+                      onValueChange={(value) => 
+                        setFormData((prev) => ({ ...prev, filmmaking_style: value }))
+                      }
+                    >
+                      <SelectTrigger className="bg-background border-2 border-border focus:border-primary">
+                        <SelectValue placeholder="Select your style" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FILMMAKING_STYLES.map((style) => (
+                          <SelectItem key={style} value={style}>
+                            {style}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="current_project" className="text-sm font-bold uppercase tracking-wide">
+                      Current Project
+                    </Label>
+                    <Input
+                      id="current_project"
+                      name="current_project"
+                      value={formData.current_project}
+                      onChange={handleChange}
+                      placeholder="What are you working on?"
+                      className="bg-background border-2 border-border focus:border-primary"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-bold uppercase tracking-wide">
+                    <Film className="inline h-4 w-4 mr-1" />
+                    Favorite Films
+                  </Label>
+                  <FavoriteFilmsInput
+                    films={formData.favorite_films}
+                    onChange={(films) => 
+                      setFormData((prev) => ({ ...prev, favorite_films: films }))
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="influences" className="text-sm font-bold uppercase tracking-wide">
+                    Influences & Inspirations
+                  </Label>
+                  <Textarea
+                    id="influences"
+                    name="influences"
+                    value={formData.influences}
+                    onChange={handleChange}
+                    placeholder="Directors, cinematographers, or artists that inspire your work..."
+                    rows={3}
+                    className="bg-background border-2 border-border focus:border-primary resize-none"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Portfolio & Social Links */}
+          <div className="container-wide max-w-5xl mx-auto px-4">
+            <Card className="card-urban">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Globe className="h-5 w-5 text-primary" />
+                  Portfolio & Social Links
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Portfolio Links */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="portfolio_url" className="text-sm font-bold uppercase tracking-wide">
+                      Portfolio Website
+                    </Label>
+                    <Input
+                      id="portfolio_url"
+                      name="portfolio_url"
+                      value={formData.portfolio_url}
+                      onChange={handleChange}
+                      placeholder="https://yoursite.com"
+                      className="bg-background border-2 border-border focus:border-primary"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="imdb_url" className="text-sm font-bold uppercase tracking-wide">
+                      IMDb
+                    </Label>
+                    <Input
+                      id="imdb_url"
+                      name="imdb_url"
+                      value={formData.imdb_url}
+                      onChange={handleChange}
+                      placeholder="https://imdb.com/name/..."
+                      className="bg-background border-2 border-border focus:border-primary"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="vimeo_url" className="text-sm font-bold uppercase tracking-wide">
+                      Vimeo
+                    </Label>
+                    <Input
+                      id="vimeo_url"
+                      name="vimeo_url"
+                      value={formData.vimeo_url}
+                      onChange={handleChange}
+                      placeholder="https://vimeo.com/yourname"
+                      className="bg-background border-2 border-border focus:border-primary"
+                    />
+                  </div>
+                </div>
+
+                {/* Social Links */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="instagram_url" className="text-sm font-bold uppercase tracking-wide">
@@ -267,8 +487,10 @@ export default function StudentProfile() {
                 </div>
               </CardContent>
             </Card>
+          </div>
 
-            {/* Submit Button */}
+          {/* Submit Button */}
+          <div className="container-wide max-w-5xl mx-auto px-4">
             <div className="flex justify-end gap-4">
               <Button
                 type="button"
@@ -291,8 +513,8 @@ export default function StudentProfile() {
                 )}
               </Button>
             </div>
-          </form>
-        </div>
+          </div>
+        </form>
       </div>
     </PageLayout>
   );
