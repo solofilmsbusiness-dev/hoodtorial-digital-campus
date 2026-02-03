@@ -336,11 +336,22 @@ export default function CourseManager() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" asChild>
-                            <Link to={`/course/${course.code}`}>
-                              <Eye className="h-4 w-4" />
-                            </Link>
-                          </Button>
+                          {staticCourses.some(s => s.code === course.code) ? (
+                            <Button variant="ghost" size="icon" asChild>
+                              <Link to={`/course/${course.code}`}>
+                                <Eye className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                          ) : (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              disabled 
+                              title="Preview not available for database-only courses"
+                            >
+                              <Eye className="h-4 w-4 opacity-50" />
+                            </Button>
+                          )}
                           <Button variant="ghost" size="icon" asChild>
                             <Link to={`/admin/courses/${course.code}`}>
                               <Pencil className="h-4 w-4" />
