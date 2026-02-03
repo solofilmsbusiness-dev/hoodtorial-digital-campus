@@ -197,9 +197,10 @@ export default function UserManager() {
   };
 
   const exportToCSV = () => {
-    const headers = ["Name", "Location", "Tier", "Roles", "Courses", "Quiz Passed", "Quiz Failed", "Pass Rate", "Status", "Joined"];
+    const headers = ["Name", "Email", "Location", "Tier", "Roles", "Courses", "Quiz Passed", "Quiz Failed", "Pass Rate", "Status", "Joined"];
     const rows = filteredStudents.map((s) => [
       s.displayName || "No name",
+      s.email || "",
       s.location || "",
       s.membershipTier,
       s.roles.join("; "),

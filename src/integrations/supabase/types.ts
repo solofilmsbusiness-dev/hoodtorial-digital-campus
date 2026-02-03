@@ -688,6 +688,7 @@ export type Database = {
         Args: { _quiz_id: string; _user_id: string }
         Returns: number
       }
+      get_user_email: { Args: { _user_id: string }; Returns: string }
       has_paid_access: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
