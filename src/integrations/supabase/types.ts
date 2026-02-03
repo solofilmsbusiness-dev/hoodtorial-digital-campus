@@ -458,15 +458,24 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_border_style: string | null
           avatar_url: string | null
           bio: string | null
           camera_gear: string | null
+          cover_banner_url: string | null
+          current_project: string | null
           display_name: string | null
           enrolled_at: string
+          favorite_films: string[] | null
+          filmmaking_style: string | null
           id: string
+          imdb_url: string | null
+          influences: string | null
           instagram_url: string | null
           location: string | null
           membership_tier: Database["public"]["Enums"]["membership_tier"]
+          portfolio_url: string | null
+          profile_accent_color: string | null
           subscription_ends_at: string | null
           subscription_started_at: string | null
           subscription_status: string | null
@@ -476,18 +485,28 @@ export type Database = {
           twitter_url: string | null
           updated_at: string
           user_id: string
+          vimeo_url: string | null
           youtube_url: string | null
         }
         Insert: {
+          avatar_border_style?: string | null
           avatar_url?: string | null
           bio?: string | null
           camera_gear?: string | null
+          cover_banner_url?: string | null
+          current_project?: string | null
           display_name?: string | null
           enrolled_at?: string
+          favorite_films?: string[] | null
+          filmmaking_style?: string | null
           id?: string
+          imdb_url?: string | null
+          influences?: string | null
           instagram_url?: string | null
           location?: string | null
           membership_tier?: Database["public"]["Enums"]["membership_tier"]
+          portfolio_url?: string | null
+          profile_accent_color?: string | null
           subscription_ends_at?: string | null
           subscription_started_at?: string | null
           subscription_status?: string | null
@@ -497,18 +516,28 @@ export type Database = {
           twitter_url?: string | null
           updated_at?: string
           user_id: string
+          vimeo_url?: string | null
           youtube_url?: string | null
         }
         Update: {
+          avatar_border_style?: string | null
           avatar_url?: string | null
           bio?: string | null
           camera_gear?: string | null
+          cover_banner_url?: string | null
+          current_project?: string | null
           display_name?: string | null
           enrolled_at?: string
+          favorite_films?: string[] | null
+          filmmaking_style?: string | null
           id?: string
+          imdb_url?: string | null
+          influences?: string | null
           instagram_url?: string | null
           location?: string | null
           membership_tier?: Database["public"]["Enums"]["membership_tier"]
+          portfolio_url?: string | null
+          profile_accent_color?: string | null
           subscription_ends_at?: string | null
           subscription_started_at?: string | null
           subscription_status?: string | null
@@ -518,6 +547,7 @@ export type Database = {
           twitter_url?: string | null
           updated_at?: string
           user_id?: string
+          vimeo_url?: string | null
           youtube_url?: string | null
         }
         Relationships: []
