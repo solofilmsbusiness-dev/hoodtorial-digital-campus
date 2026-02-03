@@ -1,167 +1,223 @@
 
 
-# Admin Test Mode for Courses
+# Creative Student Profile with Avatar Upload
 
 ## Overview
-Add an admin-only toggle in the admin dashboard that enables "Test Mode" for the current admin user. When enabled, this bypasses all content completion requirements, allowing admins to instantly access and complete any video lesson or quiz without watching videos or answering questions correctly.
+Transform the student profile into a creative, expressive space where filmmakers can showcase their identity. This includes:
+1. **Profile Photo Upload** - Upload and crop/adjust profile pictures
+2. **Cover Banner** - Optional background banner image
+3. **Profile Theme Colors** - Choose accent colors for profile personalization
+4. **Expanded Creative Fields** - Favorite films, filmmaking style, influences, portfolio links
 
-## How It Works
-
-When Test Mode is active for an admin:
-- All videos are treated as 100% watched (bypass 90% requirement)
-- All lessons show as unlocked regardless of progression
-- Quizzes can be instantly passed without answering questions
-- All content becomes accessible for testing the course flow
+## Architecture
 
 ```text
-Admin Dashboard → Toggle "Test Mode" ON
-        ↓
-useLessonProgress hook checks if admin + test mode enabled
-        ↓
-Returns all content as unlocked, videos as complete
-        ↓
-Admin can freely navigate and test entire course
+Profile Page
+├── Cover Banner (uploadable, optional)
+├── Avatar Section
+│   ├── Profile Photo (uploadable with crop/adjust)
+│   ├── Border Style Selector
+│   └── Accent Color Ring
+├── Basic Info (existing)
+├── Creative Identity (new)
+│   ├── Filmmaking Style
+│   ├── Favorite Films
+│   ├── Influences
+│   └── Current Project
+├── Equipment (existing - camera_gear)
+├── Social Links (existing)
+└── Portfolio Showcase (new)
 ```
 
 ---
 
 ## Implementation Steps
 
-### Step 1: Create Test Mode Context
-**New file: `src/contexts/TestModeContext.tsx`**
+### Step 1: Database Changes
+Add new columns to the `profiles` table for creative customization:
 
-A React context to manage test mode state:
-- `isTestModeEnabled`: Boolean indicating if test mode is active
-- `toggleTestMode`: Function to enable/disable
-- Persists to localStorage for session continuity
-- Only available to users with admin role
+```sql
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS 
+  cover_banner_url TEXT,
+  profile_accent_color TEXT DEFAULT '#D4AF37',
+  avatar_border_style TEXT DEFAULT 'solid',
+  filmmaking_style TEXT,
+  favorite_films TEXT[],
+  influences TEXT,
+  current_project TEXT,
+  portfolio_url TEXT,
+  imdb_url TEXT,
+  vimeo_url TEXT;
+```
 
-### Step 2: Add Test Mode Toggle to Admin Dashboard
-**Edit: `src/pages/admin/AdminDashboard.tsx`**
+### Step 2: Create Storage Bucket for Avatars
+Create a dedicated `avatars` storage bucket:
 
-Add a new card section for "Testing Tools":
-- Toggle switch for "Enable Test Mode"
-- Visual indicator when test mode is active
-- Warning text explaining what test mode does
-- Option to auto-pass quizzes
+```sql
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'avatars',
+  'avatars',
+  true,
+  5242880, -- 5MB limit
+  ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+);
 
-### Step 3: Create Custom Hook for Test Mode
-**New file: `src/hooks/useTestMode.ts`**
+-- RLS: Users can upload/update their own avatar
+CREATE POLICY "Users can upload own avatar"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
 
-Provides easy access to test mode state:
-- `isTestModeEnabled`: Current state
-- `canUseTestMode`: Checks if user is admin
-- `toggleTestMode`: Enable/disable function
-- `bypassVideoProgress`: Returns 100% for videos when enabled
-- `bypassQuizCheck`: Returns passed=true when enabled
+CREATE POLICY "Users can update own avatar"
+ON storage.objects FOR UPDATE
+TO authenticated
+USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
 
-### Step 4: Update Lesson Progress Hook
-**Edit: `src/hooks/useLessonProgress.ts`**
+CREATE POLICY "Public avatar access"
+ON storage.objects FOR SELECT
+TO public
+USING (bucket_id = 'avatars');
+```
 
-Modify the `isContentUnlocked` function:
-- Check if test mode is enabled for admin
-- If enabled, always return `true` for unlocked
-- Add bypass for `isLessonCompleted` check
-- Add bypass for quiz passing requirements
+### Step 3: Create Profile Avatar Upload Hook
+**New file: `src/hooks/useAvatarUpload.ts`**
 
-### Step 5: Update Video Progress Hook
-**Edit: `src/hooks/useVideoProgress.ts`**
+Handles avatar image upload and deletion:
+- Upload single image to `avatars/{user_id}/avatar.{ext}`
+- Delete old avatar before uploading new one
+- Return public URL on success
+- Update profile.avatar_url automatically
 
-When test mode is active:
-- Report `watchPercentage` as 100%
-- Set `isCompleted` to true immediately
-- Skip database progress tracking in test mode
+### Step 4: Create Avatar Editor Component
+**New file: `src/components/profile/AvatarEditor.tsx`**
 
-### Step 6: Update Quiz Results Hook
-**Edit: `src/hooks/useQuizResults.ts`**
+Interactive avatar upload component:
+- Circular preview with hover overlay
+- Click to open file picker
+- Drag & drop support
+- Upload progress indicator
+- Option to remove current photo
 
-Add test mode bypass:
-- Allow instant quiz completion
-- Skip attempt count limits
-- Mark quiz as passed immediately
+### Step 5: Create Profile Theme Picker
+**New file: `src/components/profile/ThemePicker.tsx`**
 
-### Step 7: Add Quick Complete Button
-**Edit: `src/pages/CourseDetail.tsx`**
+Color accent selector for profile personalization:
+- Preset colors matching the brutalist aesthetic (gold, neon purple, neon pink, accent green)
+- Custom color input option
+- Border style selector (solid, dashed, double, gradient)
+- Live preview of changes
 
-When test mode is active:
-- Show "Quick Complete" button for videos
-- Show "Auto-Pass Quiz" button for quizzes
-- Visual indicator that test mode is active
+### Step 6: Create Cover Banner Component
+**New file: `src/components/profile/CoverBanner.tsx`**
 
-### Step 8: Add Visual Test Mode Indicator
-**New file: `src/components/admin/TestModeBanner.tsx`**
+Optional profile banner at top of profile:
+- Recommended dimensions display
+- Upload/remove functionality
+- Overlay gradient for text readability
 
-A persistent banner shown when test mode is active:
-- Displayed at top of course pages
-- Shows "TEST MODE ACTIVE" warning
-- Quick toggle to disable
-- Makes it clear this is not normal student view
+### Step 7: Update StudentProfile Page
+**Edit: `src/pages/StudentProfile.tsx`**
 
-### Step 9: Wrap App with Test Mode Provider
-**Edit: `src/App.tsx`**
+Major redesign to feel more creative:
+- Add cover banner section at top
+- Replace static avatar with AvatarEditor
+- Add creative identity card (filmmaking style, favorite films, influences)
+- Add portfolio links section (IMDb, Vimeo, personal portfolio)
+- Add theme customization section
+- Reorganize into visual sections with creative typography
 
-Add the TestModeContext provider to the app:
-- Placed inside AuthProvider
-- Available throughout the application
+### Step 8: Update useProfile Hook
+**Edit: `src/hooks/useProfile.ts`**
+
+- Add uploadAvatar function
+- Add uploadCoverBanner function
+- Handle new profile fields
+
+### Step 9: Create Favorite Films Input
+**New file: `src/components/profile/FavoriteFilmsInput.tsx`**
+
+A tag-style input for listing favorite films:
+- Add films as tags
+- Remove with X button
+- Max 5 films
+- Animated tag additions
 
 ---
 
-## Technical Details
+## UI/UX Design Details
 
-### Test Mode State Structure
-```typescript
-interface TestModeState {
-  enabled: boolean;
-  autoPassQuizzes: boolean;
-  bypassVideoProgress: boolean;
-}
+### Avatar Section Design
+```text
+┌─────────────────────────────────────┐
+│         [Cover Banner Image]        │
+│                                     │
+│     ┌───────────┐                   │
+│     │  Avatar   │ ← Glowing border  │
+│     │  (click   │   with accent     │
+│     │  upload)  │   color           │
+│     └───────────┘                   │
+│                                     │
+│     Display Name                    │
+│     @location • Membership Badge    │
+└─────────────────────────────────────┘
 ```
 
-### LocalStorage Key
-```typescript
-const TEST_MODE_KEY = "hu-admin-test-mode";
-```
+### Color Options (Brutalist Palette)
+| Name | Hex | CSS Variable |
+|------|-----|--------------|
+| Gold (default) | #D4AF37 | --primary |
+| Neon Purple | #A855F7 | --neon-purple |
+| Neon Pink | #EC4899 | --neon-pink |
+| Accent Green | #00E5A0 | --accent |
+| White | #FFFFFF | -- |
+| Custom | User pick | -- |
 
-### Admin Check in Hooks
-```typescript
-const { isAdmin } = useAdminAuth();
-const { isTestModeEnabled } = useTestMode();
-
-// In isContentUnlocked:
-if (isAdmin && isTestModeEnabled) {
-  return true; // All content unlocked
-}
-```
+### Border Styles
+- **Solid** - Clean, professional
+- **Double** - Classic film aesthetic
+- **Dashed** - Playful, creative
+- **Glow** - Animated neon glow effect
 
 ---
 
 ## Files to Create
-1. `src/contexts/TestModeContext.tsx` - Context provider for test mode state
-2. `src/hooks/useTestMode.ts` - Hook for accessing test mode
-3. `src/components/admin/TestModeBanner.tsx` - Visual indicator banner
+1. `src/hooks/useAvatarUpload.ts` - Avatar upload logic
+2. `src/components/profile/AvatarEditor.tsx` - Avatar upload UI
+3. `src/components/profile/ThemePicker.tsx` - Color/style picker
+4. `src/components/profile/CoverBanner.tsx` - Banner upload
+5. `src/components/profile/FavoriteFilmsInput.tsx` - Film tags input
+6. `src/components/profile/index.ts` - Export barrel
 
 ## Files to Modify
-1. `src/pages/admin/AdminDashboard.tsx` - Add test mode toggle UI
-2. `src/hooks/useLessonProgress.ts` - Add bypass logic for content unlocking
-3. `src/hooks/useVideoProgress.ts` - Add bypass for video completion
-4. `src/hooks/useQuizResults.ts` - Add bypass for quiz completion
-5. `src/pages/CourseDetail.tsx` - Add quick complete buttons
-6. `src/App.tsx` - Add TestModeContext provider
-7. `src/components/admin/index.ts` - Export new banner component
+1. `src/pages/StudentProfile.tsx` - Complete redesign
+2. `src/hooks/useProfile.ts` - Add upload functions
+
+## Database Changes
+1. Add new columns to `profiles` table
+2. Create `avatars` storage bucket with RLS policies
 
 ---
 
-## Security Considerations
-- Test mode only activates for users with verified admin role (via `has_role` RPC)
-- State stored in localStorage but checked server-side on each action
-- Test mode does not affect database records unless explicitly saving
-- Other users cannot see or activate test mode
-- Admin role is verified via database function, not client-side
+## Creative Features Summary
 
-## User Experience
-- Clear visual indicator when test mode is active
-- Easy toggle from admin dashboard
-- Persistent across page refreshes
-- Non-intrusive for normal admin work
-- One-click access to any content
+| Feature | Description |
+|---------|-------------|
+| Avatar Upload | Click-to-upload circular avatar with cropping |
+| Avatar Glow | Animated border glow with custom accent color |
+| Cover Banner | Wide banner image at top of profile |
+| Theme Colors | Choose accent color for profile elements |
+| Border Styles | Select avatar border style (solid, dashed, glow) |
+| Favorite Films | Tag-based input for 5 favorite films |
+| Filmmaking Style | Dropdown or text for style (Documentary, Narrative, etc.) |
+| Current Project | Text field for what they're working on |
+| Influences | Text area for filmmaking influences |
+| Portfolio Links | IMDb, Vimeo, personal portfolio URLs |
+
+## Security Considerations
+- Avatar bucket is public (for display) but upload is authenticated
+- Users can only modify their own folder (`avatars/{user_id}/`)
+- File size limited to 5MB
+- Only image MIME types allowed
+- Old avatar deleted when new one uploaded to prevent storage bloat
 
