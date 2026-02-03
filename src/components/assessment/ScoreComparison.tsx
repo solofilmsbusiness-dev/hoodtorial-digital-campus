@@ -2,8 +2,8 @@ import { TrendingUp, TrendingDown, Minus, Trophy, Target, Sparkles } from "lucid
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useState } from "react";
-
+import { useEffect, useState, useRef } from "react";
+import { useCelebrationSound } from "@/hooks/useCelebrationSound";
 interface ScoreComparisonProps {
   previousScores: Record<string, number>;
   currentScores: Record<string, number>;
@@ -135,6 +135,48 @@ export function ScoreComparison({
   const totalDiff = currentTotal - previousTotal;
   const isImproved = totalDiff > 0;
   const hasDeclined = totalDiff < 0;
+  const { playSuccessChime, playLevelUp, playTick } = useCelebrationSound();
+  const hasPlayedCelebration = useRef(false);
+  
+  // Play celebration sounds on mount if improved
+  useEffect(() => {
+    if (isImproved && !hasPlayedCelebration.current) {
+      hasPlayedCelebration.current = true;
+      
+      // Play level up sound when component mounts
+      const levelUpTimer = setTimeout(() => {
+        playLevelUp();
+      }, 400);
+      
+      // Play success chime when "Great improvement!" badge appears
+      const chimeTimer = setTimeout(() => {
+        playSuccessChime();
+      }, 1200);
+      
+      return () => {
+        clearTimeout(levelUpTimer);
+        clearTimeout(chimeTimer);
+      };
+    }
+  }, [isImproved, playLevelUp, playSuccessChime]);
+  
+  // Play tick sounds for each department that improved
+  useEffect(() => {
+    if (!isImproved || hasPlayedCelebration.current === false) return;
+    
+    const allDepts = [...new Set([...Object.keys(previousScores), ...Object.keys(currentScores)])];
+    
+    allDepts.forEach((dept, index) => {
+      const prev = previousScores[dept] ?? 0;
+      const curr = currentScores[dept] ?? 0;
+      
+      if (curr > prev) {
+        setTimeout(() => {
+          playTick(1 + index * 0.1);
+        }, 800 + index * 150);
+      }
+    });
+  }, [previousScores, currentScores, isImproved, playTick]);
   
   // Get all departments from both scores
   const allDepartments = [...new Set([
