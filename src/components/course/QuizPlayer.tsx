@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { 
   ChevronLeft, 
@@ -8,9 +8,20 @@ import {
   Trophy, 
   RotateCcw,
   AlertCircle,
-  Loader2
+  Loader2,
+  Clock,
+  AlertTriangle,
+  Shuffle
 } from "lucide-react";
-import { getQuizQuestions, calculateScore, type QuizQuestion } from "@/data/quizQuestions";
+import { getQuizQuestions, type QuizQuestion } from "@/data/quizQuestions";
+import { 
+  getRandomizedQuiz, 
+  calculateShuffledScore, 
+  getGradingData,
+  getDefaultTimeLimit,
+  formatTimeRemaining,
+  type ShuffledQuestion 
+} from "@/lib/quizUtils";
 import { useQuizResults } from "@/hooks/useQuizResults";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Quiz } from "@/data/courses";
@@ -22,31 +33,113 @@ interface QuizPlayerProps {
   onClose?: () => void;
 }
 
-type QuizState = "intro" | "playing" | "review" | "results";
+type QuizState = "intro" | "playing" | "review" | "results" | "expired";
 
 export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayerProps) {
-  const questions = getQuizQuestions(quiz.id);
+  const originalQuestions = getQuizQuestions(quiz.id);
   const { user } = useAuth();
   const { saveQuizResult } = useQuizResults();
   
   const [state, setState] = useState<QuizState>("intro");
+  const [shuffledQuestions, setShuffledQuestions] = useState<ShuffledQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [showExplanation, setShowExplanation] = useState(false);
   const [startTime, setStartTime] = useState<number | null>(null);
+  const [remainingTime, setRemainingTime] = useState<number>(0);
   const [isSaving, setIsSaving] = useState(false);
 
-  const currentQuestion = questions[currentIndex];
-  const selectedAnswer = currentQuestion ? answers[currentQuestion.id] : undefined;
-  const score = calculateScore(answers, questions);
-  const passed = score >= quiz.passingScore;
+  // Calculate time limit (from quiz or default 1 min per question)
+  const timeLimitSeconds = useMemo(() => {
+    const minutes = quiz.timeLimitMinutes ?? getDefaultTimeLimit(originalQuestions.length);
+    return minutes * 60;
+  }, [quiz.timeLimitMinutes, originalQuestions.length]);
 
-  // Start timer when quiz begins
+  const currentQuestion = shuffledQuestions[currentIndex];
+  const selectedAnswer = currentQuestion ? answers[currentQuestion.id] : undefined;
+  const score = useMemo(() => 
+    shuffledQuestions.length > 0 ? calculateShuffledScore(answers, shuffledQuestions) : 0,
+    [answers, shuffledQuestions]
+  );
+  const passed = score >= quiz.passingScore;
+  const isTimeWarning = remainingTime > 0 && remainingTime <= 120; // 2 minutes warning
+
+  // Initialize shuffled questions when quiz starts
+  const handleStartQuiz = useCallback(() => {
+    const randomized = getRandomizedQuiz(originalQuestions);
+    setShuffledQuestions(randomized);
+    setAnswers({});
+    setCurrentIndex(0);
+    setShowExplanation(false);
+    setStartTime(Date.now());
+    setRemainingTime(timeLimitSeconds);
+    setState("playing");
+  }, [originalQuestions, timeLimitSeconds]);
+
+  // Countdown timer
   useEffect(() => {
-    if (state === "playing" && startTime === null) {
-      setStartTime(Date.now());
+    if (state !== "playing" || !startTime) return;
+    
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      const remaining = Math.max(0, timeLimitSeconds - elapsed);
+      setRemainingTime(remaining);
+      
+      if (remaining <= 0) {
+        clearInterval(interval);
+        // Auto-submit on time expiration
+        handleTimeExpired();
+      }
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [state, startTime, timeLimitSeconds]);
+
+  const handleTimeExpired = useCallback(async () => {
+    setState("expired");
+    
+    // Save with current answers
+    if (user && startTime) {
+      setIsSaving(true);
+      const timeTaken = timeLimitSeconds;
+      const gradingData = getGradingData(answers, shuffledQuestions);
+      const finalScore = calculateShuffledScore(answers, shuffledQuestions);
+      const didPass = finalScore >= quiz.passingScore;
+      
+      // Convert shuffled questions back to original for saving
+      const originalQuestionsForSave = shuffledQuestions.map(sq => ({
+        id: sq.id,
+        question: sq.question,
+        options: sq.originalOptions,
+        correctAnswer: sq.originalCorrectAnswer,
+        explanation: sq.explanation,
+      }));
+      
+      // Convert shuffled answers to original indices
+      const originalAnswers: Record<string, number> = {};
+      gradingData.forEach(gd => {
+        if (gd.selectedAnswer >= 0) {
+          originalAnswers[gd.questionId] = gd.selectedAnswer;
+        }
+      });
+      
+      await saveQuizResult(
+        {
+          quiz_id: quiz.id,
+          course_code: courseCode,
+          score: finalScore,
+          total_questions: shuffledQuestions.length,
+          passed: didPass,
+          time_taken_seconds: timeTaken,
+        },
+        originalQuestionsForSave as QuizQuestion[],
+        originalAnswers
+      );
+      
+      setIsSaving(false);
+      onComplete?.(finalScore, didPass);
     }
-  }, [state, startTime]);
+  }, [user, startTime, timeLimitSeconds, answers, shuffledQuestions, quiz, courseCode, saveQuizResult, onComplete]);
 
   const handleSelectAnswer = useCallback((optionIndex: number) => {
     if (state === "review") return;
@@ -62,35 +155,52 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
     if (user && startTime) {
       setIsSaving(true);
       const timeTaken = Math.round((Date.now() - startTime) / 1000);
+      const gradingData = getGradingData(answers, shuffledQuestions);
       
-      // Pass questions and answers to saveQuizResult for detailed tracking
+      // Convert shuffled questions back to original for saving
+      const originalQuestionsForSave = shuffledQuestions.map(sq => ({
+        id: sq.id,
+        question: sq.question,
+        options: sq.originalOptions,
+        correctAnswer: sq.originalCorrectAnswer,
+        explanation: sq.explanation,
+      }));
+      
+      // Convert shuffled answers to original indices
+      const originalAnswers: Record<string, number> = {};
+      gradingData.forEach(gd => {
+        if (gd.selectedAnswer >= 0) {
+          originalAnswers[gd.questionId] = gd.selectedAnswer;
+        }
+      });
+      
       await saveQuizResult(
         {
           quiz_id: quiz.id,
           course_code: courseCode,
           score,
-          total_questions: questions.length,
+          total_questions: shuffledQuestions.length,
           passed,
           time_taken_seconds: timeTaken,
         },
-        questions,  // Pass the questions array
-        answers     // Pass the user's answers
+        originalQuestionsForSave as QuizQuestion[],
+        originalAnswers
       );
       
       setIsSaving(false);
     }
     
     onComplete?.(score, passed);
-  }, [user, startTime, quiz.id, courseCode, score, questions.length, passed, saveQuizResult, onComplete, questions, answers]);
+  }, [user, startTime, quiz.id, courseCode, score, shuffledQuestions, passed, saveQuizResult, onComplete, answers]);
 
   const handleNext = useCallback(() => {
     setShowExplanation(false);
-    if (currentIndex < questions.length - 1) {
+    if (currentIndex < shuffledQuestions.length - 1) {
       setCurrentIndex(prev => prev + 1);
     } else {
       handleFinishQuiz();
     }
-  }, [currentIndex, questions.length, handleFinishQuiz]);
+  }, [currentIndex, shuffledQuestions.length, handleFinishQuiz]);
 
   const handlePrev = useCallback(() => {
     setShowExplanation(false);
@@ -104,7 +214,9 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
     setCurrentIndex(0);
     setShowExplanation(false);
     setStartTime(null);
+    setRemainingTime(0);
     setIsSaving(false);
+    setShuffledQuestions([]);
     setState("intro");
   }, []);
 
@@ -115,10 +227,16 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
   }, []);
 
   const answeredCount = Object.keys(answers).length;
-  const progress = (answeredCount / questions.length) * 100;
+  const progress = shuffledQuestions.length > 0 ? (answeredCount / shuffledQuestions.length) * 100 : 0;
+  const timeLimitDisplay = quiz.timeLimitMinutes ?? getDefaultTimeLimit(originalQuestions.length);
+
+  // Count correct answers for results
+  const correctCount = useMemo(() => {
+    return shuffledQuestions.filter(q => answers[q.id] === q.shuffledCorrectAnswer).length;
+  }, [answers, shuffledQuestions]);
 
   // No questions available
-  if (questions.length === 0) {
+  if (originalQuestions.length === 0) {
     return (
       <div className="border-2 border-border bg-card p-8 text-center">
         <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -127,6 +245,57 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
         <button onClick={onClose} className="btn-brutal">
           Go Back
         </button>
+      </div>
+    );
+  }
+
+  // Time Expired screen
+  if (state === "expired") {
+    const expiredScore = calculateShuffledScore(answers, shuffledQuestions);
+    const expiredPassed = expiredScore >= quiz.passingScore;
+    
+    return (
+      <div className="border-2 border-border bg-card p-8">
+        <div className="text-center max-w-md mx-auto">
+          <div className="w-20 h-20 flex items-center justify-center mx-auto mb-6 border-4 bg-destructive/20 border-destructive">
+            <Clock className="w-10 h-10 text-destructive" />
+          </div>
+
+          <h2 className="heading-2 text-foreground mb-2">TIME'S UP!</h2>
+          <p className="text-muted-foreground mb-8">
+            Your quiz has been automatically submitted.
+          </p>
+
+          <div className={cn(
+            "text-7xl font-black mb-2",
+            expiredPassed ? "text-accent text-glow" : "text-destructive"
+          )}>
+            {expiredScore}%
+          </div>
+          <p className="text-muted-foreground mb-4">
+            {shuffledQuestions.filter(q => answers[q.id] === q.shuffledCorrectAnswer).length} of {shuffledQuestions.length} correct
+          </p>
+          <p className="text-sm text-muted-foreground mb-6">
+            {answeredCount} of {shuffledQuestions.length} questions answered
+          </p>
+
+          {isSaving && (
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Saving your progress...
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mt-4">
+            <button onClick={handleReviewAnswers} className="px-6 py-3 border-2 border-border text-muted-foreground hover:border-primary hover:text-foreground transition-colors font-bold">
+              Review Answers
+            </button>
+            <button onClick={handleRestart} className="btn-brutal inline-flex items-center justify-center gap-2">
+              <RotateCcw className="w-4 h-4" />
+              Try Again
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -153,15 +322,30 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4 mb-8 text-sm">
+          <div className="grid grid-cols-3 gap-4 mb-6 text-sm">
             <div className="p-4 border border-border bg-muted/30">
-              <div className="text-2xl font-black text-primary">{questions.length}</div>
+              <div className="text-2xl font-black text-primary">{originalQuestions.length}</div>
               <div className="text-muted-foreground">Questions</div>
             </div>
             <div className="p-4 border border-border bg-muted/30">
               <div className="text-2xl font-black text-accent">{quiz.passingScore}%</div>
               <div className="text-muted-foreground">To Pass</div>
             </div>
+            <div className="p-4 border border-border bg-muted/30">
+              <div className="text-2xl font-black text-neon-purple">{timeLimitDisplay}</div>
+              <div className="text-muted-foreground">Minutes</div>
+            </div>
+          </div>
+
+          {/* Anti-cheat notice */}
+          <div className="mb-8 p-4 border border-accent/50 bg-accent/5 text-sm">
+            <div className="flex items-center gap-2 text-accent mb-2">
+              <Shuffle className="w-4 h-4" />
+              <span className="font-bold">Assessment Integrity</span>
+            </div>
+            <p className="text-muted-foreground text-left">
+              Questions and answer options are randomized for each attempt to ensure fair assessment.
+            </p>
           </div>
 
           <div className="flex gap-4 justify-center">
@@ -170,7 +354,7 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
                 Cancel
               </button>
             )}
-            <button onClick={() => setState("playing")} className="btn-brutal">
+            <button onClick={handleStartQuiz} className="btn-brutal">
               Start Quiz
             </button>
           </div>
@@ -214,7 +398,7 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
             {score}%
           </div>
           <p className="text-muted-foreground mb-4">
-            {Object.values(answers).filter((a, i) => a === questions[i]?.correctAnswer).length} of {questions.length} correct
+            {correctCount} of {shuffledQuestions.length} correct
           </p>
 
           {isSaving && (
@@ -258,27 +442,40 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div className="text-sm text-muted-foreground">
-          Question <span className="text-foreground font-bold">{currentIndex + 1}</span> of {questions.length}
+          Question <span className="text-foreground font-bold">{currentIndex + 1}</span> of {shuffledQuestions.length}
         </div>
-        {state === "review" && (
+        
+        {state === "review" ? (
           <span className="text-xs font-bold uppercase tracking-wide px-3 py-1 bg-neon-purple/20 text-neon-purple border border-neon-purple/50">
             Review Mode
           </span>
+        ) : (
+          <div className={cn(
+            "flex items-center gap-2 px-3 py-1 text-sm font-bold transition-colors",
+            isTimeWarning 
+              ? "text-destructive bg-destructive/10 border border-destructive/50 animate-pulse" 
+              : "text-muted-foreground"
+          )}>
+            {isTimeWarning && <AlertTriangle className="w-4 h-4" />}
+            <Clock className="w-4 h-4" />
+            {formatTimeRemaining(remainingTime)}
+          </div>
         )}
+        
         <div className="text-sm text-muted-foreground">
-          Answered: <span className="text-primary font-bold">{answeredCount}</span>/{questions.length}
+          Answered: <span className="text-primary font-bold">{answeredCount}</span>/{shuffledQuestions.length}
         </div>
       </div>
 
       {/* Question */}
       <div className="p-6">
-        <h3 className="heading-4 text-foreground mb-6">{currentQuestion.question}</h3>
+        <h3 className="heading-4 text-foreground mb-6">{currentQuestion?.question}</h3>
 
         <div className="space-y-3">
-          {currentQuestion.options.map((option, index) => {
+          {currentQuestion?.shuffledOptions.map((option, index) => {
             const isSelected = selectedAnswer === index;
-            const isCorrect = index === currentQuestion.correctAnswer;
-            const showResult = state === "review" || (showExplanation && isSelected);
+            const isCorrect = index === currentQuestion.shuffledCorrectAnswer;
+            const showResult = state === "review";
 
             return (
               <button
@@ -324,8 +521,8 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
           })}
         </div>
 
-        {/* Explanation */}
-        {(showExplanation || state === "review") && currentQuestion.explanation && (
+        {/* Explanation - only show in review mode */}
+        {state === "review" && currentQuestion?.explanation && (
           <div className="mt-6 p-4 border border-accent/50 bg-accent/5 animate-fade-in">
             <div className="flex items-start gap-3">
               <CheckCircle2 className="w-5 h-5 text-accent shrink-0 mt-0.5" />
@@ -354,16 +551,9 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
           Previous
         </button>
 
-        {state === "playing" && selectedAnswer !== undefined && !showExplanation && (
-          <button
-            onClick={() => setShowExplanation(true)}
-            className="px-4 py-2 text-sm font-bold text-primary hover:text-primary/80 transition-colors"
-          >
-            Check Answer
-          </button>
-        )}
+        {/* Removed "Check Answer" button for anti-cheat */}
 
-        {state === "review" && currentIndex === questions.length - 1 ? (
+        {state === "review" && currentIndex === shuffledQuestions.length - 1 ? (
           <button onClick={handleRestart} className="btn-brutal inline-flex items-center gap-2">
             <RotateCcw className="w-4 h-4" />
             Retake Quiz
@@ -379,7 +569,7 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
                 : "btn-brutal"
             )}
           >
-            {currentIndex === questions.length - 1 && state === "playing" ? "Finish" : "Next"}
+            {currentIndex === shuffledQuestions.length - 1 && state === "playing" ? "Finish" : "Next"}
             <ChevronRight className="w-4 h-4" />
           </button>
         )}
