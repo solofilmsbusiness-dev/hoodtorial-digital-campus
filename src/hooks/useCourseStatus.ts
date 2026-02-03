@@ -54,6 +54,8 @@ export function useCourseStatus() {
         });
       } else {
         // DB-only course (newly created in admin) - construct from DB fields
+        // Try to find static course to get lesson count as fallback
+        const matchingStaticCourse = staticCourses.find((s) => s.code === dbCourse.code);
         const dept = departments.find((d) => d.id === dbCourse.department_id);
         
         coursesWithStatus.push({
@@ -64,8 +66,8 @@ export function useCourseStatus() {
           departmentId: dbCourse.department_id,
           credits: dbCourse.credits,
           level: (dbCourse.level as "Beginner" | "Intermediate" | "Advanced") || "Beginner",
-          duration: dbCourse.duration || "Self-paced",
-          lessons: 0, // Will be populated from modules/lessons in DB
+          duration: matchingStaticCourse?.duration || dbCourse.duration || "Self-paced",
+          lessons: matchingStaticCourse?.lessons ?? 0, // Use static count as fallback
           modules: [], // Will be loaded separately when viewing course
           isPublished: dbCourse.is_published,
           isComingSoon: dbCourse.is_locked,

@@ -131,7 +131,26 @@ const CourseDetail = () => {
 
   // Fallback to static course if not in database
   const staticCourse = getCourseByCode(code || "");
-  const course = dbCourse ? transformDbCourse(dbCourse) : staticCourse;
+  
+  // Build the course from database, falling back to static for content
+  const course = useMemo(() => {
+    if (!dbCourse) return staticCourse;
+    
+    const transformed = transformDbCourse(dbCourse);
+    
+    // If database course has no modules but static course does, use static content
+    if (transformed.modules.length === 0 && staticCourse?.modules && staticCourse.modules.length > 0) {
+      return {
+        ...transformed,
+        modules: staticCourse.modules,
+        finalExam: staticCourse.finalExam,
+        lessons: staticCourse.lessons,
+        duration: staticCourse.duration || transformed.duration,
+      };
+    }
+    
+    return transformed;
+  }, [dbCourse, staticCourse]);
   const { toast } = useToast();
   const { hasAccess, isTrialing, trialDaysRemaining } = useSubscription();
   const { isTestModeEnabled, shouldAutoPassQuiz } = useTestMode();
