@@ -58,12 +58,12 @@ export function useCommunityComments(postId: string | null) {
       if (commentsError) throw commentsError;
       if (!commentsData || commentsData.length === 0) return [];
 
-      // Fetch profiles for authors
+      // Fetch profiles for authors (using limited public view for privacy)
       const userIds = [...new Set(commentsData.map(c => c.user_id))];
       const { data: profiles } = await supabase
-        .from('profiles')
+        .from('profiles_public' as any)
         .select('user_id, display_name, avatar_url')
-        .in('user_id', userIds);
+        .in('user_id', userIds) as { data: { user_id: string; display_name: string | null; avatar_url: string | null }[] | null };
 
       // Fetch roles
       const { data: roles } = await supabase

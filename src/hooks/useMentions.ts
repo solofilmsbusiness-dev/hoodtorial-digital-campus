@@ -39,15 +39,15 @@ export function useMentions() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
 
-  // Fetch all users for mention autocomplete
+  // Fetch all users for mention autocomplete (using limited public view for privacy)
   const { data: allUsers = [] } = useQuery({
     queryKey: ['mention-users'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('profiles')
+        .from('profiles_public' as any)
         .select('user_id, display_name, avatar_url')
         .not('display_name', 'is', null)
-        .order('display_name');
+        .order('display_name') as { data: { user_id: string; display_name: string | null; avatar_url: string | null }[] | null; error: any };
 
       if (error) throw error;
       
