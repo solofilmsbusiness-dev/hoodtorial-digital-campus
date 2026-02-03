@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ProfileProvider } from "@/contexts/ProfileContext";
 import { TestModeProvider } from "@/contexts/TestModeContext";
 import { ProtectedRoute, AdminRoute, PaidRoute, AssessmentRequiredRoute } from "@/components/auth";
 import Index from "./pages/Index";
@@ -40,9 +41,10 @@ const App = () => (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
       <TooltipProvider>
         <AuthProvider>
-          <TestModeProvider>
-            <Toaster />
-            <Sonner />
+          <ProfileProvider>
+            <TestModeProvider>
+              <Toaster />
+              <Sonner />
             <ChatWidget />
             <BrowserRouter>
               <Routes>
@@ -125,14 +127,15 @@ const App = () => (
                     <SupportManager />
                   </AdminRoute>
                 } />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
-          </TestModeProvider>
-        </AuthProvider>
-      </TooltipProvider>
-    </ThemeProvider>
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TestModeProvider>
+      </ProfileProvider>
+    </AuthProvider>
+  </TooltipProvider>
+</ThemeProvider>
   </QueryClientProvider>
 );
 
