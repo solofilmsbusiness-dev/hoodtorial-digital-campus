@@ -9,9 +9,10 @@ import { useToast } from "@/hooks/use-toast";
 interface CoverBannerProps {
   currentBannerUrl?: string | null;
   onBannerChange?: (url: string | null) => void;
+  onUploadComplete?: () => void;
 }
 
-export function CoverBanner({ currentBannerUrl, onBannerChange }: CoverBannerProps) {
+export function CoverBanner({ currentBannerUrl, onBannerChange, onUploadComplete }: CoverBannerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const { uploadCoverBanner, removeCoverBanner, uploading, progress } = useAvatarUpload();
@@ -50,8 +51,9 @@ export function CoverBanner({ currentBannerUrl, onBannerChange }: CoverBannerPro
         description: "Your cover banner has been changed",
       });
       onBannerChange?.(url);
+      onUploadComplete?.();
     }
-  }, [uploadCoverBanner, toast, onBannerChange]);
+  }, [uploadCoverBanner, toast, onBannerChange, onUploadComplete]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -88,6 +90,7 @@ export function CoverBanner({ currentBannerUrl, onBannerChange }: CoverBannerPro
         description: "Your cover banner has been removed",
       });
       onBannerChange?.(null);
+      onUploadComplete?.();
     }
   };
 

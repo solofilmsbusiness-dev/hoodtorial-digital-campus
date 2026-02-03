@@ -13,6 +13,7 @@ interface AvatarEditorProps {
   accentColor?: string;
   borderStyle?: string;
   onAvatarChange?: (url: string | null) => void;
+  onUploadComplete?: () => void;
 }
 
 const BORDER_STYLES: Record<string, string> = {
@@ -28,6 +29,7 @@ export function AvatarEditor({
   accentColor = "#D4AF37",
   borderStyle = "solid",
   onAvatarChange,
+  onUploadComplete,
 }: AvatarEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -72,8 +74,9 @@ export function AvatarEditor({
         description: "Your profile picture has been changed",
       });
       onAvatarChange?.(url);
+      onUploadComplete?.();
     }
-  }, [uploadAvatar, toast, onAvatarChange]);
+  }, [uploadAvatar, toast, onAvatarChange, onUploadComplete]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -110,6 +113,7 @@ export function AvatarEditor({
         description: "Your profile picture has been removed",
       });
       onAvatarChange?.(null);
+      onUploadComplete?.();
     }
   };
 
