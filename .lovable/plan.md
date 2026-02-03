@@ -1,258 +1,260 @@
 
-# Enhanced Admin Panel Redesign
+# Transform Community into Social Media Platform with Daily Challenges
 
 ## Overview
 
-A comprehensive upgrade to the admin panel that improves usability, adds powerful new features, and creates a more professional, efficient experience for managing the Hustle University platform.
+Redesign the Community section to feel more like a modern creative social media platform (think Instagram for filmmakers) with daily mini-projects that reward students with bonus credits for participating.
 
-## Current State Analysis
+## Current State
 
-The existing admin panel has:
-- **Static sidebar** with 5 navigation items (Dashboard, Courses, Community, Users, Settings)
-- **Basic dashboard** with 4 stat cards, quick actions, testing tools, and a placeholder activity section
-- **Course Manager** with filtering, table view, and CRUD operations
-- **User Manager** with advanced filtering, CSV export, and role management
-- **Community Manager** with post moderation features
-- **Non-collapsible sidebar** that takes fixed 256px width
+- Basic forum-style community with categories (General, Courses, Projects, Critique)
+- Standard post cards with like/follow/comment features
+- Text-heavy layout without visual focus
+- No gamification or credit incentives for participation
 
-## Improvement Areas
+## New Features
 
-### 1. Collapsible Sidebar with Mini Mode
-**Problem**: Sidebar takes permanent space, no mobile responsiveness
-**Solution**: Implement Shadcn SidebarProvider with collapsible mini-mode
+### 1. Daily Challenges System
 
-### 2. Enhanced Dashboard with Real Analytics
-**Problem**: Completion Rate shows "—", Recent Activity is a placeholder
-**Solution**: Add real calculated metrics and activity feed
+A rotating system of mini film projects that refresh daily, encouraging consistent creative practice.
 
-### 3. Quick Search & Command Palette
-**Problem**: No global search or keyboard shortcuts
-**Solution**: Add command palette (Cmd+K) for quick navigation
+**Challenge Examples:**
+- "Film a 15-second transition using only natural light" (0.5 credits)
+- "Capture 3 shots that tell a story without dialogue" (0.5 credits)
+- "Create a cinematic B-roll of your morning routine" (0.5 credits)
 
-### 4. Activity Feed with Real Data
-**Problem**: "Activity tracking coming soon..." placeholder
-**Solution**: Implement real-time activity log from database
+**Database Schema (New Tables):**
 
-### 5. Better Mobile Experience
-**Problem**: Fixed sidebar doesn't work on mobile
-**Solution**: Drawer-based sidebar on mobile devices
+```sql
+-- Daily challenges table
+CREATE TABLE daily_challenges (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  prompt TEXT NOT NULL,
+  difficulty TEXT DEFAULT 'beginner', -- beginner, intermediate, advanced
+  credits_reward DECIMAL(3,1) DEFAULT 0.5,
+  category TEXT DEFAULT 'general', -- lighting, composition, movement, storytelling
+  active_date DATE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  created_by UUID REFERENCES auth.users(id)
+);
 
-### 6. Notification Center
-**Problem**: No way to see important alerts
-**Solution**: Add notification bell with pending items
+-- Challenge submissions tracking
+CREATE TABLE challenge_submissions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  challenge_id UUID REFERENCES daily_challenges(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL,
+  post_id UUID REFERENCES community_posts(id) ON DELETE CASCADE,
+  credits_awarded DECIMAL(3,1),
+  awarded_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(challenge_id, user_id) -- One submission per challenge per user
+);
+```
 
-### 7. Breadcrumb Navigation
-**Problem**: Deep pages lose context
-**Solution**: Add breadcrumbs to header
+### 2. Visual Feed Redesign
+
+Transform from forum cards to a more visual, Instagram-style grid/feed layout.
+
+**New Layout Options:**
+- **Grid View**: 3-column masonry grid showing media previews
+- **Feed View**: Full-width single column with larger media display
+- **Stories Bar**: Horizontal scrollable row of recent challenge submissions
+
+**Visual Changes:**
+- Larger image/video previews (hero media)
+- Author avatar overlays on media
+- Quick action buttons (like, comment) visible on hover
+- Floating "New Challenge" banner at top
+
+### 3. Challenge Submission Flow
+
+**New Post Type: "Challenge Response"**
+- When posting, users can tag their submission as a challenge response
+- System auto-links to the active daily challenge
+- Upon submission, credits are awarded automatically
+- Badge appears on post: "Daily Challenge 0.5cr"
+
+### 4. Enhanced Feed Component
+
+```text
++------------------------------------------+
+|  TODAY'S CHALLENGE                   0.5cr |
+|  "Film a 15-second transition..."    [GO] |
++------------------------------------------+
+|  [Grid] [Feed] [Following]    [+ Post]   |
++------------------------------------------+
+| +--------+ +--------+ +--------+          |
+| |  Img   | |  Img   | |  Img   |          |
+| | @user1 | | @user2 | | @user3 |          |
+| | 24 ♥   | | 12 ♥   | | 8 ♥    |          |
+| +--------+ +--------+ +--------+          |
+| +--------+ +--------+ +--------+          |
+| |  Img   | |  Img   | |  Img   |          |
+| |Challenge| |  Img   | |  Img   |          |
+| | 0.5cr  | | @user5 | | @user6 |          |
+| +--------+ +--------+ +--------+          |
++------------------------------------------+
+```
+
+### 5. Leaderboard & Streaks
+
+**Weekly Leaderboard:**
+- Top 10 students by challenge completions
+- Top 10 by engagement (likes received)
+- Streak counter (consecutive days with submissions)
+
+**Streak System:**
+- Track consecutive days of challenge completion
+- Bonus credits at milestones (7-day: +0.5cr, 30-day: +2cr)
+
+### 6. Quick Camera Upload
+
+**Mobile-First Features:**
+- Large "Create" floating action button
+- Camera quick-launch option
+- Story-style quick post for challenge responses
 
 ---
 
 ## Implementation Plan
 
-### Phase 1: Sidebar Modernization
+### Phase 1: Database Setup
 
-**File: `src/components/admin/AdminSidebar.tsx`**
+**New Tables:**
+| Table | Purpose |
+|-------|---------|
+| `daily_challenges` | Store challenge prompts with dates and rewards |
+| `challenge_submissions` | Track who completed which challenges |
 
-Transform the static sidebar into a collapsible sidebar using the existing Shadcn sidebar component:
+**Schema Updates:**
+- Add `challenge_id` column to `community_posts` (nullable FK)
+- Add `is_challenge_response` boolean to `community_posts`
 
-```text
-+--------------------+     +-------+
-| EXPANDED MODE      |     | MINI  |
-+--------------------+     +-------+
-| [Logo] HU Admin    |     | [Logo]|
-|   Course Mgmt      |     +-------+
-+--------------------+     | [D]   |
-| [D] Dashboard      |     | [C]   |
-| [C] Courses        |     | [M]   |
-| [M] Community      |     | [U]   |
-| [U] Users          |     | [S]   |
-| [S] Settings       |     +-------+
-+--------------------+     | [<]   |
-| [<] Back to Site   |     +-------+
-+--------------------+
-```
+### Phase 2: New Components
 
-Changes:
-- Wrap with SidebarProvider
-- Add SidebarTrigger for toggle
-- Use collapsible="icon" for mini mode
-- Add tooltips when collapsed
-- Persist state in localStorage
+| Component | Purpose |
+|-----------|---------|
+| `DailyChallengeCard.tsx` | Hero banner showing today's challenge |
+| `ChallengeSubmissionForm.tsx` | Simplified post form for challenges |
+| `FeedGrid.tsx` | Visual grid layout for posts |
+| `FeedCard.tsx` | Compact visual-first post card |
+| `StreakBadge.tsx` | Shows user's current streak |
+| `Leaderboard.tsx` | Weekly top participants |
+| `ViewToggle.tsx` | Grid/Feed/Following toggle |
 
-### Phase 2: Enhanced Dashboard
+### Phase 3: New Hooks
 
-**File: `src/pages/admin/AdminDashboard.tsx`**
+| Hook | Purpose |
+|------|---------|
+| `useDailyChallenges.ts` | Fetch active challenge, submit responses |
+| `useChallengeStreak.ts` | Track and display user streaks |
+| `useCommunityLeaderboard.ts` | Fetch weekly top users |
 
-New features:
+### Phase 4: UI Overhaul
 
-1. **Calculated Completion Rate**
-   - Query lesson_progress and quiz_results
-   - Calculate percentage of completed vs total lessons
+**Community.tsx Changes:**
+1. Add Daily Challenge banner at top (sticky)
+2. Replace TabsList with visual ViewToggle
+3. Add grid layout option for posts
+4. Implement infinite scroll
+5. Add floating "Create" button (mobile)
 
-2. **Recent Activity Feed**
-   - New enrollments (last 7 days)
-   - Quiz completions
-   - Community posts
-   - Role changes
+**PostCard.tsx Enhancements:**
+1. Larger media preview (16:9 aspect ratio)
+2. Avatar overlay on bottom-left of media
+3. Challenge badge if applicable
+4. Credits earned indicator
+5. Hover effects with quick actions
 
-3. **Quick Stats Cards** with click-through links
-   - Click "Total Courses" → goes to /admin/courses
-   - Click "Enrolled Students" → goes to /admin/users
+### Phase 5: Admin Features
 
-4. **Pending Items Alert**
-   - Trial expirations in next 3 days
-   - Unapproved community posts (if moderation exists)
+**New Admin Section: Challenge Manager**
+- Create/edit daily challenges
+- Schedule challenges in advance
+- View submission analytics
+- Award bonus credits manually
 
-### Phase 3: Command Palette
+---
 
-**New File: `src/components/admin/CommandPalette.tsx`**
+## Files to Create
 
-Keyboard shortcut (Cmd+K or Ctrl+K) to open a command menu:
+| File | Description |
+|------|-------------|
+| `src/components/community/DailyChallengeCard.tsx` | Today's challenge hero |
+| `src/components/community/ChallengeSubmissionForm.tsx` | Quick submit for challenges |
+| `src/components/community/FeedGrid.tsx` | Grid layout container |
+| `src/components/community/FeedCard.tsx` | Visual post card for grid |
+| `src/components/community/StreakBadge.tsx` | Streak counter display |
+| `src/components/community/Leaderboard.tsx` | Weekly rankings |
+| `src/components/community/ViewToggle.tsx` | Grid/Feed toggle |
+| `src/hooks/useDailyChallenges.ts` | Challenge data & submissions |
+| `src/hooks/useChallengeStreak.ts` | Streak tracking |
+| `src/hooks/useCommunityLeaderboard.ts` | Leaderboard data |
+| `src/pages/admin/ChallengeManager.tsx` | Admin challenge CRUD |
 
-```text
-+--------------------------------+
-| > Search commands...           |
-+--------------------------------+
-| NAVIGATION                     |
-| → Go to Dashboard              |
-| → Go to Courses                |
-| → Go to Users                  |
-| → Go to Community              |
-+--------------------------------+
-| ACTIONS                        |
-| + Create New Course            |
-| + Add User                     |
-| ⚡ Toggle Test Mode            |
-+--------------------------------+
-| RECENT                         |
-| ↺ CINE-101 (edited 2h ago)     |
-| ↺ John Doe (viewed 1h ago)     |
-+--------------------------------+
-```
+## Files to Modify
 
-Uses the existing `cmdk` package already in the project.
+| File | Changes |
+|------|---------|
+| `src/pages/Community.tsx` | Complete redesign with new layout |
+| `src/components/community/PostCard.tsx` | Visual-first redesign |
+| `src/components/community/CreatePostForm.tsx` | Add challenge linking |
+| `src/hooks/useCommunityPosts.ts` | Add challenge filtering |
+| `src/components/community/index.ts` | Export new components |
 
-### Phase 4: Activity Feed Component
+---
 
-**New File: `src/components/admin/ActivityFeed.tsx`**
+## Credit System Integration
 
-**New Hook: `src/hooks/useAdminActivity.ts`**
+When a user submits a challenge response:
+1. Create community post with `challenge_id` set
+2. Insert row into `challenge_submissions`
+3. Increment user's credits via `user_progress` table
+4. Show celebration toast with confetti
+5. Update streak counter
 
-Query recent platform activity:
+**Credit Amounts:**
+- Daily challenge completion: 0.5 credits
+- 7-day streak bonus: +0.5 credits
+- 14-day streak bonus: +1 credit
+- 30-day streak bonus: +2 credits
+- Featured by instructor: +1 credit
+
+---
+
+## Mobile Experience
+
+**Touch-Optimized Features:**
+- Swipe between grid and feed views
+- Pull-to-refresh for new content
+- Bottom sheet for creating posts
+- Full-screen media viewer
+- Double-tap to like
+
+---
+
+## Sample Daily Challenges Seed Data
 
 ```sql
--- Recent enrollments
-SELECT user_id, course_code, enrolled_at FROM enrollments 
-WHERE enrolled_at > NOW() - INTERVAL '7 days'
-ORDER BY enrolled_at DESC LIMIT 10
-
--- Recent quiz results
-SELECT user_id, quiz_id, passed, created_at FROM quiz_results
-WHERE created_at > NOW() - INTERVAL '7 days'
-ORDER BY created_at DESC LIMIT 10
-
--- Recent community posts
-SELECT id, title, user_id, created_at FROM posts
-WHERE created_at > NOW() - INTERVAL '7 days'
-ORDER BY created_at DESC LIMIT 10
-```
-
-Display as timeline with icons:
-- Green checkmark for passed quizzes
-- Red X for failed quizzes
-- Book icon for enrollments
-- Message icon for community posts
-
-### Phase 5: Notification Center
-
-**New File: `src/components/admin/AdminNotifications.tsx`**
-
-Show pending items requiring attention:
-
-- Trials expiring in 3 days (count + list)
-- New user signups today
-- Flagged community content (future)
-
-Bell icon in header with badge count.
-
-### Phase 6: Mobile Responsive Layout
-
-**Updated File: `src/components/admin/AdminLayout.tsx`**
-
-- Use Sheet component for mobile sidebar
-- Add hamburger menu trigger in header
-- Stack header elements vertically on small screens
-
----
-
-## File Changes Summary
-
-| File | Action | Description |
-|------|--------|-------------|
-| `src/components/admin/AdminSidebar.tsx` | Modify | Convert to collapsible Shadcn sidebar |
-| `src/components/admin/AdminLayout.tsx` | Modify | Add SidebarProvider, mobile responsiveness, breadcrumbs |
-| `src/pages/admin/AdminDashboard.tsx` | Modify | Add real metrics, activity feed, clickable cards |
-| `src/components/admin/CommandPalette.tsx` | Create | Global search and command palette |
-| `src/components/admin/ActivityFeed.tsx` | Create | Real-time activity timeline |
-| `src/components/admin/AdminNotifications.tsx` | Create | Notification center component |
-| `src/hooks/useAdminActivity.ts` | Create | Hook for fetching recent platform activity |
-| `src/components/admin/index.ts` | Modify | Export new components |
-
----
-
-## New Dashboard Layout
-
-```text
-+----------------------------------------------------------+
-| [≡] HU Admin            Dashboard            [🔔2] user@email [Sign Out]
-+----------------------------------------------------------+
-|     |                                                    |
-| [D] | ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐|
-| [C] | │ 12       │ │ 156      │ │ 423      │ │ 67%      │|
-| [M] | │ Courses  │ │ Students │ │ Quizzes  │ │ Complete │|
-| [U] | └──────────┘ └──────────┘ └──────────┘ └──────────┘|
-| [S] |                                                    |
-|     | ┌─────────────────────┐ ┌────────────────────────┐ |
-|     | │ Course Management   │ │ Pending Items      ⚠️3 │ |
-|     | │ [View All] [+ New]  │ │ • 2 trials expiring   │ |
-|     | └─────────────────────┘ │ • 1 new signup today  │ |
-|     |                         └────────────────────────┘ |
-|     | ┌─────────────────────┐ ┌────────────────────────┐ |
-|     | │ Testing Tools       │ │ Recent Activity        │ |
-|     | │ [x] Test Mode       │ │ ● John passed CINE-101 │ |
-|     | │   [ ] Bypass Video  │ │ ● Jane enrolled DIR-201│ |
-|     | │   [ ] Auto-Pass     │ │ ● New post: "My reel"  │ |
-|     | └─────────────────────┘ └────────────────────────┘ |
-+----------------------------------------------------------+
+INSERT INTO daily_challenges (title, prompt, difficulty, credits_reward, category, active_date) VALUES
+('Light Study', 'Film a 15-second clip using only available light. Focus on shadows.', 'beginner', 0.5, 'lighting', CURRENT_DATE),
+('Three-Shot Story', 'Tell a complete story in exactly 3 shots. No dialogue.', 'intermediate', 0.5, 'storytelling', CURRENT_DATE + 1),
+('Motion Blur', 'Create intentional motion blur that enhances your subject.', 'intermediate', 0.5, 'movement', CURRENT_DATE + 2),
+('Reflections', 'Use reflections (mirrors, water, glass) creatively in your shot.', 'beginner', 0.5, 'composition', CURRENT_DATE + 3),
+('One Take Wonder', 'Film a 30-second continuous take with camera movement.', 'advanced', 0.5, 'movement', CURRENT_DATE + 4);
 ```
 
 ---
 
-## Technical Notes
+## Expected Outcome
 
-1. **Sidebar State Persistence**: Uses localStorage to remember collapsed/expanded state
-
-2. **Mobile Detection**: Uses existing `useIsMobile()` hook from `src/hooks/use-mobile.tsx`
-
-3. **Command Palette**: Leverages existing `cmdk` package (already installed)
-
-4. **Real-time Updates**: Activity feed can optionally use Supabase realtime subscriptions
-
-5. **Performance**: Activity queries are limited to 7 days and cached with React Query
-
-6. **Accessibility**: All new components include proper ARIA labels and keyboard navigation
-
----
-
-## User Experience Improvements
-
-| Before | After |
-|--------|-------|
-| Fixed 256px sidebar | Collapsible mini-mode (56px) |
-| No global search | Cmd+K command palette |
-| Placeholder activity | Real activity feed |
-| "Coming soon" metrics | Calculated completion rate |
-| No mobile layout | Responsive drawer sidebar |
-| No notifications | Bell icon with pending items |
-| No breadcrumbs | Context-aware breadcrumb trail |
-
+The transformed Community section will:
+1. Feel more like Instagram/TikTok for filmmakers
+2. Encourage daily creative practice through challenges
+3. Reward participation with bonus credits (0.5cr per challenge)
+4. Create healthy competition via leaderboards
+5. Build habits with streak tracking
+6. Prioritize visual content over text discussions
+7. Work beautifully on mobile devices
