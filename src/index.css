@@ -460,4 +460,14 @@
   .bg-gradient-radial {
     background: radial-gradient(ellipse at center, var(--tw-gradient-stops));
   }
+
+  /* Video overlay gradient for hero sections */
+  .video-overlay {
+    background: linear-gradient(
+      to bottom,
+      hsl(var(--background) / 0.7),
+      hsl(var(--background) / 0.85) 50%,
+      hsl(var(--background))
+    );
+  }
 }

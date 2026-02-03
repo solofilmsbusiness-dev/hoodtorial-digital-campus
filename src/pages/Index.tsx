@@ -4,6 +4,7 @@ import { CourseCard, TierCard } from "@/components/cards";
 import { Link } from "react-router-dom";
 import { ArrowRight, Play, Trophy, Target, Sparkles, Film, GraduationCap, Check } from "lucide-react";
 import heroLogo from "@/assets/hero-logo.png";
+import heroVideo from "@/assets/hero-video.mp4";
 
 const stats = [
   { value: "12", label: "Courses" },
@@ -109,14 +110,29 @@ const Index = () => {
     <PageLayout>
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-noise">
+        {/* Background Video Layer */}
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover opacity-[0.15]"
+          poster="/placeholder.svg"
+        >
+          <source src={heroVideo} type="video/mp4" />
+        </video>
+
+        {/* Dark overlay for contrast */}
+        <div className="absolute inset-0 bg-background/80" />
+
         {/* Background effects */}
         <div className="absolute inset-0 bg-grid" />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/50 to-background" />
+        <div className="absolute inset-0 video-overlay" />
         
-        {/* Animated orbs */}
-        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[150px] animate-pulse" />
-        <div className="absolute bottom-1/3 right-1/4 w-[400px] h-[400px] bg-neon-purple/5 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: "1s" }} />
-        <div className="absolute top-1/2 right-1/3 w-[300px] h-[300px] bg-neon-pink/5 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: "2s" }} />
+        {/* Animated orbs - increased opacity for more depth */}
+        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[150px] animate-pulse" />
+        <div className="absolute bottom-1/3 right-1/4 w-[400px] h-[400px] bg-neon-purple/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: "1s" }} />
+        <div className="absolute top-1/2 right-1/3 w-[300px] h-[300px] bg-neon-pink/8 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: "2s" }} />
 
         <div className="container-wide relative z-10 py-20">
           <div className="max-w-5xl mx-auto flex flex-col items-center">
