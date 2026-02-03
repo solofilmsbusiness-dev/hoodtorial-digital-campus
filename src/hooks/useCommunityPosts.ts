@@ -6,6 +6,16 @@ import { toast } from "sonner";
 
 export type PostCategory = 'general' | 'course_discussion' | 'project_submission' | 'feedback_critique' | 'announcement';
 
+export interface CommentPreview {
+  id: string;
+  content: string;
+  user_id: string;
+  author?: {
+    display_name: string | null;
+    avatar_url: string | null;
+  };
+}
+
 export interface CommunityPost {
   id: string;
   user_id: string;
@@ -30,6 +40,7 @@ export interface CommunityPost {
   comments_count?: number;
   user_has_liked?: boolean;
   user_is_following?: boolean;
+  preview_comments?: CommentPreview[];
 }
 
 interface CreatePostData {
@@ -50,6 +61,7 @@ export function useCommunityPosts(filters?: {
   sort_by?: 'recent' | 'popular';
   challenge_only?: boolean;
   following_only?: boolean;
+  include_comment_previews?: boolean;
 }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -140,6 +152,46 @@ export function useCommunityPosts(filters?: {
         return acc;
       }, {} as Record<string, { display_name: string | null; avatar_url: string | null }>);
 
+      // Fetch comment previews if requested
+      let commentPreviews: Record<string, CommentPreview[]> = {};
+      if (filters?.include_comment_previews) {
+        const { data: commentsPreviewData } = await supabase
+          .from('community_comments')
+          .select('id, post_id, content, user_id')
+          .in('post_id', postIds)
+          .is('parent_comment_id', null)
+          .order('created_at', { ascending: false });
+
+        if (commentsPreviewData) {
+          // Get unique user IDs from comments
+          const commentUserIds = [...new Set(commentsPreviewData.map(c => c.user_id))];
+          const { data: commentProfiles } = await supabase
+            .from('profiles_public' as any)
+            .select('user_id, display_name, avatar_url')
+            .in('user_id', commentUserIds) as { data: { user_id: string; display_name: string | null; avatar_url: string | null }[] | null };
+
+          const commentProfilesMap = (commentProfiles || []).reduce((acc, p) => {
+            acc[p.user_id] = p;
+            return acc;
+          }, {} as Record<string, { display_name: string | null; avatar_url: string | null }>);
+
+          // Group by post_id and take first 2 comments per post
+          commentsPreviewData.forEach(c => {
+            if (!commentPreviews[c.post_id]) {
+              commentPreviews[c.post_id] = [];
+            }
+            if (commentPreviews[c.post_id].length < 2) {
+              commentPreviews[c.post_id].push({
+                id: c.id,
+                content: c.content,
+                user_id: c.user_id,
+                author: commentProfilesMap[c.user_id] || { display_name: null, avatar_url: null },
+              });
+            }
+          });
+        }
+      }
+
       let enrichedPosts = postsData.map(post => ({
         ...post,
         category: post.category as PostCategory,
@@ -150,6 +202,7 @@ export function useCommunityPosts(filters?: {
         comments_count: commentsCount[post.id] || 0,
         user_has_liked: userLikes.includes(post.id),
         user_is_following: userFollows.includes(post.id),
+        preview_comments: commentPreviews[post.id] || [],
       })) as CommunityPost[];
 
       // Filter following only on client side
