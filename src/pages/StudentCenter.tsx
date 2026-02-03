@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { PageLayout } from "@/components/layout";
 import { useAuth } from "@/contexts/AuthContext";
-import { useProfile } from "@/hooks/useProfile";
+import { useProfileContext } from "@/contexts/ProfileContext";
 import { useQuizResults } from "@/hooks/useQuizResults";
 import { useUserProgress } from "@/hooks/useUserProgress";
 import { useAssessmentResults } from "@/hooks/useAssessmentResults";
@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
 
 export default function StudentCenter() {
   const { user } = useAuth();
-  const { profile, loading: profileLoading } = useProfile();
+  const { profile, loading: profileLoading } = useProfileContext();
   const { results } = useQuizResults();
   const { getTotalCredits, getCompletedCourses } = useUserProgress();
   const [supportSheetOpen, setSupportSheetOpen] = useState(false);
@@ -88,7 +88,10 @@ export default function StudentCenter() {
           {/* Header Section */}
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-12">
             <div className="flex items-center gap-6">
-              <Avatar className="h-20 w-20 border-4 border-primary">
+              <Avatar 
+                className="h-20 w-20 border-4"
+                style={{ borderColor: profile?.profile_accent_color || 'hsl(var(--primary))' }}
+              >
                 <AvatarImage src={profile?.avatar_url || undefined} />
                 <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-bold">
                   {getInitials(profile?.display_name)}

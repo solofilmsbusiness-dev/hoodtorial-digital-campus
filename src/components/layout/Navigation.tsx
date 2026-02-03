@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Menu, X, User, LogOut, Shield, Users } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfileContext } from "@/contexts/ProfileContext";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -25,6 +26,7 @@ const navLinks = [
 export function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
   const { user, signOut } = useAuth();
+  const { profile } = useProfileContext();
   const { isAdmin } = useAdminAuth();
 
   const navigate = useNavigate();
@@ -34,9 +36,11 @@ export function Navigation() {
     navigate('/auth');
   };
 
-  const getInitials = (email?: string | null) => {
-    if (!email) return "S";
-    return email.charAt(0).toUpperCase();
+  const getInitials = (name?: string | null, email?: string | null) => {
+    if (name) {
+      return name.split(" ").map((n) => n.charAt(0)).join("").toUpperCase().slice(0, 2);
+    }
+    return email?.charAt(0).toUpperCase() || "S";
   };
 
   return (
@@ -73,10 +77,13 @@ export function Navigation() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center gap-2 p-1 rounded-full hover:bg-muted transition-colors">
-                    <Avatar className="h-9 w-9 border-2 border-primary">
-                      <AvatarImage src={undefined} />
+                    <Avatar 
+                      className="h-9 w-9 border-2"
+                      style={{ borderColor: profile?.profile_accent_color || 'hsl(var(--primary))' }}
+                    >
+                      <AvatarImage src={profile?.avatar_url || undefined} />
                       <AvatarFallback className="bg-primary text-primary-foreground font-bold">
-                        {getInitials(user.email)}
+                        {getInitials(profile?.display_name, user.email)}
                       </AvatarFallback>
                     </Avatar>
                   </button>

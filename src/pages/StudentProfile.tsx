@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageLayout } from "@/components/layout";
-import { useProfile } from "@/hooks/useProfile";
+import { useProfileContext } from "@/contexts/ProfileContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +12,9 @@ import {
   AvatarEditor, 
   ThemePicker, 
   CoverBanner, 
-  FavoriteFilmsInput 
+  FavoriteFilmsInput,
+  ProfilePreviewCard,
+  ProfileCompleteness
 } from "@/components/profile";
 import { 
   User, 
@@ -27,7 +29,10 @@ import {
   Film,
   Clapperboard,
   Globe,
-  Sparkles
+  Sparkles,
+  Lock,
+  Eye,
+  AlertTriangle
 } from "lucide-react";
 import {
   Select,
@@ -36,6 +41,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const FILMMAKING_STYLES = [
   "Documentary",
@@ -52,10 +67,13 @@ const FILMMAKING_STYLES = [
 ];
 
 export default function StudentProfile() {
-  const { profile, loading, updateProfile } = useProfile();
+  const { profile, loading, updateProfile } = useProfileContext();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
+  const [initialFormData, setInitialFormData] = useState<typeof formData | null>(null);
   
   const [formData, setFormData] = useState({
     display_name: "",
@@ -66,7 +84,6 @@ export default function StudentProfile() {
     youtube_url: "",
     twitter_url: "",
     tiktok_url: "",
-    // New creative fields
     profile_accent_color: "#D4AF37",
     avatar_border_style: "solid",
     filmmaking_style: "",
@@ -81,10 +98,23 @@ export default function StudentProfile() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
 
+  // Check for unsaved changes
+  const hasUnsavedChanges = useMemo(() => {
+    if (!initialFormData) return false;
+    return Object.keys(formData).some((key) => {
+      const currentVal = formData[key as keyof typeof formData];
+      const initialVal = initialFormData[key as keyof typeof formData];
+      if (Array.isArray(currentVal) && Array.isArray(initialVal)) {
+        return JSON.stringify(currentVal) !== JSON.stringify(initialVal);
+      }
+      return currentVal !== initialVal;
+    });
+  }, [formData, initialFormData]);
+
   // Update form data when profile loads
   useEffect(() => {
     if (profile) {
-      setFormData({
+      const newFormData = {
         display_name: profile.display_name || "",
         bio: profile.bio || "",
         location: profile.location || "",
@@ -93,20 +123,51 @@ export default function StudentProfile() {
         youtube_url: profile.youtube_url || "",
         twitter_url: profile.twitter_url || "",
         tiktok_url: profile.tiktok_url || "",
-        profile_accent_color: (profile as any).profile_accent_color || "#D4AF37",
-        avatar_border_style: (profile as any).avatar_border_style || "solid",
-        filmmaking_style: (profile as any).filmmaking_style || "",
-        favorite_films: (profile as any).favorite_films || [],
-        influences: (profile as any).influences || "",
-        current_project: (profile as any).current_project || "",
-        portfolio_url: (profile as any).portfolio_url || "",
-        imdb_url: (profile as any).imdb_url || "",
-        vimeo_url: (profile as any).vimeo_url || "",
-      });
+        profile_accent_color: profile.profile_accent_color || "#D4AF37",
+        avatar_border_style: profile.avatar_border_style || "solid",
+        filmmaking_style: profile.filmmaking_style || "",
+        favorite_films: profile.favorite_films || [],
+        influences: profile.influences || "",
+        current_project: profile.current_project || "",
+        portfolio_url: profile.portfolio_url || "",
+        imdb_url: profile.imdb_url || "",
+        vimeo_url: profile.vimeo_url || "",
+      };
+      setFormData(newFormData);
+      setInitialFormData(newFormData);
       setAvatarUrl(profile.avatar_url);
-      setBannerUrl((profile as any).cover_banner_url);
+      setBannerUrl(profile.cover_banner_url);
     }
   }, [profile]);
+
+  // Warn before leaving with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  const handleNavigateAway = (path: string) => {
+    if (hasUnsavedChanges) {
+      setPendingNavigation(path);
+      setShowUnsavedDialog(true);
+    } else {
+      navigate(path);
+    }
+  };
+
+  const confirmNavigation = () => {
+    if (pendingNavigation) {
+      navigate(pendingNavigation);
+    }
+    setShowUnsavedDialog(false);
+    setPendingNavigation(null);
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData((prev) => ({
@@ -128,9 +189,11 @@ export default function StudentProfile() {
         description: "Failed to update profile. Please try again.",
       });
     } else {
+      // Reset initial form data to current to clear unsaved state
+      setInitialFormData(formData);
       toast({
         title: "Profile updated",
-        description: "Your changes have been saved.",
+        description: "Your changes have been saved and reflected across the site.",
       });
     }
 
@@ -150,371 +213,426 @@ export default function StudentProfile() {
   return (
     <PageLayout>
       <div className="min-h-screen">
+        {/* Unsaved Changes Dialog */}
+        <AlertDialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                Unsaved Changes
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                You have unsaved changes. Are you sure you want to leave? Your changes will be lost.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Stay & Edit</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmNavigation} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Leave Without Saving
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         {/* Header */}
-        <div className="container-wide max-w-5xl mx-auto px-4 py-6">
+        <div className="container-wide max-w-6xl mx-auto px-4 py-6">
           <div className="flex items-center gap-4 mb-6">
             <button
-              onClick={() => navigate("/student")}
+              onClick={() => handleNavigateAway("/student")}
               className="p-2 hover:bg-muted rounded-lg transition-colors"
             >
               <ArrowLeft className="h-6 w-6" />
             </button>
-            <div>
+            <div className="flex-1">
               <h1 className="heading-2 flex items-center gap-2">
                 <Sparkles className="h-6 w-6 text-primary" />
                 Edit Profile
               </h1>
               <p className="text-muted-foreground text-sm">Make it uniquely you</p>
             </div>
+            {hasUnsavedChanges && (
+              <span className="text-xs text-accent font-medium px-2 py-1 bg-accent/10 rounded-full">
+                Unsaved changes
+              </span>
+            )}
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8 pb-12">
-          {/* Cover Banner Section */}
-          <div className="container-wide max-w-5xl mx-auto px-4">
-            <Card className="card-urban overflow-visible">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Palette className="h-5 w-5 text-primary" />
-                  Cover & Avatar
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-8">
-                {/* Cover Banner */}
-                <CoverBanner
-                  currentBannerUrl={bannerUrl}
-                  onBannerChange={setBannerUrl}
-                />
+        {/* Main Content Grid */}
+        <div className="container-wide max-w-6xl mx-auto px-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Sidebar - Profile Preview */}
+            <div className="lg:col-span-1 space-y-4 order-2 lg:order-1">
+              <ProfileCompleteness formData={formData} avatarUrl={avatarUrl} />
+              <ProfilePreviewCard
+                displayName={formData.display_name}
+                avatarUrl={avatarUrl}
+                bannerUrl={bannerUrl}
+                bio={formData.bio}
+                location={formData.location}
+                cameraGear={formData.camera_gear}
+                filmmakingStyle={formData.filmmaking_style}
+                currentProject={formData.current_project}
+                favoriteFilms={formData.favorite_films}
+                accentColor={formData.profile_accent_color}
+                borderStyle={formData.avatar_border_style}
+                portfolioUrl={formData.portfolio_url}
+                instagramUrl={formData.instagram_url}
+                youtubeUrl={formData.youtube_url}
+                vimeoUrl={formData.vimeo_url}
+              />
+            </div>
 
-                {/* Avatar & Theme */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  {/* Avatar Editor */}
-                  <div className="flex flex-col items-center">
-                    <AvatarEditor
-                      currentAvatarUrl={avatarUrl}
-                      displayName={formData.display_name}
-                      accentColor={formData.profile_accent_color}
-                      borderStyle={formData.avatar_border_style}
-                      onAvatarChange={setAvatarUrl}
+            {/* Main Form */}
+            <div className="lg:col-span-2 order-1 lg:order-2">
+              <form onSubmit={handleSubmit} className="space-y-8 pb-12">
+                {/* Cover Banner Section */}
+                <Card className="card-urban overflow-visible">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Palette className="h-5 w-5 text-primary" />
+                      Cover & Avatar
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-8">
+                    {/* Cover Banner */}
+                    <CoverBanner
+                      currentBannerUrl={bannerUrl}
+                      onBannerChange={setBannerUrl}
                     />
-                  </div>
 
-                  {/* Theme Picker */}
-                  <ThemePicker
-                    accentColor={formData.profile_accent_color}
-                    borderStyle={formData.avatar_border_style}
-                    onAccentColorChange={(color) => 
-                      setFormData((prev) => ({ ...prev, profile_accent_color: color }))
-                    }
-                    onBorderStyleChange={(style) => 
-                      setFormData((prev) => ({ ...prev, avatar_border_style: style }))
-                    }
-                  />
+                    {/* Avatar & Theme */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      {/* Avatar Editor */}
+                      <div className="flex flex-col items-center">
+                        <AvatarEditor
+                          currentAvatarUrl={avatarUrl}
+                          displayName={formData.display_name}
+                          accentColor={formData.profile_accent_color}
+                          borderStyle={formData.avatar_border_style}
+                          onAvatarChange={setAvatarUrl}
+                        />
+                      </div>
+
+                      {/* Theme Picker */}
+                      <ThemePicker
+                        accentColor={formData.profile_accent_color}
+                        borderStyle={formData.avatar_border_style}
+                        onAccentColorChange={(color) => 
+                          setFormData((prev) => ({ ...prev, profile_accent_color: color }))
+                        }
+                        onBorderStyleChange={(style) => 
+                          setFormData((prev) => ({ ...prev, avatar_border_style: style }))
+                        }
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Basic Info */}
+                <Card className="card-urban">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <User className="h-5 w-5 text-primary" />
+                      Basic Information
+                      <span className="ml-auto text-xs font-normal text-muted-foreground flex items-center gap-1">
+                        <Eye className="h-3 w-3" /> Public
+                      </span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="display_name" className="text-sm font-bold uppercase tracking-wide">
+                          Display Name
+                        </Label>
+                        <Input
+                          id="display_name"
+                          name="display_name"
+                          value={formData.display_name}
+                          onChange={handleChange}
+                          placeholder="Your name"
+                          className="bg-background border-2 border-border focus:border-primary"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="location" className="text-sm font-bold uppercase tracking-wide">
+                          <MapPin className="inline h-4 w-4 mr-1" />
+                          Location
+                          <span className="ml-2 text-xs font-normal text-muted-foreground">
+                            <Lock className="inline h-3 w-3" /> Private
+                          </span>
+                        </Label>
+                        <Input
+                          id="location"
+                          name="location"
+                          value={formData.location}
+                          onChange={handleChange}
+                          placeholder="City, Country"
+                          className="bg-background border-2 border-border focus:border-primary"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="bio" className="text-sm font-bold uppercase tracking-wide">
+                        Bio
+                      </Label>
+                      <Textarea
+                        id="bio"
+                        name="bio"
+                        value={formData.bio}
+                        onChange={handleChange}
+                        placeholder="Tell us about yourself and your filmmaking journey..."
+                        rows={4}
+                        className="bg-background border-2 border-border focus:border-primary resize-none"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="camera_gear" className="text-sm font-bold uppercase tracking-wide">
+                        <Camera className="inline h-4 w-4 mr-1" />
+                        Camera Gear
+                      </Label>
+                      <Input
+                        id="camera_gear"
+                        name="camera_gear"
+                        value={formData.camera_gear}
+                        onChange={handleChange}
+                        placeholder="e.g., Sony A7III, Canon R5, Blackmagic Pocket 6K"
+                        className="bg-background border-2 border-border focus:border-primary"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Creative Identity */}
+                <Card className="card-urban">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Clapperboard className="h-5 w-5 text-primary" />
+                      Creative Identity
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-bold uppercase tracking-wide">
+                          Filmmaking Style
+                        </Label>
+                        <Select
+                          value={formData.filmmaking_style}
+                          onValueChange={(value) => 
+                            setFormData((prev) => ({ ...prev, filmmaking_style: value }))
+                          }
+                        >
+                          <SelectTrigger className="bg-background border-2 border-border focus:border-primary">
+                            <SelectValue placeholder="Select your style" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FILMMAKING_STYLES.map((style) => (
+                              <SelectItem key={style} value={style}>
+                                {style}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="current_project" className="text-sm font-bold uppercase tracking-wide">
+                          Current Project
+                        </Label>
+                        <Input
+                          id="current_project"
+                          name="current_project"
+                          value={formData.current_project}
+                          onChange={handleChange}
+                          placeholder="What are you working on?"
+                          className="bg-background border-2 border-border focus:border-primary"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-bold uppercase tracking-wide">
+                        <Film className="inline h-4 w-4 mr-1" />
+                        Favorite Films
+                      </Label>
+                      <FavoriteFilmsInput
+                        films={formData.favorite_films}
+                        onChange={(films) => 
+                          setFormData((prev) => ({ ...prev, favorite_films: films }))
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="influences" className="text-sm font-bold uppercase tracking-wide">
+                        Influences & Inspirations
+                      </Label>
+                      <Textarea
+                        id="influences"
+                        name="influences"
+                        value={formData.influences}
+                        onChange={handleChange}
+                        placeholder="Directors, cinematographers, or artists that inspire your work..."
+                        rows={3}
+                        className="bg-background border-2 border-border focus:border-primary resize-none"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Portfolio & Social Links */}
+                <Card className="card-urban">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Globe className="h-5 w-5 text-primary" />
+                      Portfolio & Social Links
+                      <span className="ml-auto text-xs font-normal text-muted-foreground flex items-center gap-1">
+                        <Eye className="h-3 w-3" /> Public
+                      </span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Portfolio Links */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="portfolio_url" className="text-sm font-bold uppercase tracking-wide">
+                          Portfolio Website
+                        </Label>
+                        <Input
+                          id="portfolio_url"
+                          name="portfolio_url"
+                          value={formData.portfolio_url}
+                          onChange={handleChange}
+                          placeholder="https://yoursite.com"
+                          className="bg-background border-2 border-border focus:border-primary"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="imdb_url" className="text-sm font-bold uppercase tracking-wide">
+                          IMDb
+                        </Label>
+                        <Input
+                          id="imdb_url"
+                          name="imdb_url"
+                          value={formData.imdb_url}
+                          onChange={handleChange}
+                          placeholder="https://imdb.com/name/..."
+                          className="bg-background border-2 border-border focus:border-primary"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="vimeo_url" className="text-sm font-bold uppercase tracking-wide">
+                          Vimeo
+                        </Label>
+                        <Input
+                          id="vimeo_url"
+                          name="vimeo_url"
+                          value={formData.vimeo_url}
+                          onChange={handleChange}
+                          placeholder="https://vimeo.com/yourname"
+                          className="bg-background border-2 border-border focus:border-primary"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Social Links */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="instagram_url" className="text-sm font-bold uppercase tracking-wide">
+                          <Instagram className="inline h-4 w-4 mr-1" />
+                          Instagram
+                        </Label>
+                        <Input
+                          id="instagram_url"
+                          name="instagram_url"
+                          value={formData.instagram_url}
+                          onChange={handleChange}
+                          placeholder="https://instagram.com/yourhandle"
+                          className="bg-background border-2 border-border focus:border-primary"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="youtube_url" className="text-sm font-bold uppercase tracking-wide">
+                          <Youtube className="inline h-4 w-4 mr-1" />
+                          YouTube
+                        </Label>
+                        <Input
+                          id="youtube_url"
+                          name="youtube_url"
+                          value={formData.youtube_url}
+                          onChange={handleChange}
+                          placeholder="https://youtube.com/@yourchannel"
+                          className="bg-background border-2 border-border focus:border-primary"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="twitter_url" className="text-sm font-bold uppercase tracking-wide">
+                          <Twitter className="inline h-4 w-4 mr-1" />
+                          Twitter / X
+                        </Label>
+                        <Input
+                          id="twitter_url"
+                          name="twitter_url"
+                          value={formData.twitter_url}
+                          onChange={handleChange}
+                          placeholder="https://twitter.com/yourhandle"
+                          className="bg-background border-2 border-border focus:border-primary"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="tiktok_url" className="text-sm font-bold uppercase tracking-wide">
+                          TikTok
+                        </Label>
+                        <Input
+                          id="tiktok_url"
+                          name="tiktok_url"
+                          value={formData.tiktok_url}
+                          onChange={handleChange}
+                          placeholder="https://tiktok.com/@yourhandle"
+                          className="bg-background border-2 border-border focus:border-primary"
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Submit Button */}
+                <div className="flex justify-end gap-4 sticky bottom-4 bg-background/95 backdrop-blur-sm p-4 -mx-4 border-t border-border lg:static lg:bg-transparent lg:p-0 lg:mx-0 lg:border-0">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => handleNavigateAway("/student")}
+                    className="border-2"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={saving}
+                    className="btn-brutal"
+                  >
+                    {saving ? "Saving..." : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Changes
+                      </>
+                    )}
+                  </Button>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Basic Info */}
-          <div className="container-wide max-w-5xl mx-auto px-4">
-            <Card className="card-urban">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5 text-primary" />
-                  Basic Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="display_name" className="text-sm font-bold uppercase tracking-wide">
-                      Display Name
-                    </Label>
-                    <Input
-                      id="display_name"
-                      name="display_name"
-                      value={formData.display_name}
-                      onChange={handleChange}
-                      placeholder="Your name"
-                      className="bg-background border-2 border-border focus:border-primary"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="location" className="text-sm font-bold uppercase tracking-wide">
-                      <MapPin className="inline h-4 w-4 mr-1" />
-                      Location
-                    </Label>
-                    <Input
-                      id="location"
-                      name="location"
-                      value={formData.location}
-                      onChange={handleChange}
-                      placeholder="City, Country"
-                      className="bg-background border-2 border-border focus:border-primary"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="bio" className="text-sm font-bold uppercase tracking-wide">
-                    Bio
-                  </Label>
-                  <Textarea
-                    id="bio"
-                    name="bio"
-                    value={formData.bio}
-                    onChange={handleChange}
-                    placeholder="Tell us about yourself and your filmmaking journey..."
-                    rows={4}
-                    className="bg-background border-2 border-border focus:border-primary resize-none"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="camera_gear" className="text-sm font-bold uppercase tracking-wide">
-                    <Camera className="inline h-4 w-4 mr-1" />
-                    Camera Gear
-                  </Label>
-                  <Input
-                    id="camera_gear"
-                    name="camera_gear"
-                    value={formData.camera_gear}
-                    onChange={handleChange}
-                    placeholder="e.g., Sony A7III, Canon R5, Blackmagic Pocket 6K"
-                    className="bg-background border-2 border-border focus:border-primary"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Creative Identity */}
-          <div className="container-wide max-w-5xl mx-auto px-4">
-            <Card className="card-urban">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Clapperboard className="h-5 w-5 text-primary" />
-                  Creative Identity
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-bold uppercase tracking-wide">
-                      Filmmaking Style
-                    </Label>
-                    <Select
-                      value={formData.filmmaking_style}
-                      onValueChange={(value) => 
-                        setFormData((prev) => ({ ...prev, filmmaking_style: value }))
-                      }
-                    >
-                      <SelectTrigger className="bg-background border-2 border-border focus:border-primary">
-                        <SelectValue placeholder="Select your style" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {FILMMAKING_STYLES.map((style) => (
-                          <SelectItem key={style} value={style}>
-                            {style}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="current_project" className="text-sm font-bold uppercase tracking-wide">
-                      Current Project
-                    </Label>
-                    <Input
-                      id="current_project"
-                      name="current_project"
-                      value={formData.current_project}
-                      onChange={handleChange}
-                      placeholder="What are you working on?"
-                      className="bg-background border-2 border-border focus:border-primary"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-sm font-bold uppercase tracking-wide">
-                    <Film className="inline h-4 w-4 mr-1" />
-                    Favorite Films
-                  </Label>
-                  <FavoriteFilmsInput
-                    films={formData.favorite_films}
-                    onChange={(films) => 
-                      setFormData((prev) => ({ ...prev, favorite_films: films }))
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="influences" className="text-sm font-bold uppercase tracking-wide">
-                    Influences & Inspirations
-                  </Label>
-                  <Textarea
-                    id="influences"
-                    name="influences"
-                    value={formData.influences}
-                    onChange={handleChange}
-                    placeholder="Directors, cinematographers, or artists that inspire your work..."
-                    rows={3}
-                    className="bg-background border-2 border-border focus:border-primary resize-none"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Portfolio & Social Links */}
-          <div className="container-wide max-w-5xl mx-auto px-4">
-            <Card className="card-urban">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Globe className="h-5 w-5 text-primary" />
-                  Portfolio & Social Links
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Portfolio Links */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="portfolio_url" className="text-sm font-bold uppercase tracking-wide">
-                      Portfolio Website
-                    </Label>
-                    <Input
-                      id="portfolio_url"
-                      name="portfolio_url"
-                      value={formData.portfolio_url}
-                      onChange={handleChange}
-                      placeholder="https://yoursite.com"
-                      className="bg-background border-2 border-border focus:border-primary"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="imdb_url" className="text-sm font-bold uppercase tracking-wide">
-                      IMDb
-                    </Label>
-                    <Input
-                      id="imdb_url"
-                      name="imdb_url"
-                      value={formData.imdb_url}
-                      onChange={handleChange}
-                      placeholder="https://imdb.com/name/..."
-                      className="bg-background border-2 border-border focus:border-primary"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="vimeo_url" className="text-sm font-bold uppercase tracking-wide">
-                      Vimeo
-                    </Label>
-                    <Input
-                      id="vimeo_url"
-                      name="vimeo_url"
-                      value={formData.vimeo_url}
-                      onChange={handleChange}
-                      placeholder="https://vimeo.com/yourname"
-                      className="bg-background border-2 border-border focus:border-primary"
-                    />
-                  </div>
-                </div>
-
-                {/* Social Links */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="instagram_url" className="text-sm font-bold uppercase tracking-wide">
-                      <Instagram className="inline h-4 w-4 mr-1" />
-                      Instagram
-                    </Label>
-                    <Input
-                      id="instagram_url"
-                      name="instagram_url"
-                      value={formData.instagram_url}
-                      onChange={handleChange}
-                      placeholder="https://instagram.com/yourhandle"
-                      className="bg-background border-2 border-border focus:border-primary"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="youtube_url" className="text-sm font-bold uppercase tracking-wide">
-                      <Youtube className="inline h-4 w-4 mr-1" />
-                      YouTube
-                    </Label>
-                    <Input
-                      id="youtube_url"
-                      name="youtube_url"
-                      value={formData.youtube_url}
-                      onChange={handleChange}
-                      placeholder="https://youtube.com/@yourchannel"
-                      className="bg-background border-2 border-border focus:border-primary"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="twitter_url" className="text-sm font-bold uppercase tracking-wide">
-                      <Twitter className="inline h-4 w-4 mr-1" />
-                      Twitter / X
-                    </Label>
-                    <Input
-                      id="twitter_url"
-                      name="twitter_url"
-                      value={formData.twitter_url}
-                      onChange={handleChange}
-                      placeholder="https://twitter.com/yourhandle"
-                      className="bg-background border-2 border-border focus:border-primary"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="tiktok_url" className="text-sm font-bold uppercase tracking-wide">
-                      TikTok
-                    </Label>
-                    <Input
-                      id="tiktok_url"
-                      name="tiktok_url"
-                      value={formData.tiktok_url}
-                      onChange={handleChange}
-                      placeholder="https://tiktok.com/@yourhandle"
-                      className="bg-background border-2 border-border focus:border-primary"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Submit Button */}
-          <div className="container-wide max-w-5xl mx-auto px-4">
-            <div className="flex justify-end gap-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => navigate("/student")}
-                className="border-2"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={saving}
-                className="btn-brutal"
-              >
-                {saving ? "Saving..." : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Changes
-                  </>
-                )}
-              </Button>
+              </form>
             </div>
           </div>
-        </form>
+        </div>
       </div>
     </PageLayout>
   );
