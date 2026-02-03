@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTestMode } from "@/hooks/useTestMode";
 
 const WATCH_THRESHOLD = 90; // 90% watched to mark complete
 const SAVE_INTERVAL = 5000; // Save every 5 seconds
@@ -21,6 +22,7 @@ interface UseVideoProgressOptions {
 
 export function useVideoProgress({ courseCode, lessonId, onComplete }: UseVideoProgressOptions) {
   const { user } = useAuth();
+  const { shouldBypassVideoProgress } = useTestMode();
   const [state, setState] = useState<VideoProgressState>({
     watchedSeconds: 0,
     durationSeconds: 0,
@@ -35,6 +37,19 @@ export function useVideoProgress({ courseCode, lessonId, onComplete }: UseVideoP
 
   // Load initial progress from database
   useEffect(() => {
+    // If test mode is active, immediately set as complete
+    if (shouldBypassVideoProgress) {
+      setState({
+        watchedSeconds: 100,
+        durationSeconds: 100,
+        watchPercentage: 100,
+        isCompleted: true,
+        isLoading: false,
+      });
+      hasCompletedRef.current = true;
+      return;
+    }
+
     if (!user || !lessonId) return;
 
     const loadProgress = async () => {
@@ -68,7 +83,7 @@ export function useVideoProgress({ courseCode, lessonId, onComplete }: UseVideoP
     };
 
     loadProgress();
-  }, [user, courseCode, lessonId]);
+  }, [user, courseCode, lessonId, shouldBypassVideoProgress]);
 
   // Save progress to database (debounced)
   const saveProgress = useCallback(

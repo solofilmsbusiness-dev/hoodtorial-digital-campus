@@ -5,6 +5,7 @@ import { ChatWidget } from "@/components/chat";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { TestModeProvider } from "@/contexts/TestModeContext";
 import { ProtectedRoute, AdminRoute, PaidRoute, AssessmentRequiredRoute } from "@/components/auth";
 import Index from "./pages/Index";
 import Degrees from "./pages/Degrees";
@@ -34,12 +35,13 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
-        <Toaster />
-        <Sonner />
-        <ChatWidget />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
+        <TestModeProvider>
+          <Toaster />
+          <Sonner />
+          <ChatWidget />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
             <Route path="/degrees" element={<Degrees />} />
             <Route path="/skill-tree/:path" element={<SkillTree />} />
             <Route path="/academics" element={<Academics />} />
@@ -107,6 +109,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
+        </TestModeProvider>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
