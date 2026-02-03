@@ -1,182 +1,161 @@
 
-# Payment Integration and Tier-Based Access Control
+# Enforcing Content Completion Requirements
 
-## Overview
-This plan implements a real Stripe payment system where each membership tier (Freshman, Sophomore, Graduate) is a clickable payment link. After payment, users will only have access to the features included in their purchased tier.
+## Problem Statement
+Currently, students can mark lessons complete by clicking a button without actually watching videos. The progression system has the logic to track video progress, but the video player doesn't report watch time back to the system.
 
-## Architecture
+## Current State Analysis
+- **Database**: Already has `watch_percentage`, `watched_seconds`, `video_duration_seconds` columns in `user_progress` table
+- **Hook Logic**: `useLessonProgress.ts` has `updateWatchProgress()` function and 90% threshold logic
+- **Video Player**: Does NOT track playback time - just displays embedded videos
+- **Quiz System**: Already properly enforces completion (must pass to proceed)
+- **Manual Override**: "Mark Complete" button allows bypassing video watching
 
-### Payment Flow
+## Solution Architecture
+
 ```text
-User clicks "Enroll Now" on a tier
-        ↓
-Redirected to Stripe Checkout
-        ↓
-Stripe processes payment
-        ↓
-Webhook updates user profile
-        ↓
-User redirected back with access to tier features
+Video Playback → Track Time → Update Progress → Auto-Complete at 90%
+                     ↓
+                Database stores:
+                - watched_seconds
+                - video_duration_seconds  
+                - watch_percentage
+                - completed (auto-set at 90%)
 ```
-
-### Tier Access Matrix
-| Feature | Freshman ($49) | Sophomore ($99) | Graduate ($199) |
-|---------|----------------|-----------------|-----------------|
-| Foundational Courses (HU-101 to HU-106) | Yes | Yes | Yes |
-| Advanced Courses (HU-201+) | No | Yes | Yes |
-| Module Quizzes | Yes | Yes | Yes |
-| Final Exams | No | Yes | Yes |
-| Project Submissions | No | Yes | Yes |
-| Capstone Film | No | No | Yes |
-| 1-on-1 Mentorship | No | No | Yes |
 
 ---
 
 ## Implementation Steps
 
-### Step 1: Enable Stripe Integration
-- Use the Lovable Stripe connector to enable Stripe
-- This will provide tools to create products, prices, and checkout sessions
-- Will also set up the required Stripe secret key
+### Step 1: Create Video Progress Tracker Component
+**New file: `src/components/course/VideoProgressTracker.tsx`**
 
-### Step 2: Create Stripe Products and Prices
-Create three subscription products in Stripe:
-1. **Freshman** - $49/month subscription
-2. **Sophomore** - $99/month subscription  
-3. **Graduate** - $199/month subscription
+A wrapper component that tracks video playback:
+- For **direct video files (.mp4)**: Use HTML5 video events (`timeupdate`, `durationchange`, `ended`)
+- For **YouTube/Vimeo**: Use their respective Player APIs via postMessage
+- Reports progress every 5 seconds to avoid excessive database writes
+- Shows visual progress indicator below video
 
-### Step 3: Create Checkout Edge Function
-**New file: `supabase/functions/create-checkout/index.ts`**
+### Step 2: Update VideoPlayer Component
+**Edit: `src/components/course/VideoPlayer.tsx`**
 
-Creates a Stripe Checkout session for the selected tier:
-- Accepts tier parameter (freshman, sophomore, graduate)
-- Validates user is authenticated
-- Creates Stripe customer if not exists
-- Returns checkout URL
-- Stores Stripe customer ID in profiles table
+- Accept new props: `onProgress`, `onComplete`, `lessonId`
+- For direct videos: Add event listeners for `timeupdate` and `loadedmetadata`
+- For YouTube: Use YouTube IFrame API to get `getCurrentTime()` and `getDuration()`
+- For Vimeo: Use Vimeo Player SDK to track progress
+- Call `onProgress(watchedSeconds, durationSeconds)` periodically
 
-### Step 4: Create Stripe Webhook Edge Function
-**New file: `supabase/functions/stripe-webhook/index.ts`**
+### Step 3: Create Video Progress Hook
+**New file: `src/hooks/useVideoProgress.ts`**
 
-Handles Stripe webhook events:
-- `checkout.session.completed` - Update user's membership_tier and subscription_status to "active"
-- `customer.subscription.updated` - Handle tier changes/upgrades
-- `customer.subscription.deleted` - Set subscription_status to "expired"
-- `invoice.payment_failed` - Handle failed payments
+Manages video progress state and persistence:
+- Debounces progress updates (every 5 seconds)
+- Loads initial progress from database on mount
+- Calculates completion percentage
+- Auto-triggers completion when 90% watched
+- Provides resume position for continuing where user left off
 
-### Step 5: Add Database Column for Stripe Customer ID
-**Database Migration:**
-```sql
-ALTER TABLE profiles 
-ADD COLUMN stripe_customer_id TEXT;
-```
-
-### Step 6: Update Enrollment Page
-**Edit: `src/pages/Enrollment.tsx`**
-
-- Add tier selection state and checkout handler
-- Each "Enroll Now" button calls the checkout edge function with the tier name
-- Handle loading states during checkout
-- Add redirect handling for success/cancel URLs
-
-### Step 7: Create New Hook for Tier Access
-**New file: `src/hooks/useTierAccess.ts`**
-
-Provides tier-based permission checking:
-- `canAccessCourse(courseCode)` - Check if user's tier allows access
-- `canAccessFinalExams()` - Sophomore+ only
-- `canSubmitProjects()` - Sophomore+ only
-- `canAccessMentorship()` - Graduate only
-- `getCurrentTier()` - Returns user's membership tier
-
-### Step 8: Update Course Access Control
+### Step 4: Update CourseDetail Page
 **Edit: `src/pages/CourseDetail.tsx`**
 
-- Import and use `useTierAccess` hook
-- Show tier upgrade prompt if course requires higher tier
-- Block access to final exams for Freshman tier
-- Display clear messaging about what tier is needed
+- Remove or modify "Mark Complete" button behavior
+- For video lessons: Button shows watch progress percentage
+- Button only enabled when 90%+ watched OR lesson type is not video
+- For reading/practice lessons: Keep manual completion available
+- Pass progress handlers to VideoPlayer
 
-### Step 9: Update Subscription Hook
-**Edit: `src/hooks/useSubscription.ts`**
+### Step 5: Update LockedLessonCard Display
+**Edit: `src/components/course/LockedLessonCard.tsx`**
 
-Add tier information to the subscription state:
-- Include `membershipTier` in the returned state
-- Add helper for tier comparison (e.g., `isTierAtLeast('sophomore')`)
+- Already accepts `watchPercentage` prop (currently unused)
+- Ensure progress bar displays correctly for in-progress videos
+- Show "X% watched" indicator for partial completion
 
-### Step 10: Create Tier Upgrade Component
-**New file: `src/components/subscription/TierUpgradePrompt.tsx`**
+### Step 6: Add Visual Progress Overlay to Video
+**Edit: `src/components/course/VideoPlayer.tsx`**
 
-Shows when user tries to access content above their tier:
-- Displays what tier is required
-- Shows price difference for upgrade
-- CTA button to upgrade tier
-- Links back to enrollment page with tier pre-selected
-
-### Step 11: Update TierCard Component
-**Edit: `src/components/cards/TierCard.tsx`**
-
-- Accept `onSelect` callback instead of static href
-- Add loading state for when checkout is processing
-- Highlight current tier if user is already subscribed
-- Show "Current Plan" badge for active tier
+Add UI elements:
+- Progress bar at bottom of video showing watch completion
+- "Resume from X:XX" indicator if returning to partially watched video
+- Checkmark overlay when 90%+ complete
 
 ---
 
 ## Technical Details
 
-### Foundational Courses (Freshman Access)
+### Video Progress Tracking Strategy
+
+**Direct Video (.mp4, .webm):**
 ```typescript
-const FOUNDATIONAL_COURSES = [
-  "HU-101", "HU-102", "HU-103", "HU-104", "HU-105", "HU-106"
-];
+// Use native video element events
+videoRef.current.addEventListener('timeupdate', () => {
+  const watched = videoRef.current.currentTime;
+  const duration = videoRef.current.duration;
+  onProgress(watched, duration);
+});
 ```
 
-### Tier Hierarchy
+**YouTube (via postMessage API):**
 ```typescript
-const TIER_HIERARCHY = {
-  freshman: 1,
-  sophomore: 2,
-  graduate: 3
-};
+// Listen for YouTube player state changes
+window.addEventListener('message', (e) => {
+  if (e.data.event === 'infoDelivery') {
+    const { currentTime, duration } = e.data.info;
+    onProgress(currentTime, duration);
+  }
+});
 ```
 
-### Course Tier Requirements
-- Courses HU-1XX (100-level) = Freshman+
-- Courses HU-2XX (200-level) = Sophomore+
-- Courses HU-3XX (300-level) = Sophomore+
-- Final Exams = Sophomore+
-- Project Submissions = Sophomore+
-- Capstone = Graduate only
+**Vimeo (via Vimeo Player SDK):**
+```typescript
+// Use @vimeo/player package
+const player = new Player(iframeRef);
+player.on('timeupdate', (data) => {
+  onProgress(data.seconds, data.duration);
+});
+```
+
+### Completion Requirements by Lesson Type
+
+| Lesson Type | Completion Requirement |
+|-------------|------------------------|
+| Video | 90%+ of video watched |
+| Reading | Manual "Mark Complete" click |
+| Practice | Manual "Mark Complete" click |
+| Quiz | Must pass (existing logic) |
+
+### Database Update Frequency
+- Progress saved every 5 seconds during playback
+- Final save on video pause/end
+- Debounced to prevent excessive writes
 
 ---
 
 ## Files to Create
-1. `supabase/functions/create-checkout/index.ts`
-2. `supabase/functions/stripe-webhook/index.ts`
-3. `src/hooks/useTierAccess.ts`
-4. `src/components/subscription/TierUpgradePrompt.tsx`
+1. `src/hooks/useVideoProgress.ts` - Video progress state management
+2. `src/components/course/VideoProgressTracker.tsx` - Progress tracking wrapper
 
 ## Files to Modify
-1. `src/pages/Enrollment.tsx` - Add checkout integration
-2. `src/pages/CourseDetail.tsx` - Add tier-based access checks
-3. `src/hooks/useSubscription.ts` - Add tier info
-4. `src/components/cards/TierCard.tsx` - Add click handler and states
-5. `src/components/subscription/index.ts` - Export new component
+1. `src/components/course/VideoPlayer.tsx` - Add progress tracking events
+2. `src/pages/CourseDetail.tsx` - Connect progress system, update "Mark Complete" logic
+3. `src/components/course/LockedLessonCard.tsx` - Ensure progress display works
 
-## Database Changes
-1. Add `stripe_customer_id` column to profiles table
+## Dependencies to Consider
+- May need to add `@vimeo/player` package for Vimeo tracking
+- YouTube tracking works via postMessage (no package needed)
 
 ---
 
-## Security Considerations
-- Webhook endpoint validates Stripe signature
-- Tier checks happen both client-side (UX) and server-side (edge functions)
-- RLS policies ensure users can only read their own tier
-- Stripe customer ID is only set via authenticated edge functions
+## User Experience Flow
 
-## Next Steps After Implementation
-1. Test the complete payment flow end-to-end
-2. Verify tier restrictions work correctly on course access
-3. Test subscription cancellation handling
-4. Test tier upgrade flow
+1. **Student opens lesson** → Video loads, resumes from last position if applicable
+2. **Student watches video** → Progress bar fills up, percentage updates in sidebar
+3. **At 90% watched** → Lesson auto-marked complete, next content unlocks
+4. **For non-video lessons** → "Mark Complete" button available immediately
+5. **For quizzes** → Must pass to unlock next module (existing behavior)
+
+## Edge Cases Handled
+- Seeking/skipping: Track actual watched time, not just current position
+- Browser refresh: Resume from last saved position
+- Slow connection: Debounced saves prevent data loss
+- Multiple devices: Latest progress wins
