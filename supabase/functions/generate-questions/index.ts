@@ -11,11 +11,20 @@ serve(async (req) => {
   }
 
   try {
-    const { topic, numQuestions = 5, difficulty = "intermediate", context = "" } = await req.json();
+    const { 
+      topic, 
+      numQuestions = 5, 
+      difficulty = "intermediate", 
+      context = "",
+      pdfContent = "",
+      questionType = "test",
+      focusKeywords = ""
+    } = await req.json();
 
-    if (!topic) {
+    // Either topic or pdfContent is required
+    if (!topic && !pdfContent) {
       return new Response(
-        JSON.stringify({ error: "Topic is required" }),
+        JSON.stringify({ error: "Either topic or pdfContent is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -29,7 +38,55 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are an expert quiz creator for filmmaking and cinematography courses. 
+    // Build the system prompt based on whether we have PDF content or just a topic
+    let systemPrompt: string;
+    let userPrompt: string;
+
+    if (pdfContent) {
+      // PDF-based generation
+      const questionTypeDescription = questionType === "extra_credit" 
+        ? "extra credit questions that are challenging and reward deeper understanding"
+        : "test questions that fairly assess understanding of the material";
+
+      systemPrompt = `You are an expert quiz creator for filmmaking and cinematography education.
+
+You have been provided with educational content extracted from a PDF document.
+Your task is to create high-quality ${questionTypeDescription} based on this material.
+
+Guidelines:
+- Create ${numQuestions} questions at ${difficulty} difficulty level
+- Questions must be directly based on the provided content
+- Test understanding and application, not just memorization
+- For "test questions": Create fair, comprehensive assessments
+- For "extra credit": Create challenging questions that reward deeper understanding and critical thinking
+- Each question should have 4 answer options (A, B, C, D)
+- Only one answer should be correct
+- Include a brief explanation referencing the source material
+${focusKeywords ? `- Focus especially on these topics: ${focusKeywords}` : ""}
+
+Return your response as a valid JSON object with this exact structure:
+{
+  "questions": [
+    {
+      "question": "The question text here",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correct_answer": 0,
+      "explanation": "Brief explanation of why this is correct, referencing the source material"
+    }
+  ]
+}
+
+The correct_answer is the zero-based index of the correct option (0 for A, 1 for B, 2 for C, 3 for D).`;
+
+      userPrompt = `Generate ${numQuestions} ${difficulty}-level ${questionType === "extra_credit" ? "extra credit" : "test"} questions based on the following document content:
+
+---DOCUMENT START---
+${pdfContent.substring(0, 50000)}
+---DOCUMENT END---`;
+
+    } else {
+      // Topic-based generation (original behavior)
+      systemPrompt = `You are an expert quiz creator for filmmaking and cinematography courses. 
 Generate high-quality multiple choice questions that test understanding, not just memorization.
 
 Guidelines:
@@ -54,9 +111,10 @@ Return your response as a valid JSON object with this exact structure:
 
 The correct_answer is the zero-based index of the correct option (0 for A, 1 for B, 2 for C, 3 for D).`;
 
-    const userPrompt = `Generate ${numQuestions} ${difficulty}-level quiz questions about: ${topic}${context ? `\n\nAdditional context: ${context}` : ""}`;
+      userPrompt = `Generate ${numQuestions} ${difficulty}-level quiz questions about: ${topic}${context ? `\n\nAdditional context: ${context}` : ""}`;
+    }
 
-    console.log(`Generating ${numQuestions} questions about: ${topic}`);
+    console.log(`Generating ${numQuestions} ${questionType} questions (PDF: ${pdfContent ? "yes" : "no"})`);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
