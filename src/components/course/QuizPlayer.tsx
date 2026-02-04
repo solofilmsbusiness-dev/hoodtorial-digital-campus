@@ -13,6 +13,8 @@ import {
   AlertTriangle,
   Shuffle
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { getQuizQuestions, type QuizQuestion } from "@/data/quizQuestions";
 import { 
   getRandomizedQuiz, 
@@ -25,6 +27,7 @@ import {
 } from "@/lib/quizUtils";
 import { useQuizResults } from "@/hooks/useQuizResults";
 import { useAuth } from "@/contexts/AuthContext";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Quiz } from "@/data/courses";
 
 interface QuizPlayerProps {
@@ -37,9 +40,35 @@ interface QuizPlayerProps {
 type QuizState = "intro" | "playing" | "review" | "results" | "expired";
 
 export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayerProps) {
-  const originalQuestions = getQuizQuestions(quiz.id);
   const { user } = useAuth();
   const { saveQuizResult } = useQuizResults();
+
+  // Fetch questions from database first, fall back to static if none found
+  const { data: dbQuestions = [], isLoading: isLoadingQuestions } = useQuery({
+    queryKey: ["quiz-questions", quiz.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("quiz_questions")
+        .select("*")
+        .eq("quiz_id", quiz.id)
+        .order("sort_order");
+      
+      if (error) throw error;
+      
+      // Transform to QuizQuestion format
+      return (data || []).map(q => ({
+        id: q.id,
+        question: q.question,
+        options: Array.isArray(q.options) ? q.options as string[] : JSON.parse(q.options as string) as string[],
+        correctAnswer: q.correct_answer,
+        explanation: q.explanation || undefined,
+      })) as QuizQuestion[];
+    },
+  });
+
+  // Use database questions if available, otherwise fall back to static
+  const staticQuestions = getQuizQuestions(quiz.id);
+  const originalQuestions = dbQuestions.length > 0 ? dbQuestions : staticQuestions;
   
   const [state, setState] = useState<QuizState>("intro");
   const [shuffledQuestions, setShuffledQuestions] = useState<ShuffledQuestion[]>([]);
@@ -318,6 +347,25 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
     const progress = questionRemainingTime / perQuestionTime;
     return circumference * (1 - progress);
   }, [questionRemainingTime, perQuestionTime, usePerQuestionMode]);
+
+  // Loading state while fetching questions from database
+  if (isLoadingQuestions) {
+    return (
+      <div className="border-2 border-border bg-card p-8">
+        <div className="text-center max-w-md mx-auto">
+          <Skeleton className="w-16 h-16 mx-auto mb-6" />
+          <Skeleton className="h-8 w-48 mx-auto mb-4" />
+          <Skeleton className="h-4 w-64 mx-auto mb-8" />
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <Skeleton className="h-20" />
+            <Skeleton className="h-20" />
+            <Skeleton className="h-20" />
+          </div>
+          <Skeleton className="h-12 w-32 mx-auto" />
+        </div>
+      </div>
+    );
+  }
 
   // No questions available
   if (originalQuestions.length === 0) {
