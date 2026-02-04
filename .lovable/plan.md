@@ -1,182 +1,198 @@
 
+# Quiz Results with Course Names & Enrollment-Gated Course Access
 
-# Enhanced Welcome Messages for Login Page
+## Overview
 
-## Current State
+This plan implements two improvements:
 
-The login page currently has basic welcome text:
-- **Sign Up**: "Join the University" / "Create your account to start your journey"
-- **Sign In**: "Welcome Back" / "Sign in to access your Student Center"
-
-These are static and don't match the cinematic, urban personality of the platform.
+1. **Student Center Quiz Results** - Display course title alongside course code in the Recent Quiz Results section
+2. **Course Detail Access Control** - Restrict course content visibility so non-enrolled users only see the course overview description and intro video, not the full module list
 
 ---
 
-## Proposed Enhancements
+## Part 1: Quiz Results with Course Name
 
-### 1. Dynamic, Personality-Driven Headlines
+### Current State
 
-Replace static text with rotating, film-inspired welcome messages that match the "Where Hustle Meets Hollywood" brand.
+In `StudentCenter.tsx`, the Recent Quiz Results section shows:
+```
+HU-101
+Jan 15, 2025                           8/10  PASSED
+```
 
-**Sign Up Headlines (rotate through these):**
-| Headline | Subtext |
-|----------|---------|
-| "Your Director's Chair Awaits" | "Join 500+ filmmakers writing their origin story" |
-| "The Industry Needs Your Vision" | "Create your account. Begin your legacy." |
-| "Ready to Make History?" | "Every legend started with a single frame" |
-| "Claim Your Seat in the Room" | "Where the next generation of cinema is born" |
+### Proposed State
 
-**Sign In Headlines (rotate through these):**
-| Headline | Subtext |
-|----------|---------|
-| "The Set is Ready" | "Your crew missed you. Let's get back to work." |
-| "Welcome Back, Filmmaker" | "Your next lesson is waiting" |
-| "Roll Camera" | "Pick up where you left off" |
-| "The Hustle Continues" | "Your journey is far from over" |
+Show the course title for context:
+```
+HU-101 • The Art of Storytelling
+Jan 15, 2025                           8/10  PASSED
+```
 
-### 2. Animated Text Transitions
+### Implementation
 
-Use framer-motion to create smooth transitions between headlines:
-- Fade + slide up animation when switching between sign up/sign in
-- Typewriter effect for the main headline
-- Staggered fade-in for subtext
-- Subtle glow pulse on the headline
+#### File: `src/pages/StudentCenter.tsx`
 
-### 3. Personalized Welcome Back (Sign In)
+1. Import the `courses` data array which contains all course info
+2. Create a helper function to look up course title by code:
+   ```typescript
+   const getCourseTitle = (courseCode: string) => {
+     const course = courses.find((c) => c.code === courseCode);
+     return course?.title || courseCode;
+   };
+   ```
 
-When a returning user signs in, show their name if available from a previous session:
-- Store last logged-in display name in localStorage
-- Show "Welcome Back, [Name]" instead of generic greeting
-- Falls back to rotating messages if no name stored
-
-### 4. Visual Enhancements
-
-- Add a small film clapperboard or camera icon that animates
-- Gradient text effect on key words ("Director's Chair", "Filmmaker")
-- Subtle sparkle/star animation on the headline
+3. Update the quiz results display (around line 252) to show both code and title:
+   ```tsx
+   <p className="font-bold text-foreground">
+     {result.course_code} • {getCourseTitle(result.course_code)}
+   </p>
+   ```
 
 ---
 
-## Technical Implementation
+## Part 2: Enrollment-Gated Course Access
 
-### Files to Modify
+### Current State
+
+On the Course Detail page, non-enrolled users can see:
+- Full course header with title, description, credits, stats
+- Intro video (if available)
+- **All module names and lesson titles in the sidebar**
+- Enrollment card prompt
+
+The module list reveals the entire course structure before enrollment.
+
+### Proposed State
+
+Non-enrolled users should only see:
+- Course header (title, description, level, credits, stats) - **visible**
+- Intro video (if available) - **visible**
+- Enrollment card with CTA - **visible**
+- Module/lesson list - **hidden until enrolled**
+
+### Implementation
+
+#### File: `src/pages/CourseDetail.tsx`
+
+Update the Course Content section (starting around line 544) to conditionally render the modules sidebar based on enrollment status.
+
+**Before (current):**
+```tsx
+<Section className="py-8">
+  <SubscriptionGate>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {/* Video Player Area - lg:col-span-2 */}
+      {/* ... enrollment card, lesson content ... */}
+      
+      {/* Course Modules Sidebar */}
+      <div className="space-y-4">
+        <h3>Course Content</h3>
+        {course.modules.map(...)}  // Always visible
+      </div>
+    </div>
+  </SubscriptionGate>
+</Section>
+```
+
+**After (new):**
+```tsx
+<Section className="py-8">
+  <SubscriptionGate>
+    {enrolled ? (
+      {/* Full enrolled view with video player and modules */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Video player content */}
+        {/* Course modules sidebar */}
+      </div>
+    ) : (
+      {/* Non-enrolled teaser view */}
+      <div className="max-w-2xl mx-auto text-center">
+        <EnrollmentCard ... />
+        <div className="mt-8 p-8 border-2 border-dashed border-border">
+          <Lock className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="heading-4 mb-2">Course Content Locked</h3>
+          <p className="text-muted-foreground mb-4">
+            Enroll in this course to access {course.modules.length} modules 
+            and {totalLessons} lessons.
+          </p>
+          <div className="flex flex-wrap justify-center gap-2">
+            {/* Show module count badges without revealing titles */}
+            <Badge>📚 {course.modules.length} Modules</Badge>
+            <Badge>🎬 {totalLessons} Lessons</Badge>
+            <Badge>✅ {totalQuizzes} Quizzes</Badge>
+          </div>
+        </div>
+      </div>
+    )}
+  </SubscriptionGate>
+</Section>
+```
+
+This approach:
+- Keeps the header and intro video always visible (for marketing/preview purposes)
+- Shows the enrollment card prominently
+- Hides the actual module/lesson list from non-enrolled users
+- Shows aggregate stats (X modules, Y lessons) without revealing content details
+- Creates urgency to enroll
+
+---
+
+## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/pages/Auth.tsx` | Add rotating headline logic, animations, personalization |
+| `src/pages/StudentCenter.tsx` | Add course title lookup and display in quiz results |
+| `src/pages/CourseDetail.tsx` | Restructure content section to gate modules behind enrollment |
 
-### New State & Logic
+---
 
-```typescript
-// Rotating headlines arrays
-const signUpHeadlines = [
-  { title: "Your Director's Chair Awaits", subtitle: "Join 500+ filmmakers writing their origin story" },
-  { title: "The Industry Needs Your Vision", subtitle: "Create your account. Begin your legacy." },
-  // ...
-];
+## Visual Summary
 
-const signInHeadlines = [
-  { title: "The Set is Ready", subtitle: "Your crew missed you. Let's get back to work." },
-  { title: "Welcome Back, Filmmaker", subtitle: "Your next lesson is waiting" },
-  // ...
-];
+### Quiz Results (Before vs After)
 
-// Personalization from localStorage
-const lastUserName = localStorage.getItem('hoodtorial-last-user');
+| Before | After |
+|--------|-------|
+| `HU-101` | `HU-101 • The Art of Storytelling` |
+| `HU-203` | `HU-203 • Advanced Lighting Techniques` |
 
-// Rotate headlines every 5 seconds
-const [headlineIndex, setHeadlineIndex] = useState(0);
-useEffect(() => {
-  const interval = setInterval(() => {
-    setHeadlineIndex(prev => (prev + 1) % headlines.length);
-  }, 5000);
-  return () => clearInterval(interval);
-}, [isSignUp]);
-```
+### Course Detail (Non-Enrolled View)
 
-### Animation Pattern
-
-```tsx
-<AnimatePresence mode="wait">
-  <motion.div
-    key={`${isSignUp}-${headlineIndex}`}
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -20 }}
-    transition={{ duration: 0.5 }}
-    className="text-center mb-6"
-  >
-    <h2 className="heading-4 text-foreground">
-      <span className="text-gold-gradient">{headline.title}</span>
-    </h2>
-    <motion.p 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ delay: 0.2 }}
-      className="text-sm text-muted-foreground mt-2"
-    >
-      {headline.subtitle}
-    </motion.p>
-  </motion.div>
-</AnimatePresence>
-```
-
-### Personalization Storage
-
-On successful login, store the user's name:
-```typescript
-// After successful sign in
-if (profile?.display_name) {
-  localStorage.setItem('hoodtorial-last-user', profile.display_name);
-}
+```text
+┌────────────────────────────────────────────┐
+│  ← Back to Courses                         │
+│                                            │
+│  [HU-101]  [Beginner]                      │
+│                                            │
+│  THE ART OF STORYTELLING                   │
+│  Learn narrative structure and visual...    │
+│                                            │
+│  [12 Lessons] [5 Quizzes] [3 hrs] [4 Cr]   │
+├────────────────────────────────────────────┤
+│  Course Introduction                        │
+│  [▶ Intro Video Player]                    │
+├────────────────────────────────────────────┤
+│       ┌───────────────────────┐            │
+│       │  ENROLL TO UNLOCK     │            │
+│       │  3 slots available    │            │
+│       │  [Enroll Now Button]  │            │
+│       └───────────────────────┘            │
+│                                            │
+│       ┌─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐            │
+│       │  🔒 Course Content    │            │
+│       │     Locked            │            │
+│       │                       │            │
+│       │  📚 4 Modules         │            │
+│       │  🎬 12 Lessons        │            │
+│       │  ✅ 5 Quizzes         │            │
+│       └─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘            │
+└────────────────────────────────────────────┘
 ```
 
 ---
 
-## Visual Preview
+## Technical Notes
 
-**Sign Up State:**
-```text
-   [Film Icon Animation]
-   
-   "Your Director's Chair Awaits"
-   (with gold gradient text + glow)
-   
-   Join 500+ filmmakers writing their origin story
-   (fade in with slight delay)
-```
-
-**Sign In State (Personalized):**
-```text
-   [Camera Rolling Animation]
-   
-   "Welcome Back, Marcus"
-   (personalized if name available)
-   
-   Your next lesson is waiting
-```
-
-**Sign In State (Generic):**
-```text
-   [Camera Rolling Animation]
-   
-   "The Set is Ready"
-   (rotating headlines)
-   
-   Your crew missed you. Let's get back to work.
-```
-
----
-
-## Summary
-
-| Enhancement | Impact |
-|-------------|--------|
-| Rotating film-themed headlines | Creates energy and personality |
-| Animated transitions | Adds polish and smoothness |
-| Personalized "Welcome Back" | Creates connection with returning users |
-| Gold gradient + glow effects | Matches platform aesthetic |
-| Icon animations | Reinforces film school brand |
-
-This transforms the auth page from a functional form into an inviting, cinematic experience that matches the "Hustle Meets Hollywood" brand.
-
+- The `courses` import from `src/data/courses.ts` provides static course data for lookup
+- For database-only courses not in static data, the code will gracefully fall back to showing just the course code
+- Test mode users continue to see full content as they're treated as enrolled
+- The intro video remains visible to all users as it serves a marketing/preview purpose
