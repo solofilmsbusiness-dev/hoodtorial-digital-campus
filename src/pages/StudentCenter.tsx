@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { PageLayout } from "@/components/layout";
 import { StampBadge } from "@/components/ui/custom-badges";
 import { useAuth } from "@/contexts/AuthContext";
@@ -42,6 +42,9 @@ export default function StudentCenter() {
   const { results } = useQuizResults();
   const { progress, getTotalCredits, getCompletedCourses } = useUserProgress();
   const [supportSheetOpen, setSupportSheetOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeCoursesRef = useRef<HTMLDivElement>(null);
+  const [highlightedCourse, setHighlightedCourse] = useState<string | null>(null);
   const { latestResult, hasCompletedAssessment } = useAssessmentResults();
   const { 
     activeEnrollments, 
@@ -58,6 +61,38 @@ export default function StudentCenter() {
   
   // Use merged course list from database + static data
   const { allCourses, isLoading: coursesLoading } = useCourseStatus();
+
+  // Handle enrolled query param - scroll to and highlight new course
+  useEffect(() => {
+    const enrolledCode = searchParams.get("enrolled");
+    if (enrolledCode && !coursesLoading) {
+      setHighlightedCourse(enrolledCode);
+      
+      // Scroll to active courses section
+      setTimeout(() => {
+        activeCoursesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        
+        // Find and scroll to the specific card
+        const cardElement = document.querySelector(`[data-course-code="${enrolledCode}"]`);
+        if (cardElement) {
+          setTimeout(() => {
+            cardElement.scrollIntoView({ behavior: "smooth", block: "center" });
+          }, 300);
+        }
+      }, 100);
+      
+      // Clear the query param after highlighting
+      setTimeout(() => {
+        searchParams.delete("enrolled");
+        setSearchParams(searchParams, { replace: true });
+      }, 500);
+      
+      // Clear highlight after animation
+      setTimeout(() => {
+        setHighlightedCourse(null);
+      }, 3500);
+    }
+  }, [searchParams, coursesLoading, setSearchParams]);
 
   const totalCredits = getTotalCredits();
   const completedCourses = getCompletedCourses();
@@ -201,7 +236,7 @@ export default function StudentCenter() {
           </div>
 
           {/* Active Courses Section - Now with management */}
-          <Card className="card-urban mb-8">
+          <Card ref={activeCoursesRef} className="card-urban mb-8">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
@@ -249,6 +284,7 @@ export default function StudentCenter() {
                       enrolledCourseCodes={enrolledCourseCodes}
                       onDrop={handleDropCourse}
                       onSwap={handleSwapCourse}
+                      isHighlighted={highlightedCourse === courseData!.code}
                     />
                   ))}
                   {slotsRemaining > 0 && (
