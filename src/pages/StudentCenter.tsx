@@ -8,7 +8,7 @@ import { useUserProgress } from "@/hooks/useUserProgress";
 import { useAssessmentResults } from "@/hooks/useAssessmentResults";
 import { useEnrollments } from "@/hooks/useEnrollments";
 import { useLessonProgress } from "@/hooks/useLessonProgress";
-import { courses, getCourseByCode } from "@/data/courses";
+import { courses, getCourseByCode, getTotalLessonsCount, getTotalQuizzesCount } from "@/data/courses";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,7 +37,7 @@ export default function StudentCenter() {
   const { user } = useAuth();
   const { profile, loading: profileLoading } = useProfileContext();
   const { results } = useQuizResults();
-  const { getTotalCredits, getCompletedCourses } = useUserProgress();
+  const { progress, getTotalCredits, getCompletedCourses } = useUserProgress();
   const [supportSheetOpen, setSupportSheetOpen] = useState(false);
   const { latestResult, hasCompletedAssessment } = useAssessmentResults();
   const { 
@@ -95,12 +95,25 @@ export default function StudentCenter() {
     const course = getCourseByCode(courseCode);
     if (!course) return 0;
     
-    // This is a simplified calculation - ideally we'd use the same logic as CourseDetail
-    const totalLessons = course.modules?.reduce((acc, m) => acc + (m.lessons?.length || 0), 0) || 0;
-    if (totalLessons === 0) return 0;
+    const totalLessons = getTotalLessonsCount(course);
+    const totalQuizzes = getTotalQuizzesCount(course);
+    const total = totalLessons + totalQuizzes;
     
-    // Return a placeholder - in a real implementation, we'd calculate from lesson progress
-    return 0;
+    if (total === 0) return 0;
+    
+    // Count completed lessons for this course
+    const courseProgress = progress.filter(p => p.course_code === courseCode);
+    const completedLessons = courseProgress.filter(p => 
+      p.lesson_id && (p.completed || (p.watch_percentage ?? 0) >= 90)
+    ).length;
+    
+    // Count passed quizzes for this course (unique quiz IDs only)
+    const courseQuizResults = results.filter(r => r.course_code === courseCode && r.passed);
+    const uniquePassedQuizIds = new Set(courseQuizResults.map(r => r.quiz_id));
+    const completedQuizzes = uniquePassedQuizIds.size;
+    
+    const completed = completedLessons + completedQuizzes;
+    return Math.round((completed / total) * 100);
   };
 
   const handleDropCourse = async (courseCode: string) => {
