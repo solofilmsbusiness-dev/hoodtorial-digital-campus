@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
-import { Eye, EyeOff, Mail, Lock, User, Film } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, Film, Volume2, VolumeX } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import defaultLogo from "@/assets/hero-logo.png";
 import defaultVideo from "@/assets/hero-video.mp4";
@@ -29,6 +29,12 @@ export default function Auth() {
   // Dynamic media URLs (fall back to static imports)
   const [videoUrl, setVideoUrl] = useState<string>(defaultVideo);
   const [logoUrl, setLogoUrl] = useState<string>(defaultLogo);
+  const [musicUrl, setMusicUrl] = useState<string | null>(null);
+  const [isMusicEnabled, setIsMusicEnabled] = useState(() => {
+    return localStorage.getItem('hoodtorial-login-music-enabled') !== 'false';
+  });
+  
+  const audioRef = useRef<HTMLAudioElement>(null);
   
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
@@ -42,7 +48,7 @@ export default function Auth() {
         const { data } = await supabase
           .from("site_settings")
           .select("id, value")
-          .in("id", ["login_video_url", "login_logo_url"]);
+          .in("id", ["login_video_url", "login_logo_url", "login_music_url"]);
 
         data?.forEach((setting) => {
           if (setting.id === "login_video_url" && setting.value) {
@@ -50,6 +56,9 @@ export default function Auth() {
           }
           if (setting.id === "login_logo_url" && setting.value) {
             setLogoUrl(setting.value);
+          }
+          if (setting.id === "login_music_url" && setting.value) {
+            setMusicUrl(setting.value);
           }
         });
       } catch (err) {
@@ -60,6 +69,53 @@ export default function Auth() {
 
     fetchSiteMedia();
   }, []);
+
+  // Handle audio playback based on user preference
+  useEffect(() => {
+    if (!musicUrl || !audioRef.current) return;
+
+    const audio = audioRef.current;
+    audio.volume = 0.3;
+
+    // Try to play if user has enabled music
+    if (isMusicEnabled) {
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          // Autoplay was prevented - wait for user interaction
+        });
+      }
+    }
+  }, [musicUrl, isMusicEnabled]);
+
+  // Handle first user interaction to enable audio (browser autoplay policy)
+  useEffect(() => {
+    if (!musicUrl || !isMusicEnabled) return;
+
+    const handleInteraction = () => {
+      if (audioRef.current && audioRef.current.paused) {
+        audioRef.current.play().catch(() => {});
+      }
+      document.removeEventListener('click', handleInteraction);
+    };
+
+    document.addEventListener('click', handleInteraction);
+    return () => document.removeEventListener('click', handleInteraction);
+  }, [musicUrl, isMusicEnabled]);
+
+  const toggleMusic = () => {
+    const newState = !isMusicEnabled;
+    setIsMusicEnabled(newState);
+    localStorage.setItem('hoodtorial-login-music-enabled', String(newState));
+    
+    if (audioRef.current) {
+      if (newState) {
+        audioRef.current.play().catch(() => {});
+      } else {
+        audioRef.current.pause();
+      }
+    }
+  };
 
   // Redirect if already logged in
   if (user) {
@@ -183,6 +239,34 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
+      {/* Background Audio */}
+      {musicUrl && (
+        <audio
+          ref={audioRef}
+          src={musicUrl}
+          loop
+          preload="auto"
+        />
+      )}
+
+      {/* Music Toggle Button */}
+      {musicUrl && (
+        <motion.button
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 4 }}
+          onClick={toggleMusic}
+          className="fixed bottom-6 right-6 z-50 p-3 rounded-full bg-card/80 backdrop-blur-sm border border-border/50 hover:bg-card transition-colors group"
+          aria-label={isMusicEnabled ? "Mute music" : "Unmute music"}
+        >
+          {isMusicEnabled ? (
+            <Volume2 className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
+          ) : (
+            <VolumeX className="h-5 w-5 text-muted-foreground group-hover:scale-110 transition-transform" />
+          )}
+        </motion.button>
+      )}
+
       {/* Full-screen Background Video */}
       <video
         autoPlay
