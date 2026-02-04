@@ -1,61 +1,67 @@
 
 
-# Fix Music Upload - Add Audio MIME Types to Storage Bucket
+# Remove Camera/Film Icon Flash on Login Screen Startup
 
 ## Problem Identified
 
-The music upload failed with error:
-```
-"mime type audio/mpeg is not supported"
-```
+A camera/film-related image briefly appears on the login screen during startup. Based on code analysis, this is likely the **Film icon** from lucide-react that may be rendering briefly before animations complete, or the first frame of the video element.
 
-The `site-assets` storage bucket only allows these MIME types:
-- `video/mp4`
-- `video/webm`
-- `image/jpeg`
-- `image/png`
-- `image/webp`
+## Root Cause Analysis
 
-Audio files (MP3, WAV, OGG) are blocked because their MIME types are not in the allowed list.
+The Auth.tsx page imports and uses the `Film` icon from lucide-react:
+- **Import (line 9)**: `import { Eye, EyeOff, Mail, Lock, User, Film, Volume2, VolumeX } from "lucide-react";`
+- **Usage (lines 432-435)**: Used only in the submit button loading state:
+  ```tsx
+  {loading ? (
+    <span className="flex items-center justify-center gap-2">
+      <Film className="w-4 h-4 animate-spin" />
+      Rolling...
+    </span>
+  ) : (
+    isSignUp ? "Create Account" : "Sign In"
+  )}
+  ```
+
+The Film icon resembles a movie camera/clapperboard which could be what you're seeing flash briefly.
 
 ## Solution
 
-Update the storage bucket configuration to include audio MIME types:
-- `audio/mpeg` (MP3)
-- `audio/wav` (WAV)
-- `audio/ogg` (OGG)
+Replace the `Film` icon with a more neutral loading indicator that won't look like a camera. Use a simple spinner or the Loader2 icon instead.
 
 ## Changes Required
 
-### Database Migration
+### src/pages/Auth.tsx
 
-Update the `site-assets` bucket to allow audio file uploads:
+**Line 9** - Update import to use Loader2 instead of Film:
+```tsx
+// Before
+import { Eye, EyeOff, Mail, Lock, User, Film, Volume2, VolumeX } from "lucide-react";
 
-```sql
-UPDATE storage.buckets 
-SET allowed_mime_types = ARRAY[
-  'video/mp4', 
-  'video/webm', 
-  'image/jpeg', 
-  'image/png', 
-  'image/webp',
-  'audio/mpeg',
-  'audio/wav',
-  'audio/ogg'
-]
-WHERE id = 'site-assets';
+// After
+import { Eye, EyeOff, Mail, Lock, User, Loader2, Volume2, VolumeX } from "lucide-react";
 ```
 
-## Technical Details
+**Lines 432-435** - Replace Film icon with Loader2:
+```tsx
+// Before
+<Film className="w-4 h-4 animate-spin" />
+Rolling...
 
-| Setting | Current | New |
-|---------|---------|-----|
-| allowed_mime_types | video/mp4, video/webm, image/jpeg, image/png, image/webp | + audio/mpeg, audio/wav, audio/ogg |
-| file_size_limit | 200MB | 200MB (unchanged) |
+// After
+<Loader2 className="w-4 h-4 animate-spin" />
+Signing in...
+```
+
+## Visual Impact
+
+| State | Before | After |
+|-------|--------|-------|
+| Loading icon | Film clapperboard (camera-like) | Rotating spinner |
+| Loading text | "Rolling..." | "Signing in..." |
 
 ## Expected Outcome
 
-1. Audio files can be uploaded to the `site-assets` bucket
-2. MP3, WAV, and OGG files will be accepted
-3. Music upload in Site Customization will work as intended
+1. No camera/film icon will appear on the login screen
+2. Loading state uses a neutral spinning loader instead
+3. Text is clearer ("Signing in..." vs "Rolling...")
 
