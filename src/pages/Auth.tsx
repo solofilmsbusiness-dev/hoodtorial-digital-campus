@@ -298,7 +298,7 @@ export default function Auth() {
             <img 
               src={logoUrl}
               alt="Hoodtorial University" 
-              className="w-[30%] max-w-xs h-auto mx-auto animate-logo-pulse"
+              className="w-1/2 max-w-md h-auto mx-auto animate-logo-pulse"
             />
           </motion.div>
 
