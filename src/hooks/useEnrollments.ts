@@ -19,7 +19,7 @@ export interface Enrollment {
 // Default max is 3 for paid, but trial users get 2
 const MAX_ACTIVE_COURSES_PAID = 3;
 const MAX_ACTIVE_COURSES_TRIAL = 2;
-const MAX_SWAPS_PER_ENROLLMENT = 2;
+const MAX_SWAPS_PER_ENROLLMENT = 1;
 const GRACE_PERIOD_HOURS = 24;
 
 export function useEnrollments() {
