@@ -1,67 +1,52 @@
 
+# Remove AI Chat from Login Page
 
-# Remove Camera/Film Icon Flash on Login Screen Startup
+## Problem
 
-## Problem Identified
-
-A camera/film-related image briefly appears on the login screen during startup. Based on code analysis, this is likely the **Film icon** from lucide-react that may be rendering briefly before animations complete, or the first frame of the video element.
-
-## Root Cause Analysis
-
-The Auth.tsx page imports and uses the `Film` icon from lucide-react:
-- **Import (line 9)**: `import { Eye, EyeOff, Mail, Lock, User, Film, Volume2, VolumeX } from "lucide-react";`
-- **Usage (lines 432-435)**: Used only in the submit button loading state:
-  ```tsx
-  {loading ? (
-    <span className="flex items-center justify-center gap-2">
-      <Film className="w-4 h-4 animate-spin" />
-      Rolling...
-    </span>
-  ) : (
-    isSignUp ? "Create Account" : "Sign In"
-  )}
-  ```
-
-The Film icon resembles a movie camera/clapperboard which could be what you're seeing flash briefly.
+The AI chat widget (floating message bubble in the bottom-right corner) appears on the login page, which clutters the cinematic authentication experience.
 
 ## Solution
 
-Replace the `Film` icon with a more neutral loading indicator that won't look like a camera. Use a simple spinner or the Loader2 icon instead.
+Update the `ChatWidget` component to detect when the user is on the `/auth` route and hide itself. This keeps the chat available on all other pages while removing it from the login screen.
 
 ## Changes Required
 
-### src/pages/Auth.tsx
+### src/components/chat/ChatWidget.tsx
 
-**Line 9** - Update import to use Loader2 instead of Film:
-```tsx
-// Before
-import { Eye, EyeOff, Mail, Lock, User, Film, Volume2, VolumeX } from "lucide-react";
+Add route detection using `useLocation` from react-router-dom:
 
-// After
-import { Eye, EyeOff, Mail, Lock, User, Loader2, Volume2, VolumeX } from "lucide-react";
+```typescript
+import { useLocation } from "react-router-dom";
+
+export function ChatWidget() {
+  const [isOpen, setIsOpen] = useState(false);
+  const location = useLocation();
+
+  // Hide chat widget on auth page
+  if (location.pathname === "/auth") {
+    return null;
+  }
+
+  // ... rest of component
+}
 ```
 
-**Lines 432-435** - Replace Film icon with Loader2:
-```tsx
-// Before
-<Film className="w-4 h-4 animate-spin" />
-Rolling...
+## Technical Details
 
-// After
-<Loader2 className="w-4 h-4 animate-spin" />
-Signing in...
-```
+| Aspect | Implementation |
+|--------|----------------|
+| Hook used | `useLocation` from react-router-dom |
+| Route to hide | `/auth` |
+| Return value when hidden | `null` (renders nothing) |
 
-## Visual Impact
+## File to Modify
 
-| State | Before | After |
-|-------|--------|-------|
-| Loading icon | Film clapperboard (camera-like) | Rotating spinner |
-| Loading text | "Rolling..." | "Signing in..." |
+| File | Change |
+|------|--------|
+| `src/components/chat/ChatWidget.tsx` | Add location check to hide on `/auth` route |
 
 ## Expected Outcome
 
-1. No camera/film icon will appear on the login screen
-2. Loading state uses a neutral spinning loader instead
-3. Text is clearer ("Signing in..." vs "Rolling...")
-
+1. AI chat button no longer appears on the login page
+2. Chat widget still works on all other pages
+3. Clean, uncluttered login experience with only the music toggle on the left
