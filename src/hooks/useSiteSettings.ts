@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 interface SiteSettings {
   login_video_url: string | null;
   login_logo_url: string | null;
+  login_music_url: string | null;
   [key: string]: string | null;
 }
 
@@ -12,6 +13,7 @@ export function useSiteSettings() {
   const [settings, setSettings] = useState<SiteSettings>({
     login_video_url: null,
     login_logo_url: null,
+    login_music_url: null,
   });
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
@@ -30,6 +32,7 @@ export function useSiteSettings() {
       const settingsMap: SiteSettings = {
         login_video_url: null,
         login_logo_url: null,
+        login_music_url: null,
       };
       
       data?.forEach((s) => {
@@ -67,7 +70,7 @@ export function useSiteSettings() {
     }
   }, [user?.id]);
 
-  const uploadAsset = useCallback(async (file: File, assetType: 'video' | 'logo'): Promise<string> => {
+  const uploadAsset = useCallback(async (file: File, assetType: 'video' | 'logo' | 'music'): Promise<string> => {
     const fileExt = file.name.split('.').pop();
     const fileName = `${assetType}-${Date.now()}.${fileExt}`;
     const filePath = `login/${fileName}`;
