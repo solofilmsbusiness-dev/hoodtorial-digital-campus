@@ -176,3 +176,54 @@ export function formatTimeRemaining(seconds: number): string {
 export function getPerQuestionTime(perQuestionSeconds?: number): number {
   return perQuestionSeconds ?? 60;
 }
+
+/**
+ * Urban-style motivational messages for quiz results
+ */
+export interface MotivationalMessage {
+  headline: string;
+  subtext: string;
+}
+
+export const failureMessages: MotivationalMessage[] = [
+  { headline: "NAH, YOU GOT THIS!", subtext: "Every master was once a disaster. Get back in there." },
+  { headline: "NOT TODAY... BUT SOON!", subtext: "Legends ain't built in a day. Review that material and run it back." },
+  { headline: "LEVELS TO THIS!", subtext: "You ain't where you wanna be yet, but you closer than yesterday." },
+  { headline: "STAY IN THE FIGHT!", subtext: "Real ones don't quit. Hit the books and come back stronger." },
+  { headline: "GRIND DON'T STOP!", subtext: "Take this L, learn from it, and flip it into a W." },
+  { headline: "IT'S A MARATHON!", subtext: "Ain't about how hard you fall, it's about how fast you get up." },
+];
+
+export const successMessages: MotivationalMessage[] = [
+  { headline: "YOU DID THAT!", subtext: "Knowledge unlocked. On to the next level." },
+  { headline: "CERTIFIED!", subtext: "You put in the work, now you got the results." },
+  { headline: "THAT'S A W!", subtext: "All that studying paid off. Keep this energy." },
+];
+
+export const cooldownMessages: MotivationalMessage[] = [
+  { headline: "USE THIS TIME WISELY", subtext: "Go back through the lessons. Knowledge is power." },
+  { headline: "THE GRIND CONTINUES", subtext: "Review the material. Come back ready to dominate." },
+];
+
+/**
+ * Get a random motivational message based on result type
+ */
+export function getRandomMotivationalMessage(type: "success" | "failure" | "cooldown"): MotivationalMessage {
+  const messages = type === "success" 
+    ? successMessages 
+    : type === "failure" 
+      ? failureMessages 
+      : cooldownMessages;
+  
+  return messages[Math.floor(Math.random() * messages.length)];
+}
+
+/**
+ * Format cooldown time remaining as MM:SS
+ */
+export function formatCooldown(ms: number): string {
+  if (ms <= 0) return "0:00";
+  const mins = Math.floor(ms / 60000);
+  const secs = Math.floor((ms % 60000) / 1000);
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+}

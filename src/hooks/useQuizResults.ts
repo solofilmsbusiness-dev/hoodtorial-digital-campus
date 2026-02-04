@@ -53,6 +53,56 @@ export function useQuizResults() {
     return results.filter((r) => r.quiz_id === quizId).length;
   }, [results, isTestModeEnabled]);
 
+  /**
+   * Cooldown status for quiz retakes
+   * - First attempt: Always allowed
+   * - After 1st fail: One immediate retake
+   * - After 2nd+ fail: 30-minute cooldown from last attempt
+   */
+  const getCooldownStatus = useCallback((quizId: string) => {
+    // In test mode, no cooldown
+    if (isTestModeEnabled) {
+      return { canAttempt: true, cooldownEndsAt: null, attemptsUntilCooldown: 2, failedAttempts: 0 };
+    }
+
+    const attempts = results.filter(r => r.quiz_id === quizId);
+    const hasPassed = attempts.some(r => r.passed);
+    const failedAttempts = attempts.filter(r => !r.passed).length;
+    
+    // If passed, no need for cooldown logic
+    if (hasPassed) {
+      return { canAttempt: false, cooldownEndsAt: null, attemptsUntilCooldown: 0, failedAttempts, hasPassed: true };
+    }
+    
+    // First attempt or no failed attempts yet
+    if (failedAttempts === 0) {
+      return { canAttempt: true, cooldownEndsAt: null, attemptsUntilCooldown: 2, failedAttempts };
+    }
+    
+    // First fail = immediate retake allowed
+    if (failedAttempts === 1) {
+      return { canAttempt: true, cooldownEndsAt: null, attemptsUntilCooldown: 1, failedAttempts };
+    }
+    
+    // 2+ fails = check 30-minute cooldown from last attempt
+    const lastAttempt = attempts[0]; // Already sorted by created_at desc
+    const cooldownEnd = new Date(lastAttempt.created_at);
+    cooldownEnd.setMinutes(cooldownEnd.getMinutes() + 30);
+    
+    const now = new Date();
+    if (now < cooldownEnd) {
+      return { 
+        canAttempt: false, 
+        cooldownEndsAt: cooldownEnd,
+        minutesRemaining: Math.ceil((cooldownEnd.getTime() - now.getTime()) / 60000),
+        failedAttempts
+      };
+    }
+    
+    // Cooldown has passed, allow retry
+    return { canAttempt: true, cooldownEndsAt: null, attemptsUntilCooldown: 1, failedAttempts };
+  }, [results, isTestModeEnabled]);
+
   // Save individual quiz answers after quiz result is created
   const saveQuizAnswers = async (quizResultId: string, answers: QuizAnswerInput[]) => {
     if (!user || answers.length === 0) return { error: null };
@@ -156,5 +206,5 @@ export function useQuizResults() {
     }
   }, [user, shouldAutoPassQuiz]);
 
-  return { results, loading, error, saveQuizResult, saveQuizAnswers, getAttemptCount, instantPassQuiz, isTestModeEnabled };
+  return { results, loading, error, saveQuizResult, saveQuizAnswers, getAttemptCount, getCooldownStatus, instantPassQuiz, isTestModeEnabled };
 }
