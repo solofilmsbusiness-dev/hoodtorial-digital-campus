@@ -7,6 +7,7 @@ import { ArrowLeft, Check, AlertCircle, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useSubscription } from "@/hooks/useSubscription";
 import { cn } from "@/lib/utils";
 import mascot from "@/assets/mascot.png";
 
@@ -59,6 +60,7 @@ export default function Checkout() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { refetch: refetchSubscription } = useSubscription();
 
   const preselectedTier = searchParams.get("tier") || "sophomore";
   const [selectedTier, setSelectedTier] = useState(preselectedTier);
@@ -113,6 +115,9 @@ export default function Checkout() {
         .eq("user_id", user!.id);
 
       if (error) throw error;
+
+      // Refresh subscription state so hooks get updated values immediately
+      await refetchSubscription();
 
       setIsProcessing(false);
       setShowSuccess(true);
