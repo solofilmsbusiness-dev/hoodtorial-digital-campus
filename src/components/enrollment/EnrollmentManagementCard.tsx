@@ -80,24 +80,43 @@ export function EnrollmentManagementCard({
     return `${Math.round(hours)}h`;
   };
 
+  const isComplete = progress === 100;
+
   return (
     <>
-      <Card className="card-urban hover:border-primary transition-all">
-        <CardContent className="p-4">
+      <Card className={cn(
+        "card-urban hover:border-primary transition-all relative overflow-hidden",
+        isComplete && "border-green-500/50 bg-green-500/5"
+      )}>
+        {/* Celebration shimmer effect for completed courses */}
+        {isComplete && (
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-green-500/10 to-transparent animate-[shimmer_2s_ease-in-out_infinite] pointer-events-none" />
+        )}
+        
+        <CardContent className="p-4 relative">
           <div className="flex items-start justify-between mb-3">
             <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">
                   {course.code}
                 </span>
-                {isInGracePeriod && (
+                {isComplete && (
+                  <span className="text-xs font-bold text-green-500 bg-green-500/10 px-2 py-0.5 rounded flex items-center gap-1 animate-fade-in">
+                    <CheckCircle2 className="w-3 h-3" />
+                    Course Complete!
+                  </span>
+                )}
+                {!isComplete && isInGracePeriod && (
                   <span className="text-xs font-medium text-accent bg-accent/10 px-2 py-0.5 rounded flex items-center gap-1">
                     <Clock className="w-3 h-3" />
                     Free drop: {formatTimeRemaining(gracePeriodHoursRemaining)}
                   </span>
                 )}
               </div>
-              <h4 className="font-bold text-foreground line-clamp-1">
+              <h4 className={cn(
+                "font-bold line-clamp-1",
+                isComplete ? "text-green-500" : "text-foreground"
+              )}>
                 {course.title}
               </h4>
               <p className="text-xs text-muted-foreground">
