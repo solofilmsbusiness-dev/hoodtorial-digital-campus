@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { PageLayout, Section } from "@/components/layout";
@@ -173,7 +173,8 @@ const CourseDetail = () => {
     enroll, 
     canEnroll, 
     slotsRemaining, 
-    maxSlots 
+    maxSlots,
+    completeCourse 
   } = useEnrollments();
 
   // Progression state
@@ -217,6 +218,34 @@ const CourseDetail = () => {
 
     return { completedLessons, completedQuizzes, percent };
   }, [course, isLessonCompleted, isQuizPassed]);
+
+  // Auto-complete course when 100% progress is reached
+  const checkAndCompleteCourse = useCallback(async () => {
+    if (!enrolled || !course) return;
+    
+    // Calculate actual completion using real status (not test mode bypass)
+    let completedLessons = 0;
+    let completedQuizzes = 0;
+    
+    course.modules.forEach((module) => {
+      module.lessons.forEach((lesson) => {
+        // Use isLessonCompleted - in test mode it returns true, but we check real quiz pass
+        if (isLessonCompleted(lesson.id)) completedLessons++;
+      });
+      if (module.quiz && isQuizActuallyPassed(module.quiz.id)) completedQuizzes++;
+    });
+    
+    if (course.finalExam && isQuizActuallyPassed(course.finalExam.id)) {
+      completedQuizzes++;
+    }
+
+    const total = getTotalLessonsCount(course) + getTotalQuizzesCount(course);
+    const completed = completedLessons + completedQuizzes;
+    
+    if (completed >= total && total > 0) {
+      await completeCourse(course.code);
+    }
+  }, [course, enrolled, isLessonCompleted, isQuizActuallyPassed, completeCourse]);
 
   // Check if final exam is unlocked (all modules complete) - MUST be before early returns
   const isFinalExamUnlocked = useMemo(() => {
@@ -289,6 +318,13 @@ const CourseDetail = () => {
         : `You scored ${score}%. Review the material and try again.`,
       variant: passed ? "default" : "destructive",
     });
+    
+    // Check if course is now complete after quiz pass
+    if (passed) {
+      setTimeout(() => {
+        checkAndCompleteCourse();
+      }, 500);
+    }
   };
 
   const handleQuizClick = (quiz: Quiz) => {
@@ -316,6 +352,10 @@ const CourseDetail = () => {
         title: "Lesson Completed (Test Mode)",
         description: "Progress saved instantly via test mode.",
       });
+      // Check if course is now complete
+      setTimeout(() => {
+        checkAndCompleteCourse();
+      }, 500);
       return;
     }
 
@@ -337,6 +377,11 @@ const CourseDetail = () => {
       title: "Lesson Completed!",
       description: "Your progress has been saved.",
     });
+    
+    // Check if course is now complete
+    setTimeout(() => {
+      checkAndCompleteCourse();
+    }, 500);
   };
 
   // Test mode: instant quiz pass handler
@@ -355,6 +400,10 @@ const CourseDetail = () => {
         title: "Quiz Passed (Test Mode)",
         description: `${quiz.title} marked as passed.`,
       });
+      // Check if course is now complete
+      setTimeout(() => {
+        checkAndCompleteCourse();
+      }, 500);
     }
   };
 
