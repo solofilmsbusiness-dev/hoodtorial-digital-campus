@@ -8,7 +8,8 @@ import { useUserProgress } from "@/hooks/useUserProgress";
 import { useAssessmentResults } from "@/hooks/useAssessmentResults";
 import { useEnrollments } from "@/hooks/useEnrollments";
 import { useLessonProgress } from "@/hooks/useLessonProgress";
-import { courses, getCourseByCode, getTotalLessonsCount, getTotalQuizzesCount } from "@/data/courses";
+import { useCourseStatus } from "@/hooks/useCourseStatus";
+import { courses, getTotalLessonsCount, getTotalQuizzesCount } from "@/data/courses";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,6 +53,9 @@ export default function StudentCenter() {
     dropCourse,
     swapCourse,
   } = useEnrollments();
+  
+  // Use merged course list from database + static data
+  const { allCourses, isLoading: coursesLoading } = useCourseStatus();
 
   const totalCredits = getTotalCredits();
   const completedCourses = getCompletedCourses();
@@ -60,16 +64,21 @@ export default function StudentCenter() {
   const requiredCourses = 12;
   const requiredQuizzes = 12;
 
+  // Helper to find courses from merged database + static list
+  const getCourse = (code: string) => {
+    return allCourses.find(c => c.code === code);
+  };
+
   // Get recommended courses from assessment
   const recommendedCourseDetails = latestResult?.recommended_courses
-    .map((code) => courses.find((c) => c.code === code))
+    .map((code) => getCourse(code) || courses.find((c) => c.code === code))
     .filter(Boolean)
     .slice(0, 3) || [];
 
-  // Get active course details with full course data
+  // Get active course details with full course data (uses merged list)
   const activeCourseDetails = activeEnrollments
     .map((e) => {
-      const course = getCourseByCode(e.course_code);
+      const course = getCourse(e.course_code);
       return course ? { ...course, enrollment: e } : null;
     })
     .filter(Boolean);
@@ -92,11 +101,16 @@ export default function StudentCenter() {
 
   // Calculate course progress for each enrollment
   const getCourseProgress = (courseCode: string) => {
-    const course = getCourseByCode(courseCode);
+    // Check if enrollment is marked complete - always show 100%
+    const enrollment = activeEnrollments.find(e => e.course_code === courseCode);
+    if (enrollment?.status === 'completed') return 100;
+    
+    const course = getCourse(courseCode);
     if (!course) return 0;
     
-    const totalLessons = getTotalLessonsCount(course);
-    const totalQuizzes = getTotalQuizzesCount(course);
+    // Handle DB-only courses with no modules
+    const totalLessons = course.modules?.length > 0 ? getTotalLessonsCount(course) : 0;
+    const totalQuizzes = course.modules?.length > 0 ? getTotalQuizzesCount(course) : 0;
     const total = totalLessons + totalQuizzes;
     
     if (total === 0) return 0;
@@ -124,7 +138,7 @@ export default function StudentCenter() {
     await swapCourse(fromCode, toCode);
   };
 
-  if (profileLoading) {
+  if (profileLoading || coursesLoading) {
     return (
       <PageLayout>
         <div className="min-h-[80vh] flex items-center justify-center">
