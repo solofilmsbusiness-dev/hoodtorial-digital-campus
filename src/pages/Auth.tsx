@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
-import { Eye, EyeOff, Mail, Lock, User, Film, Volume2, VolumeX } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, Loader2, Volume2, VolumeX } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import defaultLogo from "@/assets/hero-logo.png";
 import defaultVideo from "@/assets/hero-video.mp4";
@@ -431,8 +431,8 @@ export default function Auth() {
                   <span className="relative z-10">
                     {loading ? (
                       <span className="flex items-center justify-center gap-2">
-                        <Film className="w-4 h-4 animate-spin" />
-                        Rolling...
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        {isSignUp ? "Creating account..." : "Signing in..."}
                       </span>
                     ) : (
                       isSignUp ? "Create Account" : "Sign In"
