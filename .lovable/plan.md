@@ -1,345 +1,182 @@
 
 
-# Enhanced Sign-Up System with Terms Acceptance and Test Paywall
+# Enhanced Welcome Messages for Login Page
 
-## Overview
+## Current State
 
-This plan implements a complete sign-up flow redesign with:
-1. **Terms of Service acceptance** required before starting a 3-day trial
-2. **Trial content limitations** - trial users get limited but enjoyable access
-3. **Test paywall** - a realistic payment flow simulation for testing without actual payments
+The login page currently has basic welcome text:
+- **Sign Up**: "Join the University" / "Create your account to start your journey"
+- **Sign In**: "Welcome Back" / "Sign in to access your Student Center"
 
----
-
-## Current State Analysis
-
-| Component | Current Behavior |
-|-----------|-----------------|
-| Sign-up | Creates profile with `subscription_status: 'trial'` and 3-day trial automatically |
-| Trial Access | Full access to courses (same as paid) |
-| Terms | No terms acceptance required |
-| Payment | No payment flow exists |
-| Enrollment | Limited to 3 active courses |
+These are static and don't match the cinematic, urban personality of the platform.
 
 ---
 
-## Part 1: Terms Acceptance During Sign-Up
+## Proposed Enhancements
 
-### Database Changes
+### 1. Dynamic, Personality-Driven Headlines
 
-Add a `terms_accepted_at` column to track when users accepted terms:
+Replace static text with rotating, film-inspired welcome messages that match the "Where Hustle Meets Hollywood" brand.
 
-```sql
-ALTER TABLE public.profiles
-ADD COLUMN terms_accepted_at timestamptz;
-```
+**Sign Up Headlines (rotate through these):**
+| Headline | Subtext |
+|----------|---------|
+| "Your Director's Chair Awaits" | "Join 500+ filmmakers writing their origin story" |
+| "The Industry Needs Your Vision" | "Create your account. Begin your legacy." |
+| "Ready to Make History?" | "Every legend started with a single frame" |
+| "Claim Your Seat in the Room" | "Where the next generation of cinema is born" |
 
-Update the profile creation trigger to NOT automatically start trial (trial starts after terms acceptance):
+**Sign In Headlines (rotate through these):**
+| Headline | Subtext |
+|----------|---------|
+| "The Set is Ready" | "Your crew missed you. Let's get back to work." |
+| "Welcome Back, Filmmaker" | "Your next lesson is waiting" |
+| "Roll Camera" | "Pick up where you left off" |
+| "The Hustle Continues" | "Your journey is far from over" |
 
-```sql
--- Updated handle_new_user: creates profile WITHOUT trial active
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger AS $$
-BEGIN
-  INSERT INTO public.profiles (
-    user_id, 
-    display_name,
-    subscription_status
-    -- Note: trial_started_at and trial_ends_at are NULL until terms accepted
-  )
-  VALUES (
-    NEW.id, 
-    NEW.raw_user_meta_data->>'display_name',
-    NULL  -- No status until terms accepted
-  );
-  
-  INSERT INTO public.user_roles (user_id, role)
-  VALUES (NEW.id, 'student');
-  
-  RETURN NEW;
-END;
-$$;
-```
+### 2. Animated Text Transitions
 
-### UI Changes - Auth.tsx
+Use framer-motion to create smooth transitions between headlines:
+- Fade + slide up animation when switching between sign up/sign in
+- Typewriter effect for the main headline
+- Staggered fade-in for subtext
+- Subtle glow pulse on the headline
 
-Add a step after sign-up where users must accept terms:
+### 3. Personalized Welcome Back (Sign In)
 
-1. After successful sign-up, show a **Terms Acceptance Modal**
-2. Display:
-   - Welcome message
-   - Terms of Service summary
-   - "By clicking Accept, you agree to our Terms of Service and start your 3-day free trial"
-   - Checkbox for terms acceptance
-   - "Start My Trial" button
-3. On acceptance:
-   - Update profile with `terms_accepted_at: now()`
-   - Set `subscription_status: 'trial'`
-   - Set `trial_started_at: now()`
-   - Set `trial_ends_at: now() + 3 days`
+When a returning user signs in, show their name if available from a previous session:
+- Store last logged-in display name in localStorage
+- Show "Welcome Back, [Name]" instead of generic greeting
+- Falls back to rotating messages if no name stored
 
-### New Component: TermsAcceptanceModal
+### 4. Visual Enhancements
 
-```tsx
-// src/components/auth/TermsAcceptanceModal.tsx
-- Cinematic modal matching login page aesthetic
-- Film grain overlay
-- Terms summary with key points
-- Checkbox with animated checkmark
-- "Start My 3-Day Trial" button
-- Clear indication of what trial includes
-```
+- Add a small film clapperboard or camera icon that animates
+- Gradient text effect on key words ("Director's Chair", "Filmmaker")
+- Subtle sparkle/star animation on the headline
 
 ---
 
-## Part 2: Trial Content Limitations
+## Technical Implementation
 
-Trial users should experience the platform but with appetizing restrictions that encourage subscription.
-
-### Trial Limitations
-
-| Feature | Trial Access | Paid Access |
-|---------|-------------|-------------|
-| Courses | First 2 modules only | All modules |
-| Quizzes | Module quizzes only | Module + Final exams |
-| Final Exams | Locked | Unlocked |
-| Enrollment Slots | 2 active courses | 3 active courses |
-| Community | View-only | Full participation |
-| Skill Tree | View progress | Full interaction |
-
-### Implementation
-
-#### useSubscription.ts Enhancements
-
-Add trial-specific access levels:
-
-```typescript
-// New computed values
-const trialLimits = {
-  maxModules: 2,           // Can only access first 2 modules per course
-  maxEnrollments: 2,       // Only 2 active courses during trial
-  canTakeFinalExams: false,
-  canPostInCommunity: false,
-  canSubmitProjects: false,
-};
-
-return {
-  ...existing,
-  trialLimits,
-  canAccessModule: (moduleIndex: number) => isPaid || (isTrialing && moduleIndex < 2),
-  canTakeFinalExam: isPaid,
-  canPostInCommunity: isPaid,
-};
-```
-
-#### CourseDetail.tsx Updates
-
-- Show "Trial Preview" badge on locked content
-- Modules 3+ show lock icon with "Upgrade to Unlock" messaging
-- Final exam shows "Available with Subscription" overlay
-
-#### Community.tsx Updates
-
-- Trial users can view posts but see "Subscribe to Post" prompt when clicking create
-- Like/comment buttons show upgrade prompt
-
----
-
-## Part 3: Test Paywall (Fake Payment Flow)
-
-Create a realistic payment simulation that mimics a real Stripe-like experience for testing.
-
-### New Page: Checkout.tsx
-
-A dedicated checkout page at `/checkout` that simulates the payment experience:
-
-```text
-/checkout?tier=sophomore
-```
-
-Features:
-- Tier selection (if not pre-selected)
-- "Credit card" form (fake inputs)
-- Test card numbers documented (e.g., "4242 4242 4242 4242")
-- Processing animation
-- Success/failure states
-- Updates profile with active subscription
-
-### Checkout Flow
-
-```text
-User clicks "Subscribe" on Enrollment page
-         |
-         v
-    /checkout?tier=sophomore
-         |
-         v
-   Fill fake card form
-   (Test card: 4242 4242 4242 4242)
-         |
-         v
-   Click "Subscribe Now"
-         |
-         v
-   Fake processing animation (2s)
-         |
-         v
-   Update profile:
-   - subscription_status: 'active'
-   - subscription_started_at: now()
-   - membership_tier: selected tier
-         |
-         v
-   Success page with confetti
-         |
-         v
-   Redirect to /student
-```
-
-### Test Card Numbers
-
-| Card Number | Result |
-|-------------|--------|
-| 4242 4242 4242 4242 | Success - Subscription activated |
-| 4000 0000 0000 0002 | Decline - Card declined |
-| 4000 0000 0000 9995 | Decline - Insufficient funds |
-
-### New Components
-
-#### TestPaymentForm.tsx
-
-```tsx
-// Fake Stripe-like card input
-- Card number input with validation formatting
-- Expiry date (MM/YY)
-- CVC
-- Test card hint displayed
-- "Pay $XX/month" button
-```
-
-#### CheckoutPage.tsx
-
-```tsx
-// Full checkout experience
-- Selected tier summary
-- Price breakdown
-- TestPaymentForm
-- Security badges (fake but realistic)
-- Processing overlay
-- Success modal with confetti
-```
-
-#### PaymentSuccessModal.tsx
-
-```tsx
-// Celebration after "payment"
-- Confetti animation
-- "Welcome to [Tier]!" message
-- List of unlocked features
-- "Start Learning" button
-```
-
----
-
-## Part 4: Updated Enrollment Page
-
-Transform `/enrollment` into a proper paywall:
-
-### For Non-Subscribers
-
-- Show all three tiers prominently
-- "Start Free Trial" for users without terms accepted
-- "Subscribe Now" buttons linking to `/checkout?tier=X`
-- Trial countdown if in trial
-- Feature comparison table
-
-### For Trial Users
-
-- Prominent "Your trial ends in X days" banner
-- "Upgrade Now" buttons
-- Show what they're missing (locked features preview)
-
-### For Paid Users
-
-- "You're on [Tier]" confirmation
-- "Upgrade" option if not on Graduate tier
-- "Manage Subscription" placeholder
-
----
-
-## Files to Create
-
-| File | Purpose |
-|------|---------|
-| `src/components/auth/TermsAcceptanceModal.tsx` | Terms acceptance after signup |
-| `src/components/checkout/TestPaymentForm.tsx` | Fake credit card form |
-| `src/components/checkout/PaymentSuccessModal.tsx` | Success celebration |
-| `src/components/checkout/index.ts` | Barrel export |
-| `src/pages/Checkout.tsx` | Checkout page |
-| `src/hooks/useTrialLimits.ts` | Trial-specific access logic |
-
-## Files to Modify
+### Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/pages/Auth.tsx` | Show TermsAcceptanceModal after signup |
-| `src/pages/Enrollment.tsx` | Add checkout links, trial messaging |
-| `src/hooks/useSubscription.ts` | Add trial limits and access checks |
-| `src/hooks/useEnrollments.ts` | Reduce trial slots to 2 |
-| `src/pages/CourseDetail.tsx` | Show trial module locks |
-| `src/pages/Community.tsx` | Add posting restrictions for trial |
-| `src/App.tsx` | Add `/checkout` route |
-| Database migration | Add `terms_accepted_at` column, update trigger |
+| `src/pages/Auth.tsx` | Add rotating headline logic, animations, personalization |
 
----
+### New State & Logic
 
-## User Journey Flow
+```typescript
+// Rotating headlines arrays
+const signUpHeadlines = [
+  { title: "Your Director's Chair Awaits", subtitle: "Join 500+ filmmakers writing their origin story" },
+  { title: "The Industry Needs Your Vision", subtitle: "Create your account. Begin your legacy." },
+  // ...
+];
 
-```text
-New User Signs Up
-       |
-       v
-Email Verified
-       |
-       v
-Terms Acceptance Modal
-"Accept terms to start your 3-day trial"
-       |
-       v
-Trial Activated
-(2 courses, 2 modules/course, no final exams)
-       |
-       v
-Browses Courses, Sees Limitations
-       |
-       v
-Clicks "Upgrade" or Trial Expires
-       |
-       v
-/enrollment page (paywall)
-       |
-       v
-Selects Tier, Goes to /checkout
-       |
-       v
-Enters Test Card (4242...)
-       |
-       v
-Fake Processing...
-       |
-       v
-Success! Subscription Active
-       |
-       v
-Full Platform Access
+const signInHeadlines = [
+  { title: "The Set is Ready", subtitle: "Your crew missed you. Let's get back to work." },
+  { title: "Welcome Back, Filmmaker", subtitle: "Your next lesson is waiting" },
+  // ...
+];
+
+// Personalization from localStorage
+const lastUserName = localStorage.getItem('hoodtorial-last-user');
+
+// Rotate headlines every 5 seconds
+const [headlineIndex, setHeadlineIndex] = useState(0);
+useEffect(() => {
+  const interval = setInterval(() => {
+    setHeadlineIndex(prev => (prev + 1) % headlines.length);
+  }, 5000);
+  return () => clearInterval(interval);
+}, [isSignUp]);
+```
+
+### Animation Pattern
+
+```tsx
+<AnimatePresence mode="wait">
+  <motion.div
+    key={`${isSignUp}-${headlineIndex}`}
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -20 }}
+    transition={{ duration: 0.5 }}
+    className="text-center mb-6"
+  >
+    <h2 className="heading-4 text-foreground">
+      <span className="text-gold-gradient">{headline.title}</span>
+    </h2>
+    <motion.p 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.2 }}
+      className="text-sm text-muted-foreground mt-2"
+    >
+      {headline.subtitle}
+    </motion.p>
+  </motion.div>
+</AnimatePresence>
+```
+
+### Personalization Storage
+
+On successful login, store the user's name:
+```typescript
+// After successful sign in
+if (profile?.display_name) {
+  localStorage.setItem('hoodtorial-last-user', profile.display_name);
+}
 ```
 
 ---
 
-## Technical Notes
+## Visual Preview
 
-- All "payments" are simulated - no real money involved
-- Profile subscription fields are updated directly in the database
-- Test mode (admin) continues to bypass all restrictions
-- Clear "TEST MODE" indicators on checkout page so users know it's not real
+**Sign Up State:**
+```text
+   [Film Icon Animation]
+   
+   "Your Director's Chair Awaits"
+   (with gold gradient text + glow)
+   
+   Join 500+ filmmakers writing their origin story
+   (fade in with slight delay)
+```
+
+**Sign In State (Personalized):**
+```text
+   [Camera Rolling Animation]
+   
+   "Welcome Back, Marcus"
+   (personalized if name available)
+   
+   Your next lesson is waiting
+```
+
+**Sign In State (Generic):**
+```text
+   [Camera Rolling Animation]
+   
+   "The Set is Ready"
+   (rotating headlines)
+   
+   Your crew missed you. Let's get back to work.
+```
+
+---
+
+## Summary
+
+| Enhancement | Impact |
+|-------------|--------|
+| Rotating film-themed headlines | Creates energy and personality |
+| Animated transitions | Adds polish and smoothness |
+| Personalized "Welcome Back" | Creates connection with returning users |
+| Gold gradient + glow effects | Matches platform aesthetic |
+| Icon animations | Reinforces film school brand |
+
+This transforms the auth page from a functional form into an inviting, cinematic experience that matches the "Hustle Meets Hollywood" brand.
 
