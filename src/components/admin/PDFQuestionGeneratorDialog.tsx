@@ -134,6 +134,13 @@ export function PDFQuestionGeneratorDialog({
     setIsUploading(true);
 
     try {
+      // Get the user's session token for authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        throw new Error("You must be logged in to upload PDFs");
+      }
+
       const formData = new FormData();
       formData.append("file", selectedFile);
 
@@ -142,7 +149,7 @@ export function PDFQuestionGeneratorDialog({
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            Authorization: `Bearer ${session.access_token}`,
           },
           body: formData,
         }
