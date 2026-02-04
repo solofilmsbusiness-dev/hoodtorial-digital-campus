@@ -1,68 +1,146 @@
 
-# Fix Swap Course Dialog to Show Database Courses
+
+# Fix Enrollment Slot Limit Not Updating After Subscription Upgrade
 
 ## Problem
 
-The `SwapCourseDialog` component only shows courses from the static `src/data/courses.ts` file. New courses created through the admin panel (like "Advanced VFX Tracking") are stored in the database and are not included in this static list.
+When a student upgrades from trial to a paid subscription, their enrollment slot limit stays stuck at 2 (trial limit) instead of increasing to 3 (paid limit). The extra slot only appears after refreshing the page.
 
-The issue is on line 19 of `SwapCourseDialog.tsx`:
-```typescript
-import { courses } from "@/data/courses";
-```
+### Root Cause
 
-This imports only the hardcoded static courses, missing any database-only courses.
+The `useSubscription` hook fetches subscription data from the database in a `useEffect` that only runs when the `user` changes. After a successful payment:
+
+1. The `Checkout.tsx` page updates the profile with `subscription_status: "active"` in the database
+2. But `useSubscription` doesn't know to refetch the data
+3. The `isPaid` value stays `false` (stale data)
+4. `useEnrollments` uses this stale `isPaid` value, keeping `maxCourses` at 2
 
 ---
 
 ## Solution
 
-Use the `useCourseStatus` hook inside `SwapCourseDialog` to get all published courses (both static and database). This hook already exists and correctly merges courses from both sources.
+Add a `refetch` function to `useSubscription` and call it after successful payment in `Checkout.tsx`. This ensures the subscription state is immediately updated when a user upgrades.
 
 ---
 
 ## Implementation
 
-### File: `src/components/enrollment/SwapCourseDialog.tsx`
+### File 1: `src/hooks/useSubscription.ts`
 
 **Changes:**
 
-1. Import the `useCourseStatus` hook instead of static courses
-2. Get the list of published courses from the hook
-3. Filter available courses from this dynamic list
-4. Handle the loading state while courses are being fetched
-
-**Code Changes:**
+1. Extract the fetch logic into a reusable function
+2. Expose a `refetch` function that can be called externally
+3. Use `useCallback` to memoize the fetch function
 
 ```typescript
-// Before
-import { courses } from "@/data/courses";
+// Add useCallback to imports
+import { useEffect, useState, useMemo, useCallback } from "react";
 
-// After  
-import { useCourseStatus } from "@/hooks/useCourseStatus";
+// Inside the hook:
+const fetchSubscription = useCallback(async () => {
+  if (!user) return;
+  
+  try {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("subscription_status, trial_started_at, trial_ends_at, subscription_started_at, subscription_ends_at, terms_accepted_at")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (data) {
+      setSubscription({
+        status: data.subscription_status as SubscriptionStatus,
+        // ... rest of state update
+      });
+    }
+  } catch (err) {
+    setError(err as Error);
+  } finally {
+    setLoading(false);
+  }
+}, [user]);
+
+// Use it in useEffect
+useEffect(() => {
+  if (!user) {
+    // reset state
+    return;
+  }
+  fetchSubscription();
+}, [user, fetchSubscription]);
+
+// Return refetch in the hook
+return {
+  ...subscription,
+  refetch: fetchSubscription,  // <-- Add this
+  // ...rest
+};
 ```
 
+### File 2: `src/pages/Checkout.tsx`
+
+**Changes:**
+
+1. Get the `refetch` function from `useSubscription`
+2. Call `refetch()` after successful payment before showing the success modal
+
 ```typescript
-// Inside the component, use the hook
-const { courses, isLoading: coursesLoading } = useCourseStatus();
+// Add useSubscription import
+import { useSubscription } from "@/hooks/useSubscription";
 
-// Filter available courses using the dynamic list
-const availableCourses = courses.filter(
-  (c) => !enrolledCourseCodes.includes(c.code) && c.code !== fromCourseCode
-);
+// Inside component:
+const { refetch: refetchSubscription } = useSubscription();
 
-// Also filter out "coming soon" courses that can't be enrolled in
-const enrollableCourses = availableCourses.filter(c => !c.isComingSoon);
+// In handlePayment, after successful database update:
+try {
+  const { error } = await supabase
+    .from("profiles")
+    .update({...})
+    .eq("user_id", user!.id);
+
+  if (error) throw error;
+
+  // Refresh subscription state so hooks get updated values
+  await refetchSubscription();
+
+  setIsProcessing(false);
+  setShowSuccess(true);
+} catch (err) {
+  // ...
+}
 ```
 
 ---
 
-## Additional Improvements
+## Data Flow After Fix
 
-1. **Filter out "Coming Soon" courses** - Courses marked as locked/coming soon should not appear in the swap list since users can't enroll in them
-
-2. **Loading state** - Show a loading indicator while courses are being fetched from the database
-
-3. **Empty state** - Show a message if there are no available courses to swap to
+```text
+Payment Success
+      |
+      v
+Update profiles table (subscription_status: "active")
+      |
+      v
+Call refetchSubscription()
+      |
+      v
+useSubscription fetches new data
+      |
+      v
+isPaid = true (updated)
+      |
+      v
+useEnrollments recalculates maxCourses
+      |
+      v
+maxCourses = 3 (paid limit)
+      |
+      v
+UI shows 3 slots available
+```
 
 ---
 
@@ -70,14 +148,15 @@ const enrollableCourses = availableCourses.filter(c => !c.isComingSoon);
 
 | File | Change |
 |------|--------|
-| `src/components/enrollment/SwapCourseDialog.tsx` | Replace static import with `useCourseStatus` hook; filter out coming soon courses; add loading state |
+| `src/hooks/useSubscription.ts` | Add `refetch` function and expose it in return value |
+| `src/pages/Checkout.tsx` | Import `useSubscription`, call `refetch()` after payment success |
 
 ---
 
-## Result
+## Additional Benefit
 
-After implementation:
-- All published courses (static + database) will appear in the swap dropdown
-- "Advanced VFX Tracking" and other newly created courses will be available
-- Coming soon courses are excluded since they can't be enrolled in
-- Users see a loading state while courses are fetched
+This `refetch` pattern can be reused for other scenarios where subscription status might change, such as:
+- After cancellation
+- After renewal
+- When returning from an external payment provider
+
