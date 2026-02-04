@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDemoModeContext } from "@/contexts/DemoModeContext";
 import { toast } from "sonner";
 
 export type PostCategory = 'general' | 'course_discussion' | 'project_submission' | 'feedback_critique' | 'announcement';
@@ -66,15 +67,21 @@ export function useCommunityPosts(filters?: {
 }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { showDemoData } = useDemoModeContext();
 
   const { data: posts = [], isLoading, error } = useQuery({
-    queryKey: ['community-posts', filters],
+    queryKey: ['community-posts', filters, showDemoData],
     queryFn: async () => {
       // Fetch posts
       let query = supabase
         .from('community_posts')
         .select('*')
         .order('is_pinned', { ascending: false });
+
+      // Filter out demo posts if showDemoData is false
+      if (!showDemoData) {
+        query = query.eq('is_demo', false);
+      }
 
       if (filters?.category) {
         query = query.eq('category', filters.category);
