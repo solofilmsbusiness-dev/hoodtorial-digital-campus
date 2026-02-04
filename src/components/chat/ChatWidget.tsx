@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "react-router-dom";
 import { MessageCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChatPanel } from "./ChatPanel";
@@ -6,6 +7,12 @@ import { cn } from "@/lib/utils";
 
 export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
+  const location = useLocation();
+
+  // Hide chat widget on auth page
+  if (location.pathname === "/auth") {
+    return null;
+  }
 
   return (
     <div className="fixed bottom-6 right-6 z-50">
