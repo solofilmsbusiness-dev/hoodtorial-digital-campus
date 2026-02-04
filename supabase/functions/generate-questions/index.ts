@@ -84,14 +84,21 @@ Your task is to create high-quality ${questionTypeDescription} based on this mat
 
 Guidelines:
 - Create ${numQuestions} questions at ${difficulty} difficulty level
-- Questions must be directly based on the provided content
+- Questions must test understanding of the concepts from the provided content
 - Test understanding and application, not just memorization
 - For "test questions": Create fair, comprehensive assessments
 - For "extra credit": Create challenging questions that reward deeper understanding and critical thinking
 - Each question should have 4 answer options (A, B, C, D)
 - Only one answer should be correct
-- Include a brief explanation referencing the source material
+- Include a brief explanation of why the answer is correct (explain the concept, not where it came from)
 ${focusKeywords ? `- Focus especially on these topics: ${focusKeywords}` : ""}
+
+CRITICAL - Question Writing Rules:
+- NEVER mention "the PDF", "the document", "the reading", "the source material", or "the provided content" in question text
+- NEVER start questions with "Based on...", "According to...", "As stated in...", or similar phrases
+- Write questions as standalone, professional test questions
+- Questions should test knowledge of CONCEPTS, not knowledge of where they came from
+- The student should feel like this is a real exam question, not a reading comprehension quiz
 
 Return your response as a valid JSON object with this exact structure:
 {
