@@ -84,9 +84,9 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
   const [questionRemainingTime, setQuestionRemainingTime] = useState<number>(0);
   const isAutoAdvancing = useRef(false);
 
-  // Timer mode configuration - default to per-question mode
-  const usePerQuestionMode = quiz.usePerQuestionTimer ?? true;
-  const perQuestionTime = getPerQuestionTime(quiz.perQuestionSeconds);
+  // Timer mode configuration - ALWAYS use per-question mode with 60 seconds
+  const usePerQuestionMode = true;
+  const perQuestionTime = 60; // Fixed 60 seconds per question
 
   // Calculate time limit for global mode (from quiz or default 1 min per question)
   const timeLimitSeconds = useMemo(() => {
@@ -117,11 +117,9 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
     setStartTime(Date.now());
     setRemainingTime(timeLimitSeconds);
     
-    // Initialize per-question timer
-    if (usePerQuestionMode) {
-      setQuestionStartTime(Date.now());
-      setQuestionRemainingTime(perQuestionTime);
-    }
+    // Initialize per-question timer (always enabled with 60 seconds)
+    setQuestionStartTime(Date.now());
+    setQuestionRemainingTime(60);
     
     setState("playing");
   }, [originalQuestions, timeLimitSeconds, usePerQuestionMode, perQuestionTime]);
@@ -186,7 +184,7 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
     if (currentIndex < shuffledQuestions.length - 1) {
       setCurrentIndex(prev => prev + 1);
       setQuestionStartTime(Date.now());
-      setQuestionRemainingTime(perQuestionTime);
+      setQuestionRemainingTime(60);
     } else {
       handleFinishQuiz();
     }
@@ -282,9 +280,23 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
   const handleSelectAnswer = useCallback((optionIndex: number) => {
     if (state === "review") return;
     if (currentQuestion) {
+      // Set the answer
       setAnswers(prev => ({ ...prev, [currentQuestion.id]: optionIndex }));
+      
+      // Auto-advance to next question after a brief delay (no going back)
+      setTimeout(() => {
+        if (currentIndex < shuffledQuestions.length - 1) {
+          setCurrentIndex(prev => prev + 1);
+          // Reset per-question timer for next question
+          setQuestionStartTime(Date.now());
+          setQuestionRemainingTime(60); // Always 60 seconds per question
+        } else {
+          // Last question - finish the quiz
+          handleFinishQuiz();
+        }
+      }, 300); // Short delay so user sees their selection
     }
-  }, [currentQuestion, state]);
+  }, [currentQuestion, state, currentIndex, shuffledQuestions.length, handleFinishQuiz]);
 
   const handleNext = useCallback(() => {
     setShowExplanation(false);
@@ -300,17 +312,13 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
     }
   }, [currentIndex, shuffledQuestions.length, handleFinishQuiz, usePerQuestionMode, perQuestionTime]);
 
+  // handlePrev is only used in review mode now
   const handlePrev = useCallback(() => {
     setShowExplanation(false);
     if (currentIndex > 0) {
       setCurrentIndex(prev => prev - 1);
-      // Reset per-question timer when going back
-      if (usePerQuestionMode) {
-        setQuestionStartTime(Date.now());
-        setQuestionRemainingTime(perQuestionTime);
-      }
     }
-  }, [currentIndex, usePerQuestionMode, perQuestionTime]);
+  }, [currentIndex]);
 
   const handleRestart = useCallback(() => {
     setAnswers({});
@@ -342,11 +350,10 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
 
   // Calculate progress ring offset for per-question timer
   const progressRingOffset = useMemo(() => {
-    if (!usePerQuestionMode || perQuestionTime === 0) return 100;
     const circumference = 2 * Math.PI * 16; // radius = 16
-    const progress = questionRemainingTime / perQuestionTime;
+    const progress = questionRemainingTime / 60;
     return circumference * (1 - progress);
-  }, [questionRemainingTime, perQuestionTime, usePerQuestionMode]);
+  }, [questionRemainingTime]);
 
   // Loading state while fetching questions from database
   if (isLoadingQuestions) {
@@ -464,12 +471,8 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
               <div className="text-muted-foreground">To Pass</div>
             </div>
             <div className="p-4 border border-border bg-muted/30">
-              <div className="text-2xl font-black text-neon-purple">
-                {usePerQuestionMode ? perQuestionTime : timeLimitDisplay}
-              </div>
-              <div className="text-muted-foreground">
-                {usePerQuestionMode ? "Sec/Q" : "Minutes"}
-              </div>
+              <div className="text-2xl font-black text-neon-purple">60</div>
+              <div className="text-muted-foreground">Sec/Q</div>
             </div>
           </div>
 
@@ -477,15 +480,10 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
           <div className="mb-6 p-4 border border-destructive/50 bg-destructive/5 text-sm">
             <div className="flex items-center gap-2 text-destructive mb-2">
               <Clock className="w-4 h-4" />
-              <span className="font-bold">
-                {usePerQuestionMode ? "Per-Question Timer" : "Timed Quiz"}
-              </span>
+              <span className="font-bold">60-Second Timer Per Question</span>
             </div>
             <p className="text-muted-foreground text-left">
-              {usePerQuestionMode 
-                ? `Each question has a ${perQuestionTime}-second time limit. Unanswered questions will auto-advance when time runs out.`
-                : `You have ${timeLimitDisplay} minutes to complete all questions.`
-              }
+              Each question has a 60-second time limit. When time expires, the question is marked as incorrect and you move to the next one automatically.
             </p>
           </div>
 
@@ -493,10 +491,10 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
           <div className="mb-8 p-4 border border-accent/50 bg-accent/5 text-sm">
             <div className="flex items-center gap-2 text-accent mb-2">
               <Shuffle className="w-4 h-4" />
-              <span className="font-bold">Assessment Integrity</span>
+              <span className="font-bold">No Going Back</span>
             </div>
             <p className="text-muted-foreground text-left">
-              Questions and answer options are randomized for each attempt to ensure fair assessment.
+              Once you answer a question, you cannot go back. Questions and answer options are randomized for each attempt.
             </p>
           </div>
 
@@ -601,7 +599,7 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
           <span className="text-xs font-bold uppercase tracking-wide px-3 py-1 bg-neon-purple/20 text-neon-purple border border-neon-purple/50">
             Review Mode
           </span>
-        ) : usePerQuestionMode ? (
+        ) : (
           // Per-question timer with circular progress
           <div className="flex items-center gap-3">
             <div className="relative w-12 h-12">
@@ -643,18 +641,6 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
             {isTimeWarning && (
               <AlertTriangle className="w-5 h-5 text-destructive animate-pulse" />
             )}
-          </div>
-        ) : (
-          // Global timer
-          <div className={cn(
-            "flex items-center gap-2 px-3 py-1 text-sm font-bold transition-colors",
-            isTimeWarning 
-              ? "text-destructive bg-destructive/10 border border-destructive/50 animate-pulse" 
-              : "text-muted-foreground"
-          )}>
-            {isTimeWarning && <AlertTriangle className="w-4 h-4" />}
-            <Clock className="w-4 h-4" />
-            {formatTimeRemaining(remainingTime)}
           </div>
         )}
         
@@ -733,50 +719,53 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
 
       {/* Footer navigation */}
       <div className="flex items-center justify-between p-4 border-t border-border bg-muted/30">
-        <button
-          onClick={handlePrev}
-          disabled={currentIndex === 0}
-          className={cn(
-            "flex items-center gap-2 px-4 py-2 font-bold transition-colors",
-            currentIndex === 0 
-              ? "text-muted-foreground/50 cursor-not-allowed" 
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <ChevronLeft className="w-4 h-4" />
-          Previous
-        </button>
+        {/* Previous button - only shown in review mode */}
+        {state === "review" ? (
+          <button
+            onClick={handlePrev}
+            disabled={currentIndex === 0}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 font-bold transition-colors",
+              currentIndex === 0 
+                ? "text-muted-foreground/50 cursor-not-allowed" 
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Previous
+          </button>
+        ) : (
+          // Empty placeholder to maintain layout during playing
+          <div className="px-4 py-2">
+            <span className="text-xs text-muted-foreground/50">No going back</span>
+          </div>
+        )}
 
-        {/* Per-question mode: show skip button */}
-        {state === "playing" && usePerQuestionMode && selectedAnswer === undefined && (
+        {/* Skip button during playing (when no answer selected) */}
+        {state === "playing" && selectedAnswer === undefined && (
           <button
             onClick={handleNext}
             className="px-4 py-2 text-sm font-bold text-muted-foreground hover:text-foreground border border-border hover:border-primary transition-colors"
           >
-            Skip
+            Skip Question
           </button>
         )}
 
+        {/* Next/Finish/Retake button */}
         {state === "review" && currentIndex === shuffledQuestions.length - 1 ? (
           <button onClick={handleRestart} className="btn-brutal inline-flex items-center gap-2">
             <RotateCcw className="w-4 h-4" />
             Retake Quiz
           </button>
-        ) : (
+        ) : state === "review" ? (
           <button
             onClick={handleNext}
-            disabled={state === "playing" && selectedAnswer === undefined && !usePerQuestionMode}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 font-bold transition-colors",
-              (state === "playing" && selectedAnswer === undefined && !usePerQuestionMode)
-                ? "text-muted-foreground/50 cursor-not-allowed" 
-                : "btn-brutal"
-            )}
+            className="btn-brutal flex items-center gap-2"
           >
-            {currentIndex === shuffledQuestions.length - 1 && state === "playing" ? "Finish" : "Next"}
+            Next
             <ChevronRight className="w-4 h-4" />
           </button>
-        )}
+        ) : null}
       </div>
     </div>
   );
