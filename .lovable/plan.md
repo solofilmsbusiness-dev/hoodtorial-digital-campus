@@ -1,96 +1,105 @@
 
 
-# Redirect to Student Center After Enrollment
+# Fix PDF Question Generator - Auth Issue
 
-## The Issue
+## Problem Identified
 
-Currently, when you enroll in a course from the Course Detail page, you stay on the same page. This means you don't see your newly enrolled course in the Student Center's "Active Courses" section without manually navigating there.
+The "Generate Questions from PDF" feature is stuck on a spinning wheel because of an authentication error in the `parse-pdf` edge function.
 
-## The Solution
-
-After successfully enrolling in a course, automatically redirect you to the Student Center with the Active Courses section highlighted/scrolled into view, along with a visual indication of which course was just added.
-
----
-
-## Implementation Details
-
-### 1. Update Course Detail Page - Add Navigation After Enrollment
-
-**File: `src/pages/CourseDetail.tsx`**
-
-Modify the `handleEnroll` function to:
-- Wait for the enrollment to complete successfully
-- Navigate to the Student Center with a query parameter indicating the newly enrolled course
-- Example: `/student?enrolled=CIN-123`
-
-```text
-Current flow:
-User clicks "Enroll" → Enrollment saves → User stays on course page
-
-New flow:
-User clicks "Enroll" → Enrollment saves → Redirect to /student?enrolled=COURSE_CODE
+**Error from logs:**
+```
+Auth error: AuthApiError: invalid claim: missing sub claim
 ```
 
-### 2. Update Student Center - Highlight New Enrollment
-
-**File: `src/pages/StudentCenter.tsx`**
-
-Add logic to:
-- Read the `enrolled` query parameter from the URL
-- Scroll to the Active Courses section automatically
-- Briefly highlight the newly enrolled course card with an animation
-- Clear the query parameter from the URL after showing the highlight
-
-### 3. Add Visual Feedback
-
-The newly enrolled course card will have:
-- A brief pulse/glow animation to draw attention
-- The card will be scrolled into view if not already visible
+**Root cause:** The client code is sending the Supabase anon key as the Authorization token instead of the user's actual session token. The anon key is not a user JWT, so when the edge function tries to validate it with `supabase.auth.getUser()`, it fails.
 
 ---
 
-## Technical Approach
+## Current Code (Broken)
 
-### Changes to `src/pages/CourseDetail.tsx`
-
-1. Import `useNavigate` from `react-router-dom`
-2. Update `handleEnroll`:
-   - Check if enrollment was successful (no error returned)
-   - If successful, navigate to `/student?enrolled={courseCode}`
-
-### Changes to `src/pages/StudentCenter.tsx`
-
-1. Import `useSearchParams` from `react-router-dom`
-2. Add a `useEffect` that:
-   - Reads `enrolled` query parameter
-   - Finds the corresponding course card element
-   - Scrolls it into view with smooth scrolling
-   - Adds a temporary highlight class
-   - Clears the query parameter from URL using `searchParams.delete()` + `setSearchParams()`
-
-### Changes to `src/components/enrollment/EnrollmentManagementCard.tsx`
-
-1. Add an optional `isHighlighted` prop
-2. When `isHighlighted` is true, apply a pulsing border/glow animation that fades after 2-3 seconds
+```typescript
+// PDFQuestionGeneratorDialog.tsx - Line 140-148
+const response = await fetch(
+  `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-pdf`,
+  {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`, // ❌ This is the anon key, not a user token!
+    },
+    body: formData,
+  }
+);
+```
 
 ---
 
-## User Experience
+## Solution
+
+Get the user's actual session token from Supabase and use that for authentication.
+
+### Changes to `src/components/admin/PDFQuestionGeneratorDialog.tsx`
+
+Update the `handleFileSelect` function to:
+1. Get the current session from Supabase
+2. Use the session's access token in the Authorization header
+3. Add error handling if no session exists
+
+```typescript
+const handleFileSelect = async (selectedFile: File) => {
+  // ... validation code stays the same ...
+
+  setFile(selectedFile);
+  setIsUploading(true);
+
+  try {
+    // Get the user's session token
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.access_token) {
+      throw new Error("You must be logged in to upload PDFs");
+    }
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-pdf`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`, // ✅ User's actual token
+        },
+        body: formData,
+      }
+    );
+    // ... rest of the code ...
+  }
+};
+```
+
+---
+
+## Why This Fixes It
 
 | Before | After |
 |--------|-------|
-| Click Enroll → Stay on course page | Click Enroll → Go to Student Center |
-| Toast shows "Enrolled!" | Toast shows "Enrolled!" + Redirect |
-| Manually navigate to see course | Course card visible and highlighted |
-| No visual confirmation | Pulsing highlight on new course |
+| `Authorization: Bearer <anon_key>` | `Authorization: Bearer <user_session_token>` |
+| Anon key has no user claims | Session token has `sub` claim with user ID |
+| `getUser()` fails with "missing sub claim" | `getUser()` succeeds and returns user data |
 
 ---
 
 ## Files to Modify
 
-| File | Changes |
-|------|---------|
-| `src/pages/CourseDetail.tsx` | Add `useNavigate`, update `handleEnroll` to redirect on success |
-| `src/pages/StudentCenter.tsx` | Add `useSearchParams`, scroll + highlight logic |
-| `src/components/enrollment/EnrollmentManagementCard.tsx` | Add `isHighlighted` prop with animation |
+| File | Change |
+|------|--------|
+| `src/components/admin/PDFQuestionGeneratorDialog.tsx` | Get session token and use it for Authorization header |
+
+---
+
+## Technical Notes
+
+- The `generate-questions` function works because it's called via `supabase.functions.invoke()` which automatically includes the user's session token
+- The `parse-pdf` function uses raw `fetch()` because it needs to send `FormData` (file upload), which is why we need to manually get and attach the session token
+- This is the same authentication pattern used elsewhere in the codebase
 
