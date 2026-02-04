@@ -1,239 +1,115 @@
 
-# Enhanced Admin User Controls & AI Learning Analytics
+# Enrollment Access Controls & Course Swap System
 
 ## Overview
 
-This plan adds comprehensive admin controls for managing students and AI-powered learning insights to help administrators understand if students are truly learning and get personalized improvement recommendations.
+This plan implements strict enrollment-based course access and adds a course swap/drop system with limits. Students will only be able to access full course content for courses they are enrolled in, while non-enrolled courses show only the summary and intro video. A swap system allows students to change courses within defined limits.
 
 ---
 
-## Part 1: User Management Enhancements
+## Current State Analysis
 
-### 1.1 Ban/Suspend User System
+| Aspect | Current Behavior |
+|--------|------------------|
+| Course Access | Any user with subscription can view any course detail page with full content |
+| Enrollment | Enrollments limit how many courses a user can "activate" but don't gate content |
+| Course Detail | Shows full lessons/quizzes to anyone who navigates to the page |
+| Dropping Courses | Not currently implemented |
+| Swapping Courses | Not currently implemented |
 
-**Database Changes:**
-Add a `is_banned` column and `banned_at`/`banned_by`/`ban_reason` fields to the `profiles` table to track user account status.
+---
+
+## Proposed Changes
+
+### Part 1: Strict Enrollment-Based Course Access
+
+**Goal**: Non-enrolled users can only see course summary + intro video. Full content requires enrollment.
+
+#### 1.1 Database Changes
+
+Add columns to track swap/drop limits:
 
 ```sql
--- Add ban columns to profiles
-ALTER TABLE public.profiles 
-ADD COLUMN is_banned boolean NOT NULL DEFAULT false,
-ADD COLUMN banned_at timestamp with time zone,
-ADD COLUMN banned_by uuid REFERENCES auth.users(id),
-ADD COLUMN ban_reason text;
+ALTER TABLE public.enrollments
+ADD COLUMN swaps_used integer NOT NULL DEFAULT 0,
+ADD COLUMN dropped_at timestamp with time zone;
 ```
 
-**Frontend Changes:**
-- Add "Ban User" and "Unban User" options to the UserManager dropdown menu
-- Add ban confirmation dialog with reason input
-- Display banned status badge in student list
-- Show ban info in StudentDetailSheet
+#### 1.2 Course Detail Page Changes (`CourseDetail.tsx`)
 
-### 1.2 Remove All Enrollments (Expel from All Classes)
+Current flow allows viewing all content. New flow:
 
-**New Action:**
-Add a "Remove All Enrollments" button that unenrolls a student from all their active courses at once.
+| User State | What They See |
+|------------|---------------|
+| Not enrolled | Course header, description, stats, intro video, enrollment card, "Content Locked" message |
+| Enrolled (active) | Full course content (lessons, quizzes, progress) |
+| Enrolled (completed) | Full course content with completion badge |
+
+The existing code structure already has this pattern (lines 547-740), but we need to ensure the intro video is always shown regardless of enrollment status.
+
+#### 1.3 Academics Page Course Cards
+
+Update `CourseCard.tsx` to show enrollment status indicator:
+- Badge showing "Enrolled" if user has active enrollment
+- Visual distinction between enrolled vs. available courses
+
+---
+
+### Part 2: Drop/Swap System
+
+#### 2.1 Swap Rules
+
+| Rule | Value |
+|------|-------|
+| Max swaps per enrollment | 2 |
+| Grace period for free drop | 24 hours after enrollment |
+| Swap during grace period | Does not count toward limit |
+
+#### 2.2 New Hook: `useEnrollments` Extensions
+
+Add new methods to the existing hook:
 
 ```typescript
-// Add to useAdminQuizManagement hook
-const deleteAllEnrollments = async (userId: string) => {
-  const { error } = await supabase
-    .from("enrollments")
-    .delete()
-    .eq("user_id", userId);
-  // ...
+// Drop a course (removes enrollment entirely)
+const dropCourse = async (courseCode: string) => {
+  // Check if within 24h grace period
+  // Update status to "dropped" and set dropped_at
 };
-```
 
-### 1.3 Reset All Progress
-
-**New Action:**
-Add ability to reset all lesson progress for a student (separate from quiz results).
-
-```typescript
-const deleteAllProgress = async (userId: string) => {
-  const { error } = await supabase
-    .from("user_progress")
-    .delete()
-    .eq("user_id", userId);
-  // ...
+// Swap a course for another
+const swapCourse = async (fromCode: string, toCode: string) => {
+  // Validate swap limits
+  // Drop old course, enroll in new one
+  // Increment swaps_used if outside grace period
 };
+
+// Get remaining swaps for an enrollment
+const getRemainingSwaps = (courseCode: string) => number;
+
+// Check if enrollment is in grace period
+const isInGracePeriod = (courseCode: string) => boolean;
 ```
 
----
+#### 2.3 Student Center UI Components
 
-## Part 2: Learning Analytics Dashboard
+Add new "Manage Enrollments" section in StudentCenter with:
 
-### 2.1 Enhanced Student Detail Sheet
+1. **Course Cards with Actions**:
+   - "Drop Course" button
+   - "Swap Course" button
+   - Shows remaining swaps (e.g., "2 swaps remaining")
+   - Grace period indicator (e.g., "Free drop available for 12 more hours")
 
-Add new analytics sections showing:
+2. **Drop Confirmation Dialog**:
+   - Warning about progress being kept (not deleted)
+   - Shows if this uses a swap or is free (grace period)
+   - Confirm/Cancel buttons
 
-| Metric | Description |
-|--------|-------------|
-| Average Watch % | How much of videos they actually watch |
-| Completion Rate | Lessons completed vs. enrolled lessons |
-| Quiz Score Trend | Are scores improving over time? |
-| Time Spent | Total learning time (based on video progress) |
-| Engagement Score | Calculated score based on multiple factors |
-| Last Activity | When they last interacted with content |
-
-**Data Structure:**
-```typescript
-interface LearningMetrics {
-  avgWatchPercentage: number;      // 0-100
-  lessonCompletionRate: number;    // 0-100
-  quizScoreTrend: "improving" | "declining" | "stable";
-  totalWatchTimeMinutes: number;
-  engagementScore: number;         // 0-100
-  lastActivityAt: string | null;
-  coursesWithNoProgress: string[]; // List of enrolled but idle courses
-  averageQuizScore: number;
-  quizAttemptFrequency: number;    // Days between attempts
-}
-```
-
-### 2.2 Engagement Score Calculation
-
-Weighted scoring based on real learning behaviors:
-
-```
-Engagement Score = (
-  (avgWatchPercentage × 0.30) +      // 30% - Are they watching videos fully?
-  (lessonCompletionRate × 0.25) +    // 25% - Are they completing lessons?
-  (quizPassRate × 0.25) +            // 25% - Are they passing quizzes?
-  (activityRecency × 0.10) +         // 10% - Are they active recently?
-  (quizAttemptConsistency × 0.10)    // 10% - Are they taking quizzes regularly?
-)
-```
-
-### 2.3 Visual Analytics in Student Detail
-
-```text
-┌─────────────────────────────────────────────────┐
-│ 📊 Learning Analytics                           │
-├─────────────────────────────────────────────────┤
-│                                                 │
-│  Engagement Score    ████████░░  78/100         │
-│                      "Active Learner"           │
-│                                                 │
-│  ┌──────────┬──────────┬──────────┐            │
-│  │ Watch %  │ Complete │ Quiz Avg │            │
-│  │   85%    │   60%    │   72%    │            │
-│  │ ██████░░ │ █████░░░ │ ██████░░ │            │
-│  └──────────┴──────────┴──────────┘            │
-│                                                 │
-│  Last Active: 2 days ago                       │
-│  Total Watch Time: 4h 32m                      │
-│  Quiz Trend: ↗ Improving                       │
-│                                                 │
-│  ⚠️ Idle Courses: HU-303, HU-401               │
-│                                                 │
-└─────────────────────────────────────────────────┘
-```
-
----
-
-## Part 3: AI Improvement Tips
-
-### 3.1 New Edge Function: `student-insights`
-
-Create a new backend function that analyzes student data and generates personalized recommendations using AI.
-
-**Endpoint:** `POST /functions/v1/student-insights`
-
-**Request:**
-```json
-{
-  "userId": "uuid",
-  "studentName": "John",
-  "metrics": {
-    "avgWatchPercentage": 45,
-    "lessonCompletionRate": 30,
-    "quizPassRate": 60,
-    "quizScoreTrend": "declining",
-    "lastActivityDaysAgo": 5,
-    "enrolledCourses": ["HU-101", "HU-205"],
-    "coursesWithNoProgress": ["HU-205"],
-    "weakAreas": ["lighting", "color theory"]
-  }
-}
-```
-
-**Response:**
-```json
-{
-  "summary": "John shows initial enthusiasm but engagement is declining...",
-  "riskLevel": "medium",
-  "insights": [
-    {
-      "category": "engagement",
-      "observation": "Video watch percentage is below 50%",
-      "recommendation": "Consider reaching out to check if content is too basic or too advanced"
-    },
-    {
-      "category": "progression",
-      "observation": "Started HU-205 but hasn't made progress in 2 weeks",
-      "recommendation": "Send encouragement or unlock a preview of upcoming content"
-    }
-  ],
-  "suggestedActions": [
-    "Send personalized check-in message",
-    "Recommend revisiting Module 2 of HU-101",
-    "Offer quiz retake for low-scoring attempts"
-  ]
-}
-```
-
-### 3.2 AI Analysis UI Component
-
-Add a "Get AI Insights" button in the StudentDetailSheet that:
-1. Aggregates the student's learning data
-2. Calls the `student-insights` edge function
-3. Displays personalized recommendations
-
-```text
-┌─────────────────────────────────────────────────┐
-│ 🤖 AI Learning Insights                         │
-│ ───────────────────────────                     │
-│                                                 │
-│ Risk Level: 🟡 Medium                           │
-│                                                 │
-│ Summary:                                        │
-│ "John started strong but engagement has        │
-│ dropped. Quiz scores are declining and video   │
-│ completion is inconsistent..."                 │
-│                                                 │
-│ 💡 Recommendations:                             │
-│                                                 │
-│ 1. Video Engagement                            │
-│    ⚠️ Only watching 45% of videos on average   │
-│    → Consider shorter lesson formats or        │
-│      check if content matches their level      │
-│                                                 │
-│ 2. Course Progress                             │
-│    ⚠️ HU-205 enrolled but no activity          │
-│    → Send reminder or check if stuck           │
-│                                                 │
-│ ✨ Suggested Actions:                           │
-│ • [ ] Send check-in message                    │
-│ • [ ] Recommend HU-101 Module 2 review         │
-│ • [ ] Reset quiz for fresh attempt             │
-│                                                 │
-│ [Refresh Insights]                             │
-└─────────────────────────────────────────────────┘
-```
-
----
-
-## Part 4: Bulk Actions in User List
-
-### 4.1 Selection and Bulk Operations
-
-Add checkboxes to the student table for bulk operations:
-
-- **Bulk Message** - Send announcement to selected students
-- **Bulk Export** - Export selected students to CSV
-- **Bulk Remove Enrollments** - Remove specific course from selected students
+3. **Swap Course Dialog**:
+   - Dropdown to select new course
+   - Only shows courses not already enrolled
+   - Shows swap count status
+   - Preview of new course info
 
 ---
 
@@ -241,98 +117,188 @@ Add checkboxes to the student table for bulk operations:
 
 | File | Changes |
 |------|---------|
-| `supabase/migrations/` | Add `is_banned`, `banned_at`, `banned_by`, `ban_reason` columns |
-| `src/hooks/useAdminQuizManagement.ts` | Add `banUser`, `unbanUser`, `deleteAllEnrollments`, `deleteAllProgress` |
-| `src/hooks/useStudentAnalytics.ts` | New hook for learning metrics calculations |
-| `src/components/admin/StudentDetailSheet.tsx` | Add Learning Analytics section, AI Insights, ban controls |
-| `src/components/admin/StudentAnalyticsCard.tsx` | New component for analytics visualization |
-| `src/components/admin/AIInsightsPanel.tsx` | New component for AI recommendations |
-| `src/pages/admin/UserManager.tsx` | Add ban/unban to dropdown, banned status badge |
-| `supabase/functions/student-insights/index.ts` | New edge function for AI analysis |
-| `src/integrations/supabase/types.ts` | Auto-updated with new columns |
+| `supabase/migrations/` | Add `swaps_used` and `dropped_at` columns to enrollments |
+| `src/hooks/useEnrollments.ts` | Add `dropCourse`, `swapCourse`, `getRemainingSwaps`, `isInGracePeriod` |
+| `src/pages/CourseDetail.tsx` | Ensure intro video shows for all users; enforce enrollment gating |
+| `src/pages/StudentCenter.tsx` | Add enrollment management section with drop/swap UI |
+| `src/components/enrollment/DropCourseDialog.tsx` | New confirmation dialog component |
+| `src/components/enrollment/SwapCourseDialog.tsx` | New swap selection dialog component |
+| `src/components/enrollment/EnrollmentManagementCard.tsx` | New card component for each active enrollment |
+| `src/components/cards/CourseCard.tsx` | Add enrollment status badge |
 
 ---
 
-## Database Migration Summary
+## User Experience Flows
+
+### Viewing a Non-Enrolled Course
+
+```text
+User clicks course in Academics
+        |
+        v
+CourseDetail page loads
+        |
+        v
+┌─────────────────────────────────────────────────┐
+│ [Course Header with stats]                      │
+├─────────────────────────────────────────────────┤
+│ [Intro Video - Always visible]                  │
+├─────────────────────────────────────────────────┤
+│ [Enrollment Card]                               │
+│ • Slot indicator: 1/3 used                      │
+│ • [Enroll in Course] button                     │
+├─────────────────────────────────────────────────┤
+│ 🔒 Course Content Locked                        │
+│ "Enroll to access all lessons and quizzes"      │
+│ • 4 Modules                                     │
+│ • 12 Lessons                                    │
+│ • 5 Quizzes                                     │
+└─────────────────────────────────────────────────┘
+```
+
+### Dropping a Course (Grace Period)
+
+```text
+Student Center → Active Courses → Click "..."
+        |
+        v
+Select "Drop Course"
+        |
+        v
+┌──────────────────────────────────────┐
+│  Drop Course                         │
+│  ────────────                        │
+│  You're within the 24-hour grace     │
+│  period. This drop is FREE and won't │
+│  count against your swap limit.      │
+│                                      │
+│  ⚠️ Your progress will be saved.     │
+│                                      │
+│  [Cancel]  [Drop Course]             │
+└──────────────────────────────────────┘
+```
+
+### Swapping a Course (After Grace Period)
+
+```text
+Student Center → Active Courses → Click "..."
+        |
+        v
+Select "Swap Course"
+        |
+        v
+┌──────────────────────────────────────┐
+│  Swap Course                         │
+│  ────────────                        │
+│  Replace HU-101 with another course  │
+│                                      │
+│  Swaps remaining: 2 of 2             │
+│                                      │
+│  Select new course:                  │
+│  ┌────────────────────────────────┐  │
+│  │ HU-205 - Advanced Lighting  ▼  │  │
+│  └────────────────────────────────┘  │
+│                                      │
+│  ⚠️ This will use 1 swap.            │
+│  ⚠️ Progress on HU-101 will be kept. │
+│                                      │
+│  [Cancel]  [Confirm Swap]            │
+└──────────────────────────────────────┘
+```
+
+---
+
+## Database Schema Update
 
 ```sql
--- 1. Add ban columns to profiles
-ALTER TABLE public.profiles 
-ADD COLUMN is_banned boolean NOT NULL DEFAULT false,
-ADD COLUMN banned_at timestamp with time zone,
-ADD COLUMN banned_by uuid,
-ADD COLUMN ban_reason text;
+-- Add swap tracking to enrollments
+ALTER TABLE public.enrollments
+ADD COLUMN swaps_used integer NOT NULL DEFAULT 0,
+ADD COLUMN dropped_at timestamp with time zone;
 
--- 2. Create index for quick banned user filtering
-CREATE INDEX idx_profiles_is_banned ON public.profiles(is_banned) WHERE is_banned = true;
-
--- 3. Add RLS policy for admins to update ban status
-CREATE POLICY "Admins can update ban status" ON public.profiles
-FOR UPDATE TO authenticated
-USING (has_role(auth.uid(), 'admin'::app_role))
-WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
+-- Index for efficient queries
+CREATE INDEX idx_enrollments_dropped ON public.enrollments(dropped_at) 
+WHERE dropped_at IS NOT NULL;
 ```
+
+---
+
+## Visual Indicators in Student Center
+
+```text
+┌─────────────────────────────────────────────────┐
+│ 📚 Active Courses (2/3 slots)                   │
+├─────────────────────────────────────────────────┤
+│                                                 │
+│ ┌─────────────────────────────────────────────┐ │
+│ │ HU-101 • Fundamentals of Cinematography     │ │
+│ │ ─────────────────────────────────────────── │ │
+│ │ 📊 Progress: 45%    Enrolled: 2 hours ago   │ │
+│ │ 🔄 Swaps: 2 remaining                       │ │
+│ │ ⏰ Free drop: 22 hours left                 │ │
+│ │                                             │ │
+│ │ [Continue] [···]                            │ │
+│ └─────────────────────────────────────────────┘ │
+│                                                 │
+│ ┌─────────────────────────────────────────────┐ │
+│ │ HU-205 • Advanced Lighting                  │ │
+│ │ ─────────────────────────────────────────── │ │
+│ │ 📊 Progress: 10%    Enrolled: 5 days ago    │ │
+│ │ 🔄 Swaps: 1 remaining (1 used)              │ │
+│ │                                             │ │
+│ │ [Continue] [···]                            │ │
+│ └─────────────────────────────────────────────┘ │
+│                                                 │
+│ ┌─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─┐ │
+│ │ + Add Course (1 slot available)            │ │
+│ └─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─┘ │
+│                                                 │
+└─────────────────────────────────────────────────┘
+```
+
+---
+
+## Technical Implementation Notes
+
+1. **Course Detail Access Control**
+   - The current code already has an `enrolled` check that determines UI
+   - Ensure `isEnrolled` check is applied consistently
+   - Intro video section should render BEFORE the `enrolled` conditional
+
+2. **Swap Limit Enforcement**
+   - Check `swaps_used < 2` before allowing swap
+   - Grace period check: `Date.now() - enrolled_at < 24 hours`
+   - During grace period, swaps don't increment `swaps_used`
+
+3. **Status Transitions**
+   - Active -> Dropped (via drop)
+   - Active -> Active (via swap: drop old + enroll new)
+   - Active -> Completed (unchanged, via course completion)
+
+4. **Progress Preservation**
+   - Dropping a course does NOT delete `user_progress` or `quiz_results`
+   - If user re-enrolls later, their progress is still there
 
 ---
 
 ## Security Considerations
 
-1. **Ban enforcement** - The `is_banned` flag must be checked:
-   - In `ProtectedRoute` to block banned users from accessing the app
-   - In RLS policies to prevent banned users from creating content
+1. **RLS Policy Updates**
+   - Ensure users can only drop/swap their own enrollments
+   - Validate swap limits server-side via database function if needed
 
-2. **AI Insights** - Only admins can call the `student-insights` endpoint (verify admin role in function)
-
-3. **Audit trail** - Ban actions are logged with `banned_by` and `banned_at` for accountability
-
----
-
-## User Experience Flow
-
-### Banning a User
-
-```text
-Admin clicks "..." → "Ban User"
-         ↓
-┌──────────────────────────────┐
-│  Ban Student                 │
-│  ─────────────               │
-│  Are you sure you want to    │
-│  ban "John Doe"?             │
-│                              │
-│  Reason (required):          │
-│  ┌────────────────────────┐  │
-│  │ Violated community...  │  │
-│  └────────────────────────┘  │
-│                              │
-│  ⚠️ This will:               │
-│  • Block access to platform  │
-│  • Preserve their data       │
-│                              │
-│  [Cancel]  [Ban User]        │
-└──────────────────────────────┘
-```
-
-### Viewing AI Insights
-
-```text
-Admin opens StudentDetailSheet
-         ↓
-Scrolls to Learning Analytics
-         ↓
-Clicks "Get AI Insights"
-         ↓
-Loading... (calls edge function)
-         ↓
-Displays personalized recommendations
-```
+2. **Rate Limiting**
+   - Swap operations should be rate-limited to prevent abuse
+   - Consider adding a cooldown between swaps
 
 ---
 
-## Technical Notes
+## Summary
 
-- Learning metrics are calculated client-side from existing data (no new tables needed)
-- AI insights use the Lovable AI gateway (same as question generation)
-- Ban status is enforced at the route/RLS level
-- All admin actions require confirmation dialogs
-- Progress/enrollment deletions are logged for audit purposes
+This implementation ensures:
+- Students only access content for courses they're enrolled in
+- Non-enrolled users see course info + intro video to help them decide
+- Students can drop courses freely within 24 hours
+- Each enrollment allows 2 lifetime swaps
+- All progress is preserved even after dropping
+- Clear UI indicators show swap limits and grace periods
