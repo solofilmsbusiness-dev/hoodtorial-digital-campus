@@ -256,7 +256,7 @@ export default function Auth() {
           animate={{ opacity: 1 }}
           transition={{ delay: 4 }}
           onClick={toggleMusic}
-          className="fixed bottom-6 right-6 z-50 p-3 rounded-full bg-card/80 backdrop-blur-sm border border-border/50 hover:bg-card transition-colors group"
+          className="fixed bottom-6 left-6 z-50 p-3 rounded-full bg-card/80 backdrop-blur-sm border border-border/50 hover:bg-card transition-colors group"
           aria-label={isMusicEnabled ? "Mute music" : "Unmute music"}
         >
           {isMusicEnabled ? (
