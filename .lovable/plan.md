@@ -1,91 +1,69 @@
 
 
-# Fix PDF Question Generator - Auth Issue
+# Fix PDF Question Generator - Remove Source References
 
-## Problem Identified
+## The Problem
 
-The "Generate Questions from PDF" feature is stuck on a spinning wheel because of an authentication error in the `parse-pdf` edge function.
+When generating questions from a PDF, the AI is creating questions that reference the source document directly, like:
 
-**Error from logs:**
-```
-Auth error: AuthApiError: invalid claim: missing sub claim
-```
+> "Based on the provided PDF source code, what is the primary function of the 'q' operator..."
 
-**Root cause:** The client code is sending the Supabase anon key as the Authorization token instead of the user's actual session token. The anon key is not a user JWT, so when the edge function tries to validate it with `supabase.auth.getUser()`, it fails.
+This makes the questions feel artificial and not like real test questions.
 
----
+## Root Cause
 
-## Current Code (Broken)
+The system prompt in the `generate-questions` edge function instructs the AI to:
+- Reference the source material in explanations
+- Base questions "directly" on the provided content
 
-```typescript
-// PDFQuestionGeneratorDialog.tsx - Line 140-148
-const response = await fetch(
-  `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-pdf`,
-  {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`, // ❌ This is the anon key, not a user token!
-    },
-    body: formData,
-  }
-);
-```
+The AI interprets this too literally and includes phrases like "Based on the PDF..." or "According to the document..." in the actual question text.
 
 ---
 
 ## Solution
 
-Get the user's actual session token from Supabase and use that for authentication.
+Update the system prompt to explicitly instruct the AI to:
+1. Never mention the source document, PDF, or reading material in questions
+2. Write questions as if they are standalone test questions
+3. Only reference concepts/knowledge, not where it came from
+4. The explanation can still reference the material, but the question itself must be clean
 
-### Changes to `src/components/admin/PDFQuestionGeneratorDialog.tsx`
+---
 
-Update the `handleFileSelect` function to:
-1. Get the current session from Supabase
-2. Use the session's access token in the Authorization header
-3. Add error handling if no session exists
+## Changes to `supabase/functions/generate-questions/index.ts`
 
-```typescript
-const handleFileSelect = async (selectedFile: File) => {
-  // ... validation code stays the same ...
+### Update the PDF-based system prompt (lines 80-108)
 
-  setFile(selectedFile);
-  setIsUploading(true);
+**Add these new guidelines:**
 
-  try {
-    // Get the user's session token
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session?.access_token) {
-      throw new Error("You must be logged in to upload PDFs");
-    }
+```
+CRITICAL RULES FOR QUESTION WRITING:
+- NEVER mention "the PDF", "the document", "the reading", "the source", or "the material" in question text
+- NEVER use phrases like "Based on...", "According to...", "As stated in..."
+- Write questions as standalone test questions that feel professional and self-contained
+- Questions should test knowledge of the CONCEPTS, not knowledge of the document
+- The student should not need to know the question came from a document
+```
 
-    const formData = new FormData();
-    formData.append("file", selectedFile);
+**Update the explanation guideline from:**
+```
+- Include a brief explanation referencing the source material
+```
 
-    const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-pdf`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${session.access_token}`, // ✅ User's actual token
-        },
-        body: formData,
-      }
-    );
-    // ... rest of the code ...
-  }
-};
+**To:**
+```
+- Include a brief explanation of why the answer is correct (do NOT reference "the document" or "the PDF" - just explain the concept)
 ```
 
 ---
 
-## Why This Fixes It
+## Before vs After
 
 | Before | After |
 |--------|-------|
-| `Authorization: Bearer <anon_key>` | `Authorization: Bearer <user_session_token>` |
-| Anon key has no user claims | Session token has `sub` claim with user ID |
-| `getUser()` fails with "missing sub claim" | `getUser()` succeeds and returns user data |
+| "Based on the provided PDF, what is..." | "What is the primary function of..." |
+| "According to the document, which operator..." | "Which operator is used to..." |
+| "The source material indicates that..." | "In After Effects, the correct approach is..." |
 
 ---
 
@@ -93,13 +71,30 @@ const handleFileSelect = async (selectedFile: File) => {
 
 | File | Change |
 |------|--------|
-| `src/components/admin/PDFQuestionGeneratorDialog.tsx` | Get session token and use it for Authorization header |
+| `supabase/functions/generate-questions/index.ts` | Update system prompt to prohibit source references in questions |
 
 ---
 
-## Technical Notes
+## Updated Prompt Section
 
-- The `generate-questions` function works because it's called via `supabase.functions.invoke()` which automatically includes the user's session token
-- The `parse-pdf` function uses raw `fetch()` because it needs to send `FormData` (file upload), which is why we need to manually get and attach the session token
-- This is the same authentication pattern used elsewhere in the codebase
+The key section to update is the guidelines block (around line 85-94):
+
+```typescript
+Guidelines:
+- Create ${numQuestions} questions at ${difficulty} difficulty level
+- Questions must test understanding of the concepts from the provided content
+- Test understanding and application, not just memorization
+- For "test questions": Create fair, comprehensive assessments
+- For "extra credit": Create challenging questions that reward deeper understanding and critical thinking
+- Each question should have 4 answer options (A, B, C, D)
+- Only one answer should be correct
+- Include a brief explanation of why the answer is correct
+
+CRITICAL - Question Writing Rules:
+- NEVER mention "the PDF", "the document", "the reading", "the source material", or "the provided content" in question text
+- NEVER start questions with "Based on...", "According to...", "As stated in...", or similar phrases
+- Write questions as standalone, professional test questions
+- Questions should test knowledge of CONCEPTS, not knowledge of where they came from
+- The student should feel like this is a real exam question, not a reading comprehension quiz
+```
 
