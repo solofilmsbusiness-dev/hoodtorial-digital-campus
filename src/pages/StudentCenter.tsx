@@ -246,10 +246,15 @@ export default function StudentCenter() {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {results.slice(0, 5).map((result) => (
+                      {results.slice(0, 5).map((result) => {
+                        const courseTitle = courses.find((c) => c.code === result.course_code)?.title;
+                        return (
                         <div key={result.id} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border">
                           <div>
-                            <p className="font-bold text-foreground">{result.course_code}</p>
+                            <p className="font-bold text-foreground">
+                              {result.course_code}
+                              {courseTitle && <span className="text-muted-foreground font-normal"> • {courseTitle}</span>}
+                            </p>
                             <p className="text-sm text-muted-foreground">
                               {new Date(result.created_at).toLocaleDateString()}
                             </p>
@@ -267,7 +272,7 @@ export default function StudentCenter() {
                             </span>
                           </div>
                         </div>
-                      ))}
+                      )})}
                       {results.length > 5 && (
                         <Link 
                           to="/student/grades" 
