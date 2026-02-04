@@ -1,198 +1,170 @@
 
-# Quiz Results with Course Names & Enrollment-Gated Course Access
+
+# Redirect Root URL to Login Screen
 
 ## Overview
 
-This plan implements two improvements:
-
-1. **Student Center Quiz Results** - Display course title alongside course code in the Recent Quiz Results section
-2. **Course Detail Access Control** - Restrict course content visibility so non-enrolled users only see the course overview description and intro video, not the full module list
+This plan modifies the application so that the first page users see when visiting the site is always the login screen (`/auth`), rather than the marketing homepage. Authenticated users will be redirected to the Student Center.
 
 ---
 
-## Part 1: Quiz Results with Course Name
+## Current State
 
-### Current State
+| Route | Current Behavior |
+|-------|------------------|
+| `/` | Shows `Index.tsx` (marketing homepage) - accessible to everyone |
+| `/auth` | Shows login/signup page - redirects authenticated users to `/student` |
 
-In `StudentCenter.tsx`, the Recent Quiz Results section shows:
-```
-HU-101
-Jan 15, 2025                           8/10  PASSED
-```
-
-### Proposed State
-
-Show the course title for context:
-```
-HU-101 • The Art of Storytelling
-Jan 15, 2025                           8/10  PASSED
-```
-
-### Implementation
-
-#### File: `src/pages/StudentCenter.tsx`
-
-1. Import the `courses` data array which contains all course info
-2. Create a helper function to look up course title by code:
-   ```typescript
-   const getCourseTitle = (courseCode: string) => {
-     const course = courses.find((c) => c.code === courseCode);
-     return course?.title || courseCode;
-   };
-   ```
-
-3. Update the quiz results display (around line 252) to show both code and title:
-   ```tsx
-   <p className="font-bold text-foreground">
-     {result.course_code} • {getCourseTitle(result.course_code)}
-   </p>
-   ```
+Users landing on the root URL see the marketing homepage regardless of authentication status.
 
 ---
 
-## Part 2: Enrollment-Gated Course Access
+## Proposed State
 
-### Current State
+| Route | New Behavior |
+|-------|--------------|
+| `/` | Redirects unauthenticated users to `/auth`, authenticated users to `/student` |
+| `/auth` | Login/signup page (unchanged behavior) |
 
-On the Course Detail page, non-enrolled users can see:
-- Full course header with title, description, credits, stats
-- Intro video (if available)
-- **All module names and lesson titles in the sidebar**
-- Enrollment card prompt
+Users visiting the root URL are always directed to the login screen first. Once authenticated, they go to the Student Center.
 
-The module list reveals the entire course structure before enrollment.
+---
 
-### Proposed State
+## Implementation Options
 
-Non-enrolled users should only see:
-- Course header (title, description, level, credits, stats) - **visible**
-- Intro video (if available) - **visible**
-- Enrollment card with CTA - **visible**
-- Module/lesson list - **hidden until enrolled**
+### Option A: Wrap Index in ProtectedRoute (Simple Redirect)
 
-### Implementation
+Wrap the Index route with a route guard that redirects unauthenticated users to `/auth`:
 
-#### File: `src/pages/CourseDetail.tsx`
-
-Update the Course Content section (starting around line 544) to conditionally render the modules sidebar based on enrollment status.
-
-**Before (current):**
 ```tsx
-<Section className="py-8">
-  <SubscriptionGate>
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      {/* Video Player Area - lg:col-span-2 */}
-      {/* ... enrollment card, lesson content ... */}
-      
-      {/* Course Modules Sidebar */}
-      <div className="space-y-4">
-        <h3>Course Content</h3>
-        {course.modules.map(...)}  // Always visible
-      </div>
-    </div>
-  </SubscriptionGate>
-</Section>
+<Route path="/" element={
+  <ProtectedRoute>
+    <Navigate to="/student" replace />
+  </ProtectedRoute>
+} />
 ```
 
-**After (new):**
+**Result**: 
+- Unauthenticated users at `/` are redirected to `/auth`
+- Authenticated users at `/` are redirected to `/student`
+- The marketing homepage becomes inaccessible
+
+### Option B: Create a Redirect-Only Root Component (Recommended)
+
+Create a simple redirect component that checks auth status and routes accordingly:
+
 ```tsx
-<Section className="py-8">
-  <SubscriptionGate>
-    {enrolled ? (
-      {/* Full enrolled view with video player and modules */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Video player content */}
-        {/* Course modules sidebar */}
-      </div>
-    ) : (
-      {/* Non-enrolled teaser view */}
-      <div className="max-w-2xl mx-auto text-center">
-        <EnrollmentCard ... />
-        <div className="mt-8 p-8 border-2 border-dashed border-border">
-          <Lock className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="heading-4 mb-2">Course Content Locked</h3>
-          <p className="text-muted-foreground mb-4">
-            Enroll in this course to access {course.modules.length} modules 
-            and {totalLessons} lessons.
-          </p>
-          <div className="flex flex-wrap justify-center gap-2">
-            {/* Show module count badges without revealing titles */}
-            <Badge>📚 {course.modules.length} Modules</Badge>
-            <Badge>🎬 {totalLessons} Lessons</Badge>
-            <Badge>✅ {totalQuizzes} Quizzes</Badge>
-          </div>
-        </div>
-      </div>
-    )}
-  </SubscriptionGate>
-</Section>
+// In App.tsx or new component
+function RootRedirect() {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return <LoadingScreen />;
+  }
+  
+  return <Navigate to={user ? "/student" : "/auth"} replace />;
+}
+
+// Route
+<Route path="/" element={<RootRedirect />} />
 ```
 
-This approach:
-- Keeps the header and intro video always visible (for marketing/preview purposes)
-- Shows the enrollment card prominently
-- Hides the actual module/lesson list from non-enrolled users
-- Shows aggregate stats (X modules, Y lessons) without revealing content details
-- Creates urgency to enroll
+**Result**:
+- Unauthenticated users at `/` are redirected to `/auth`
+- Authenticated users at `/` are redirected to `/student`
+- Clean separation of logic
 
 ---
 
-## Files to Modify
+## Recommended Approach: Option B
+
+This approach is cleaner and more explicit about the routing behavior.
+
+### File to Modify
 
 | File | Changes |
 |------|---------|
-| `src/pages/StudentCenter.tsx` | Add course title lookup and display in quiz results |
-| `src/pages/CourseDetail.tsx` | Restructure content section to gate modules behind enrollment |
+| `src/App.tsx` | Replace Index component with RootRedirect component |
+
+### Implementation Details
+
+1. Add a `RootRedirect` component inside `App.tsx` (no new file needed):
+
+```typescript
+import { Navigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+
+// Inside App.tsx, before the App component
+function RootRedirect() {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse text-primary font-bold text-xl">Loading...</div>
+      </div>
+    );
+  }
+  
+  // Redirect based on authentication status
+  return <Navigate to={user ? "/student" : "/auth"} replace />;
+}
+```
+
+2. Update the root route from:
+```tsx
+<Route path="/" element={<Index />} />
+```
+
+To:
+```tsx
+<Route path="/" element={<RootRedirect />} />
+```
+
+3. The `Index` import can be removed since the marketing homepage is no longer used.
 
 ---
 
-## Visual Summary
-
-### Quiz Results (Before vs After)
-
-| Before | After |
-|--------|-------|
-| `HU-101` | `HU-101 • The Art of Storytelling` |
-| `HU-203` | `HU-203 • Advanced Lighting Techniques` |
-
-### Course Detail (Non-Enrolled View)
+## User Experience Flow
 
 ```text
-┌────────────────────────────────────────────┐
-│  ← Back to Courses                         │
-│                                            │
-│  [HU-101]  [Beginner]                      │
-│                                            │
-│  THE ART OF STORYTELLING                   │
-│  Learn narrative structure and visual...    │
-│                                            │
-│  [12 Lessons] [5 Quizzes] [3 hrs] [4 Cr]   │
-├────────────────────────────────────────────┤
-│  Course Introduction                        │
-│  [▶ Intro Video Player]                    │
-├────────────────────────────────────────────┤
-│       ┌───────────────────────┐            │
-│       │  ENROLL TO UNLOCK     │            │
-│       │  3 slots available    │            │
-│       │  [Enroll Now Button]  │            │
-│       └───────────────────────┘            │
-│                                            │
-│       ┌─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐            │
-│       │  🔒 Course Content    │            │
-│       │     Locked            │            │
-│       │                       │            │
-│       │  📚 4 Modules         │            │
-│       │  🎬 12 Lessons        │            │
-│       │  ✅ 5 Quizzes         │            │
-│       └─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘            │
-└────────────────────────────────────────────┘
+User visits hoodtorial.com (root URL)
+              |
+              v
+       ┌──────────────┐
+       │ Loading...   │
+       │ (check auth) │
+       └──────────────┘
+              |
+    ┌─────────┴─────────┐
+    |                   |
+    v                   v
+[Not logged in]    [Logged in]
+    |                   |
+    v                   v
+Redirect to        Redirect to
+  /auth              /student
+    |                   |
+    v                   v
+ Login Screen      Student Center
 ```
 
 ---
 
-## Technical Notes
+## Notes
 
-- The `courses` import from `src/data/courses.ts` provides static course data for lookup
-- For database-only courses not in static data, the code will gracefully fall back to showing just the course code
-- Test mode users continue to see full content as they're treated as enrolled
-- The intro video remains visible to all users as it serves a marketing/preview purpose
+- The marketing homepage (`Index.tsx`) will no longer be accessible from the root URL
+- If you want to keep the marketing page accessible at a different URL (e.g., `/home` or `/welcome`), we can add a separate route for it
+- All existing navigation links to `/` in the codebase may need to be updated to point to `/auth` or `/student` instead
+- The `"Start Learning"` and other CTA buttons on Index currently point to `/enroll` - these would need to be updated if Index is kept at another route
+
+---
+
+## Technical Summary
+
+| Change | Description |
+|--------|-------------|
+| Remove Index route at `/` | Replace with redirect logic |
+| Add RootRedirect component | Checks auth and redirects appropriately |
+| Update root route | Point to RootRedirect instead of Index |
+
