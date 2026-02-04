@@ -18,7 +18,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { getQuizQuestions, type QuizQuestion } from "@/data/quizQuestions";
 import { 
   getRandomizedQuiz, 
-  calculateShuffledScore, 
+  calculateShuffledScore,
+  calculateCorrectCount,
   getGradingData,
   getDefaultTimeLimit,
   formatTimeRemaining,
@@ -96,11 +97,17 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
 
   const currentQuestion = shuffledQuestions[currentIndex];
   const selectedAnswer = currentQuestion ? answers[currentQuestion.id] : undefined;
-  const score = useMemo(() => 
-    shuffledQuestions.length > 0 ? calculateShuffledScore(answers, shuffledQuestions) : 0,
+  // Raw correct count for database storage
+  const correctCount = useMemo(() => 
+    shuffledQuestions.filter(q => answers[q.id] === q.shuffledCorrectAnswer).length,
     [answers, shuffledQuestions]
   );
-  const passed = score >= quiz.passingScore;
+  // Score as percentage for display and pass/fail logic
+  const scorePercent = useMemo(() => 
+    shuffledQuestions.length > 0 ? Math.round((correctCount / shuffledQuestions.length) * 100) : 0,
+    [correctCount, shuffledQuestions.length]
+  );
+  const passed = scorePercent >= quiz.passingScore;
   
   // Time warnings
   const isTimeWarning = usePerQuestionMode 
@@ -155,7 +162,7 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
         {
           quiz_id: quiz.id,
           course_code: courseCode,
-          score,
+          score: correctCount, // Store raw correct count, not percentage
           total_questions: shuffledQuestions.length,
           passed,
           time_taken_seconds: timeTaken,
@@ -167,8 +174,8 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
       setIsSaving(false);
     }
     
-    onComplete?.(score, passed);
-  }, [user, startTime, quiz.id, courseCode, score, shuffledQuestions, passed, saveQuizResult, onComplete, answers]);
+    onComplete?.(scorePercent, passed);
+  }, [user, startTime, quiz.id, courseCode, correctCount, shuffledQuestions, passed, saveQuizResult, onComplete, answers, scorePercent]);
 
   // Handle question timeout (per-question mode)
   const handleQuestionTimeout = useCallback(() => {
@@ -203,8 +210,12 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
       setIsSaving(true);
       const timeTaken = timeLimitSeconds;
       const gradingData = getGradingData(answers, shuffledQuestions);
-      const finalScore = calculateShuffledScore(answers, shuffledQuestions);
-      const didPass = finalScore >= quiz.passingScore;
+      // Calculate raw correct count for database storage
+      const finalCorrectCount = calculateCorrectCount(answers, shuffledQuestions);
+      const finalScorePercent = shuffledQuestions.length > 0 
+        ? Math.round((finalCorrectCount / shuffledQuestions.length) * 100) 
+        : 0;
+      const didPass = finalScorePercent >= quiz.passingScore;
       
       // Convert shuffled questions back to original for saving
       const originalQuestionsForSave = shuffledQuestions.map(sq => ({
@@ -227,7 +238,7 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
         {
           quiz_id: quiz.id,
           course_code: courseCode,
-          score: finalScore,
+          score: finalCorrectCount, // Store raw count, not percentage
           total_questions: shuffledQuestions.length,
           passed: didPass,
           time_taken_seconds: timeTaken,
@@ -237,7 +248,7 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
       );
       
       setIsSaving(false);
-      onComplete?.(finalScore, didPass);
+      onComplete?.(finalScorePercent, didPass);
     }
   }, [user, startTime, timeLimitSeconds, answers, shuffledQuestions, quiz, courseCode, saveQuizResult, onComplete]);
 
@@ -343,10 +354,6 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
   const progress = shuffledQuestions.length > 0 ? (answeredCount / shuffledQuestions.length) * 100 : 0;
   const timeLimitDisplay = quiz.timeLimitMinutes ?? getDefaultTimeLimit(originalQuestions.length);
 
-  // Count correct answers for results
-  const correctCount = useMemo(() => {
-    return shuffledQuestions.filter(q => answers[q.id] === q.shuffledCorrectAnswer).length;
-  }, [answers, shuffledQuestions]);
 
   // Calculate progress ring offset for per-question timer
   const progressRingOffset = useMemo(() => {
@@ -545,7 +552,7 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
             "text-7xl font-black mb-2",
             passed ? "text-accent text-glow" : "text-destructive"
           )}>
-            {score}%
+            {scorePercent}%
           </div>
           <p className="text-muted-foreground mb-4">
             {correctCount} of {shuffledQuestions.length} correct
