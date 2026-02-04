@@ -1,240 +1,203 @@
 
 
-# Quiz Completion UX & Cooldown System
+# Fix Demo User Filtering, Enrollment Slots, and Swap Limits
 
 ## Overview
 
-Enhance the quiz completion experience with:
-1. **Centered congratulations** for passing students with celebratory styling
-2. **Urban-style motivational messaging** for failed attempts
-3. **One free retake** then a **30-minute cooldown** before being able to retake (forces material review)
-4. Clear messaging about the retake policy
+This plan addresses three issues that were reported as "reset":
+
+1. **Admin User List Demo Filtering** - Add ability to filter out demo users in admin panels
+2. **Paid User Course Slots** - Ensure paid users get 3 active course slots (not 2)
+3. **Swap Limit** - Change from 2 swaps per enrollment to 1 swap per enrollment
 
 ---
 
-## Technical Implementation
+## Issue 1: Filter Demo Users in Admin Views
 
-### 1. Enhanced Results Screen (QuizPlayer.tsx)
+Currently, the `useAllUsers` and `useAdminStudents` hooks fetch all profiles including demo users. We need to add demo filtering similar to how `useCommunityPosts` was updated.
 
-**Passing State - Centered Celebration:**
-- Keep existing centered layout with Trophy icon
-- Add celebratory styling with text glow effects
-- Display encouraging "mission accomplished" urban-style message
+### Changes Required
 
-**Failing State - Urban Motivation:**
-Replace generic "KEEP PRACTICING" with rotating motivational messages in an urban, hustle-mentality style:
+**File: `src/hooks/useAllUsers.ts`**
+- Import `useDemoModeContext` to access `showDemoData` setting
+- Add `is_demo` to the profile select query
+- Filter out demo users when `showDemoData` is false
+- Add `showDemoData` to the query key for proper cache invalidation
+- Export `isDemo` field in the `UserWithRoles` interface
 
-```typescript
-const failureMessages = [
-  { headline: "NAH, YOU GOT THIS!", subtext: "Every master was once a disaster. Get back in there." },
-  { headline: "NOT TODAY... BUT SOON!", subtext: "Legends ain't built in a day. Review that material and run it back." },
-  { headline: "LEVELS TO THIS!", subtext: "You ain't where you wanna be yet, but you closer than yesterday." },
-  { headline: "STAY IN THE FIGHT!", subtext: "Real ones don't quit. Hit the books and come back stronger." },
-  { headline: "GRIND DON'T STOP!", subtext: "Take this L, learn from it, and flip it into a W." },
-];
-```
+**File: `src/hooks/useAdminStudents.ts`**
+- Import `useDemoModeContext` to access `showDemoData` setting
+- Add `is_demo` to the profile select query
+- Filter out demo users when `showDemoData` is false
+- Add `showDemoData` to the query key
+- Add `isDemo` field to `StudentSummary` interface
 
-### 2. Retake Logic with 30-Minute Cooldown
+---
 
-**New Logic:**
-- First attempt: Always allowed
-- After first fail: **One immediate retake** available
-- After second fail: **30-minute cooldown** before next attempt
+## Issue 2: Active Courses Showing 2 Instead of 3
 
-**Database Check:**
-The `quiz_results` table already has `created_at` timestamps. We can calculate cooldown based on the last attempt time.
-
-**Add to `useQuizResults.ts`:**
+Looking at `useEnrollments.ts`, the logic appears correct:
 
 ```typescript
-const getCooldownStatus = useCallback((quizId: string) => {
-  // Get all attempts for this quiz (excluding passed)
-  const attempts = results.filter(r => r.quiz_id === quizId);
-  const failedAttempts = attempts.filter(r => !r.passed).length;
-  
-  // If passed or first attempt, no cooldown
-  const hasPassed = attempts.some(r => r.passed);
-  if (hasPassed || failedAttempts === 0) {
-    return { canAttempt: true, cooldownEndsAt: null, attemptsUntilCooldown: 2 };
-  }
-  
-  // First fail = immediate retake allowed
-  if (failedAttempts === 1) {
-    return { canAttempt: true, cooldownEndsAt: null, attemptsUntilCooldown: 1 };
-  }
-  
-  // 2+ fails = check 30-minute cooldown from last attempt
-  const lastAttempt = attempts[0]; // Already sorted by created_at desc
-  const cooldownEnd = new Date(lastAttempt.created_at);
-  cooldownEnd.setMinutes(cooldownEnd.getMinutes() + 30);
-  
-  const now = new Date();
-  if (now < cooldownEnd) {
-    return { 
-      canAttempt: false, 
-      cooldownEndsAt: cooldownEnd,
-      minutesRemaining: Math.ceil((cooldownEnd.getTime() - now.getTime()) / 60000)
-    };
-  }
-  
-  return { canAttempt: true, cooldownEndsAt: null, attemptsUntilCooldown: 1 };
-}, [results]);
+const MAX_ACTIVE_COURSES_PAID = 3;
+const MAX_ACTIVE_COURSES_TRIAL = 2;
+
+const maxCourses = isTestModeEnabled || isPaid ? MAX_ACTIVE_COURSES_PAID : MAX_ACTIVE_COURSES_TRIAL;
 ```
 
-### 3. Results Screen States
-
-**Passed (Centered Celebration):**
-```text
-    ┌─────────────────────────────────────┐
-    │              🏆                     │
-    │                                     │
-    │     YOU DID THAT!                   │
-    │     CERTIFIED!                      │
-    │                                     │
-    │          85%                        │
-    │    (glowing gold text)              │
-    │                                     │
-    │   17 of 20 correct                  │
-    │                                     │
-    │   ✓ Your result has been saved      │
-    │                                     │
-    │   [ Review Answers ]                │
-    └─────────────────────────────────────┘
-```
-
-**Failed - First Attempt (Immediate Retake Available):**
-```text
-    ┌─────────────────────────────────────┐
-    │              ✗                      │
-    │                                     │
-    │     NAH, YOU GOT THIS!              │
-    │                                     │
-    │   Every master was once a disaster. │
-    │   Get back in there.                │
-    │                                     │
-    │          45%                        │
-    │    (red text)                       │
-    │                                     │
-    │   9 of 20 correct                   │
-    │   Need 70% to pass                  │
-    │                                     │
-    │   ⚡ 1 immediate retake available   │
-    │                                     │
-    │ [ Review Answers ] [ Retake Now ]   │
-    └─────────────────────────────────────┘
-```
-
-**Failed - Second Attempt (Cooldown Triggered):**
-```text
-    ┌─────────────────────────────────────┐
-    │              ⏰                     │
-    │                                     │
-    │     GRIND DON'T STOP!               │
-    │                                     │
-    │   Take this L, learn from it,       │
-    │   and flip it into a W.             │
-    │                                     │
-    │          52%                        │
-    │                                     │
-    │   Time to review the material!      │
-    │   Cooldown: 30:00 remaining         │
-    │                                     │
-    │   Go back and watch the lessons     │
-    │   before your next attempt.         │
-    │                                     │
-    │ [ Review Answers ] [ Back to Course ]│
-    └─────────────────────────────────────┘
-```
-
-### 4. LockedQuizCard Updates
-
-Add cooldown state display when student is in cooldown:
+The issue is that `isPaid` from `useSubscription` might not be returning `true` when it should. Let me verify the conditions:
 
 ```typescript
-interface LockedQuizCardProps {
-  // ... existing props
-  cooldownStatus?: {
-    canAttempt: boolean;
-    cooldownEndsAt: Date | null;
-    minutesRemaining?: number;
-  };
+const isPaid = useMemo(() => {
+  return (
+    subscription.status === "active" &&
+    (subscription.subscriptionEndsAt === null || subscription.subscriptionEndsAt > now)
+  );
+}, [subscription.status, subscription.subscriptionEndsAt]);
+```
+
+**Potential Issue:** If a user completes payment and their `subscription_status` is set to `"active"` but `subscription_ends_at` is set to a past date or not properly handled, they could be treated as trial users.
+
+### Changes Required
+
+**File: `src/hooks/useEnrollments.ts`**
+- Add debug logging to verify `isPaid` status (temporary)
+- Ensure the logic correctly identifies paid users
+- The current code looks correct, so this may be a data issue in the database
+
+**Verification Steps:**
+1. Check that after payment, the user's profile has `subscription_status = 'active'`
+2. Verify `subscription_ends_at` is either `null` or a future date
+
+---
+
+## Issue 3: Change Swap Limit from 2 to 1
+
+This is a simple constant change.
+
+### Changes Required
+
+**File: `src/hooks/useEnrollments.ts`**
+- Change `MAX_SWAPS_PER_ENROLLMENT` from `2` to `1`
+
+```typescript
+// Before
+const MAX_SWAPS_PER_ENROLLMENT = 2;
+
+// After
+const MAX_SWAPS_PER_ENROLLMENT = 1;
+```
+
+---
+
+## Implementation Details
+
+### File 1: `src/hooks/useAllUsers.ts`
+
+```typescript
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Database } from "@/integrations/supabase/types";
+import { useDemoModeContext } from "@/contexts/DemoModeContext";
+
+type AppRole = Database["public"]["Enums"]["app_role"];
+
+export interface UserWithRoles {
+  id: string;
+  email: string;
+  displayName: string | null;
+  roles: AppRole[];
+  enrolledAt: string;
+  isDemo: boolean;  // NEW FIELD
+}
+
+export function useAllUsers() {
+  const { showDemoData } = useDemoModeContext();
+  
+  return useQuery({
+    queryKey: ["all-users", showDemoData],  // Include in query key
+    queryFn: async () => {
+      // Build query
+      let query = supabase
+        .from("profiles")
+        .select("user_id, display_name, enrolled_at, is_demo")
+        .order("enrolled_at", { ascending: false });
+
+      // Filter out demo users if showDemoData is false
+      if (!showDemoData) {
+        query = query.eq("is_demo", false);
+      }
+
+      const { data: profiles, error: profilesError } = await query;
+      if (profilesError) throw profilesError;
+
+      // ... rest of the hook logic with isDemo field added
+    },
+  });
 }
 ```
 
-Display cooldown timer in the card when applicable.
-
----
-
-## Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/components/course/QuizPlayer.tsx` | Enhance results screen with urban messaging, centered celebration, cooldown display |
-| `src/hooks/useQuizResults.ts` | Add `getCooldownStatus()` function |
-| `src/components/course/LockedQuizCard.tsx` | Add cooldown timer display and messaging |
-| `src/lib/quizUtils.ts` | Add `getRandomMotivationalMessage()` helper |
-
----
-
-## Urban Motivational Messages
-
-**For Failures:**
-- "NAH, YOU GOT THIS!" / "Every master was once a disaster. Get back in there."
-- "NOT TODAY... BUT SOON!" / "Legends ain't built in a day. Review that material and run it back."
-- "LEVELS TO THIS!" / "You ain't where you wanna be yet, but you closer than yesterday."
-- "STAY IN THE FIGHT!" / "Real ones don't quit. Hit the books and come back stronger."
-- "GRIND DON'T STOP!" / "Take this L, learn from it, and flip it into a W."
-- "IT'S A MARATHON!" / "Ain't about how hard you fall, it's about how fast you get up."
-
-**For Cooldown State:**
-- "USE THIS TIME WISELY" / "Go back through the lessons. Knowledge is power."
-- "THE GRIND CONTINUES" / "Review the material. Come back ready to dominate."
-
-**For Passing:**
-- "YOU DID THAT!" / "Knowledge unlocked. On to the next level."
-- "CERTIFIED!" / "You put in the work, now you got the results."
-- "THAT'S A W!" / "All that studying paid off. Keep this energy."
-
----
-
-## Cooldown Countdown Timer
-
-When in cooldown, show a live countdown timer that updates every second:
+### File 2: `src/hooks/useAdminStudents.ts`
 
 ```typescript
-const [cooldownRemaining, setCooldownRemaining] = useState<number | null>(null);
+// Add import
+import { useDemoModeContext } from "@/contexts/DemoModeContext";
 
-useEffect(() => {
-  if (!cooldownEndsAt) return;
-  
-  const interval = setInterval(() => {
-    const remaining = Math.max(0, cooldownEndsAt.getTime() - Date.now());
-    setCooldownRemaining(remaining);
-    
-    if (remaining <= 0) {
-      // Refresh to allow retry
-      refreshCooldownStatus();
-    }
-  }, 1000);
-  
-  return () => clearInterval(interval);
-}, [cooldownEndsAt]);
+// Add to StudentSummary interface
+export interface StudentSummary {
+  // ... existing fields
+  isDemo: boolean;  // NEW FIELD
+}
 
-// Display as MM:SS
-const formatCooldown = (ms: number) => {
-  const mins = Math.floor(ms / 60000);
-  const secs = Math.floor((ms % 60000) / 1000);
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
-};
+export function useAdminStudents() {
+  const { showDemoData } = useDemoModeContext();
+  
+  return useQuery({
+    queryKey: ["admin-students", showDemoData],  // Include in query key
+    queryFn: async (): Promise<StudentSummary[]> => {
+      // Build query with demo filtering
+      let query = supabase
+        .from("profiles")
+        .select("user_id, display_name, avatar_url, location, membership_tier, subscription_status, trial_ends_at, enrolled_at, is_banned, banned_at, ban_reason, is_demo")
+        .order("enrolled_at", { ascending: false });
+
+      if (!showDemoData) {
+        query = query.eq("is_demo", false);
+      }
+
+      const { data: profiles, error: profilesError } = await query;
+      // ... rest with isDemo field added to return
+    },
+  });
+}
+```
+
+### File 3: `src/hooks/useEnrollments.ts`
+
+```typescript
+// Line 22: Change from 2 to 1
+const MAX_SWAPS_PER_ENROLLMENT = 1;
 ```
 
 ---
 
-## Summary
+## Summary of Changes
 
-1. **Passing students** see a centered celebration with urban-style "YOU DID THAT!" messaging and gold glow effects
-2. **Failed first attempt** gets motivational urban messaging plus immediate retake option
-3. **Failed second attempt** triggers 30-minute cooldown with countdown timer and encouragement to review course material
-4. **Cooldown period** shows remaining time and links back to course content
-5. **All messaging** uses an urban, hustle-mentality tone that fits the "WHERE HUSTLE MEETS HOLLYWOOD" brand
+| File | Change |
+|------|--------|
+| `src/hooks/useAllUsers.ts` | Add demo filtering with `showDemoData` toggle |
+| `src/hooks/useAdminStudents.ts` | Add demo filtering with `showDemoData` toggle, add `isDemo` to interface |
+| `src/hooks/useEnrollments.ts` | Change `MAX_SWAPS_PER_ENROLLMENT` from `2` to `1` |
+
+---
+
+## Testing Checklist
+
+After implementation:
+1. Go to Admin Settings and toggle "Show Demo Data" off
+2. Navigate to User Manager - demo users should be hidden
+3. Toggle "Show Demo Data" on - demo users should appear
+4. Create a paid subscription user and verify they see 3 course slots
+5. Test course swapping - verify only 1 swap is allowed per enrollment
+6. Verify the swap messaging shows "0 swaps remaining" after the first swap
 
