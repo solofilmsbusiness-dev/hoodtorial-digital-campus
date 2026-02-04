@@ -1,170 +1,114 @@
 
+# Fix: Database Quizzes Not Showing for Students
 
-# Redirect Root URL to Login Screen
+## Problem Identified
 
-## Overview
+When quizzes are created through the admin panel, they are stored in the database with UUID identifiers. However, the `QuizPlayer` component only looks up questions from static TypeScript files - it never queries the database for questions.
 
-This plan modifies the application so that the first page users see when visiting the site is always the login screen (`/auth`), rather than the marketing homepage. Authenticated users will be redirected to the Student Center.
-
----
-
-## Current State
-
-| Route | Current Behavior |
-|-------|------------------|
-| `/` | Shows `Index.tsx` (marketing homepage) - accessible to everyone |
-| `/auth` | Shows login/signup page - redirects authenticated users to `/student` |
-
-Users landing on the root URL see the marketing homepage regardless of authentication status.
+**Current Flow:**
+1. Admin creates quiz -> saved to `quizzes` table with UUID
+2. Admin adds questions -> saved to `quiz_questions` table
+3. Student opens quiz -> `QuizPlayer` calls `getQuizQuestions(quiz.id)`
+4. `getQuizQuestions()` only searches static `quizQuestions` object
+5. UUID not found in static data -> returns empty array
+6. Student sees "Quiz Not Available - Questions for this quiz are coming soon"
 
 ---
 
-## Proposed State
+## Solution
 
-| Route | New Behavior |
-|-------|--------------|
-| `/` | Redirects unauthenticated users to `/auth`, authenticated users to `/student` |
-| `/auth` | Login/signup page (unchanged behavior) |
-
-Users visiting the root URL are always directed to the login screen first. Once authenticated, they go to the Student Center.
+Modify the `QuizPlayer` component to:
+1. First check if questions exist in the database for the given quiz ID
+2. If found, use database questions
+3. If not found, fall back to static `getQuizQuestions()` for legacy support
 
 ---
 
-## Implementation Options
+## Implementation
 
-### Option A: Wrap Index in ProtectedRoute (Simple Redirect)
+### File: `src/components/course/QuizPlayer.tsx`
 
-Wrap the Index route with a route guard that redirects unauthenticated users to `/auth`:
+**Changes:**
+1. Add a React Query hook to fetch questions from the database
+2. Merge database questions with static questions (database takes priority)
+3. Transform database question format to match the expected `QuizQuestion` interface
 
-```tsx
-<Route path="/" element={
-  <ProtectedRoute>
-    <Navigate to="/student" replace />
-  </ProtectedRoute>
-} />
+**Key Code Changes:**
+
+```typescript
+// Add import for supabase and useQuery
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+
+// Inside QuizPlayer component, add database query
+const { data: dbQuestions = [], isLoading: isLoadingQuestions } = useQuery({
+  queryKey: ["quiz-questions", quiz.id],
+  queryFn: async () => {
+    const { data, error } = await supabase
+      .from("quiz_questions")
+      .select("*")
+      .eq("quiz_id", quiz.id)
+      .order("sort_order");
+    
+    if (error) throw error;
+    
+    // Transform to QuizQuestion format
+    return (data || []).map(q => ({
+      id: q.id,
+      question: q.question,
+      options: Array.isArray(q.options) ? q.options : JSON.parse(q.options),
+      correctAnswer: q.correct_answer,
+      explanation: q.explanation || undefined,
+    }));
+  },
+});
+
+// Use database questions if available, otherwise fall back to static
+const staticQuestions = getQuizQuestions(quiz.id);
+const originalQuestions = dbQuestions.length > 0 ? dbQuestions : staticQuestions;
 ```
 
-**Result**: 
-- Unauthenticated users at `/` are redirected to `/auth`
-- Authenticated users at `/` are redirected to `/student`
-- The marketing homepage becomes inaccessible
-
-### Option B: Create a Redirect-Only Root Component (Recommended)
-
-Create a simple redirect component that checks auth status and routes accordingly:
-
-```tsx
-// In App.tsx or new component
-function RootRedirect() {
-  const { user, loading } = useAuth();
-  
-  if (loading) {
-    return <LoadingScreen />;
-  }
-  
-  return <Navigate to={user ? "/student" : "/auth"} replace />;
-}
-
-// Route
-<Route path="/" element={<RootRedirect />} />
-```
-
-**Result**:
-- Unauthenticated users at `/` are redirected to `/auth`
-- Authenticated users at `/` are redirected to `/student`
-- Clean separation of logic
+**Loading State:**
+- Add a loading indicator while fetching questions from database
+- Show loading spinner before quiz intro screen
 
 ---
 
-## Recommended Approach: Option B
+## Visual Flow After Fix
 
-This approach is cleaner and more explicit about the routing behavior.
+```
+Student opens quiz
+        |
+        v
+[Fetch from quiz_questions table]
+        |
+    /       \
+   v         v
+[Found]   [Not Found]
+   |           |
+   v           v
+Use DB     Use Static
+Questions   Questions
+   \         /
+    \       /
+     v     v
+   Show Quiz Intro
+```
 
-### File to Modify
+---
+
+## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/App.tsx` | Replace Index component with RootRedirect component |
-
-### Implementation Details
-
-1. Add a `RootRedirect` component inside `App.tsx` (no new file needed):
-
-```typescript
-import { Navigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
-
-// Inside App.tsx, before the App component
-function RootRedirect() {
-  const { user, loading } = useAuth();
-  
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-primary font-bold text-xl">Loading...</div>
-      </div>
-    );
-  }
-  
-  // Redirect based on authentication status
-  return <Navigate to={user ? "/student" : "/auth"} replace />;
-}
-```
-
-2. Update the root route from:
-```tsx
-<Route path="/" element={<Index />} />
-```
-
-To:
-```tsx
-<Route path="/" element={<RootRedirect />} />
-```
-
-3. The `Index` import can be removed since the marketing homepage is no longer used.
+| `src/components/course/QuizPlayer.tsx` | Add database query for questions, handle loading state, merge with static fallback |
 
 ---
 
-## User Experience Flow
+## Technical Notes
 
-```text
-User visits hoodtorial.com (root URL)
-              |
-              v
-       ┌──────────────┐
-       │ Loading...   │
-       │ (check auth) │
-       └──────────────┘
-              |
-    ┌─────────┴─────────┐
-    |                   |
-    v                   v
-[Not logged in]    [Logged in]
-    |                   |
-    v                   v
-Redirect to        Redirect to
-  /auth              /student
-    |                   |
-    v                   v
- Login Screen      Student Center
-```
-
----
-
-## Notes
-
-- The marketing homepage (`Index.tsx`) will no longer be accessible from the root URL
-- If you want to keep the marketing page accessible at a different URL (e.g., `/home` or `/welcome`), we can add a separate route for it
-- All existing navigation links to `/` in the codebase may need to be updated to point to `/auth` or `/student` instead
-- The `"Start Learning"` and other CTA buttons on Index currently point to `/enroll` - these would need to be updated if Index is kept at another route
-
----
-
-## Technical Summary
-
-| Change | Description |
-|--------|-------------|
-| Remove Index route at `/` | Replace with redirect logic |
-| Add RootRedirect component | Checks auth and redirects appropriately |
-| Update root route | Point to RootRedirect instead of Index |
-
+- Uses existing RLS policies for `quiz_questions` table (already configured)
+- Database questions use `correct_answer` (number), static uses `correctAnswer` - transformation handles this
+- Options stored as JSON array in database, may need parsing
+- Sort order preserved via `ORDER BY sort_order`
+- Backward compatible - static quizzes continue to work
