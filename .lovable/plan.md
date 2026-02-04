@@ -1,62 +1,63 @@
 
-# Fix Database Courses Display & Completion Badges in Student Center
+# Add Completed Courses Achievements Section
 
-## Problem Summary
+## Overview
 
-Two related issues in the Student Center:
-
-1. **Database-only courses not appearing**: Courses like "CIN-123 - Advanced VFX Tracking" that exist only in the database (not in static `courses.ts`) don't show up in the Active Courses section
-2. **Completed courses missing badges**: Progress calculation fails for database-only courses, so the 100% completion badge never displays
-
-## Root Cause
-
-The Student Center uses `getCourseByCode()` from `src/data/courses.ts`, which only searches **static courses**. Database-only courses return `undefined` and get filtered out:
-
-```typescript
-// Current code in StudentCenter.tsx (line 70-75)
-const activeCourseDetails = activeEnrollments
-  .map((e) => {
-    const course = getCourseByCode(e.course_code);  // Returns undefined for DB-only courses!
-    return course ? { ...course, enrollment: e } : null;
-  })
-  .filter(Boolean);  // Removes all DB-only courses
-```
-
-Similarly, `getCourseProgress()` returns 0 for courses not found in static data.
+Display completed courses (100% progress) as celebratory badges/awards in a dedicated section of the Student Center. This creates a sense of accomplishment and showcases the student's earned credentials.
 
 ---
 
-## Solution
+## Design
 
-Use the `useCourseStatus()` hook which already merges static courses with database courses. This hook:
-- Fetches all courses from the database
-- Merges them with static course data
-- Provides both `courses` (published only) and `allCourses` (all courses)
+### New "Achievements" Section
 
-### File Changes
+Add a new section between "Active Courses" and "Quick Stats" that displays completed courses as award badges:
 
-**File: `src/pages/StudentCenter.tsx`**
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│  🏆 Achievements                                                    │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐              │
+│  │   🎬         │  │   🎥         │  │   🎞️         │              │
+│  │              │  │              │  │              │              │
+│  │   CIN-101    │  │   DIR-201    │  │   PRO-301    │              │
+│  │   Intro to   │  │   Scene      │  │   Advanced   │              │
+│  │   Cinema     │  │   Direction  │  │   Production │              │
+│  │              │  │              │  │              │              │
+│  │ ✓ CERTIFIED  │  │ ✓ CERTIFIED  │  │ ✓ CERTIFIED  │              │
+│  │ Jan 15, 2025 │  │ Jan 20, 2025 │  │ Feb 1, 2025  │              │
+│  │   3 credits  │  │   4 credits  │  │   5 credits  │              │
+│  └──────────────┘  └──────────────┘  └──────────────┘              │
+│                                                                     │
+│  "You've earned 12 credits from 3 completed courses!"               │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
-1. **Import `useCourseStatus` hook**:
+### Badge Design
+
+Each completed course badge will feature:
+- Urban "CERTIFIED" stamp (using the existing `StampBadge` component)
+- Course code prominently displayed
+- Course title
+- Completion date (`completed_at` from enrollment)
+- Credits earned
+- Green/gold accent styling for celebration
+- Trophy or award icon
+
+---
+
+## Implementation
+
+### File: `src/pages/StudentCenter.tsx`
+
+**Changes:**
+
+1. **Import StampBadge component** for the certification stamp styling
+
+2. **Create completedCourseDetails array** (similar to activeCourseDetails):
    ```typescript
-   import { useCourseStatus } from "@/hooks/useCourseStatus";
-   ```
-
-2. **Use the hook to get all courses**:
-   ```typescript
-   const { allCourses: allCoursesFromStatus, isLoading: coursesLoading } = useCourseStatus();
-   ```
-
-3. **Create a helper to find courses from merged list**:
-   ```typescript
-   const getCourse = (code: string) => {
-     return allCoursesFromStatus.find(c => c.code === code);
-   };
-   ```
-
-4. **Update `activeCourseDetails` to use the merged course list**:
-   ```typescript
-   const activeCourseDetails = activeEnrollments
+   const completedCourseDetails = completedEnrollments
      .map((e) => {
        const course = getCourse(e.course_code);
        return course ? { ...course, enrollment: e } : null;
@@ -64,78 +65,102 @@ Use the `useCourseStatus()` hook which already merges static courses with databa
      .filter(Boolean);
    ```
 
-5. **Update `getCourseProgress()` to use the merged course list**:
-   ```typescript
-   const getCourseProgress = (courseCode: string) => {
-     const course = getCourse(courseCode);
-     if (!course) return 0;
-     
-     // For DB-only courses with no modules, check if there's any tracked progress
-     const totalLessons = course.modules?.length > 0 
-       ? getTotalLessonsCount(course) 
-       : 0;
-     const totalQuizzes = course.modules?.length > 0 
-       ? getTotalQuizzesCount(course) 
-       : 0;
-     // ... rest of progress calculation
-   };
-   ```
+3. **Add new "Achievements" Card section** after "Active Courses":
+   - Trophy icon header with "Your Achievements" title
+   - Grid of completed course badges
+   - Each badge shows:
+     - Course code in a tag
+     - Course title
+     - "CERTIFIED" stamp badge (rotated, urban style)
+     - Completion date formatted nicely
+     - Credits earned
+   - Summary text showing total credits earned from completed courses
+   - Empty state: "Complete your first course to earn an achievement badge!"
 
-6. **Handle loading state** (optional but recommended):
-   ```typescript
-   if (profileLoading || coursesLoading) {
-     return (/* loading UI */);
-   }
-   ```
+4. **Style the badges** with:
+   - Gold/green gradient border or accent
+   - Celebratory shimmer animation (similar to EnrollmentManagementCard)
+   - Urban brutalist styling consistent with the app
 
 ---
 
-## Additional Fix for Empty Modules
+## Component Structure
 
-Database-only courses may have empty `modules: []` arrays. The progress calculation needs to handle this:
-
-- If a course has no modules defined, check the enrollment status
-- If `enrollment.status === 'completed'`, show 100% progress
-- Otherwise, show 0% (since there's no content to track)
-
-```typescript
-const getCourseProgress = (courseCode: string) => {
-  const course = getCourse(courseCode);
-  const enrollment = activeEnrollments.find(e => e.course_code === courseCode);
-  
-  // If enrollment is marked complete, always show 100%
-  if (enrollment?.status === 'completed') return 100;
-  
-  if (!course) return 0;
-  
-  // Handle DB-only courses with no modules
-  const totalLessons = course.modules?.length > 0 ? getTotalLessonsCount(course) : 0;
-  const totalQuizzes = course.modules?.length > 0 ? getTotalQuizzesCount(course) : 0;
-  const total = totalLessons + totalQuizzes;
-  
-  if (total === 0) return 0;
-  
-  // ... existing progress calculation
-};
+```tsx
+{/* Achievements Section - Completed Courses */}
+{completedEnrollments.length > 0 && (
+  <Card className="card-urban mb-8">
+    <CardHeader>
+      <CardTitle className="flex items-center gap-2">
+        <Trophy className="h-5 w-5 text-primary" />
+        Your Achievements
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {completedCourseDetails.map((courseData) => (
+          <div 
+            key={courseData!.code}
+            className="relative p-4 border-2 border-primary/50 bg-primary/5 rounded-lg text-center overflow-hidden"
+          >
+            {/* Shimmer effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/10 to-transparent animate-[shimmer_3s_ease-in-out_infinite] pointer-events-none" />
+            
+            {/* Badge content */}
+            <Award className="h-8 w-8 text-primary mx-auto mb-2" />
+            <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">
+              {courseData!.code}
+            </span>
+            <h4 className="font-bold text-sm mt-2 line-clamp-2">
+              {courseData!.title}
+            </h4>
+            
+            {/* Certification stamp */}
+            <StampBadge variant="filled" className="mt-3">
+              ✓ Certified
+            </StampBadge>
+            
+            {/* Completion date */}
+            <p className="text-xs text-muted-foreground mt-2">
+              {formatDate((courseData as any).enrollment.completed_at)}
+            </p>
+            
+            {/* Credits */}
+            <p className="text-xs font-bold text-primary mt-1">
+              {courseData!.credits} credits earned
+            </p>
+          </div>
+        ))}
+      </div>
+      
+      {/* Summary */}
+      <div className="mt-6 pt-4 border-t border-border text-center">
+        <p className="text-sm text-muted-foreground">
+          You've earned <span className="font-bold text-primary">
+            {completedCourseDetails.reduce((sum, c) => sum + c!.credits, 0)} credits
+          </span> from {completedEnrollments.length} completed {completedEnrollments.length === 1 ? 'course' : 'courses'}!
+        </p>
+      </div>
+    </CardContent>
+  </Card>
+)}
 ```
 
 ---
 
 ## Summary of Changes
 
-| File | Change |
-|------|--------|
-| `src/pages/StudentCenter.tsx` | Import and use `useCourseStatus()` instead of relying only on static `getCourseByCode()` |
-| `src/pages/StudentCenter.tsx` | Update `getCourseProgress()` to handle DB-only courses with empty modules |
-| `src/pages/StudentCenter.tsx` | Add `coursesLoading` to loading state check |
+| File | Changes |
+|------|---------|
+| `src/pages/StudentCenter.tsx` | Import `StampBadge`, create `completedCourseDetails` array, add new "Achievements" section with celebratory badge cards |
 
 ---
 
-## Testing Checklist
+## Technical Notes
 
-After implementation:
-1. Navigate to Student Center while enrolled in "Advanced VFX Tracking" (CIN-123) - course should now appear
-2. Verify course card displays correctly with proper title, department, and credits
-3. Check that progress calculation works for both static and database-only courses
-4. Complete a course and verify the green completion badge appears at 100%
-5. Test that the swap course dialog still shows database-only courses as options
+- Uses existing `completedEnrollments` from `useEnrollments()` hook (already has `completed_at` timestamp)
+- Leverages `getCourse()` helper to get full course data from merged database + static list
+- Applies consistent urban brutalist styling with shimmer animations
+- Conditionally renders only when there are completed courses
+- Shows empty state in Quick Stats to encourage completion
+
