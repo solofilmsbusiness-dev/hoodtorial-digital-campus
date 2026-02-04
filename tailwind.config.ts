@@ -118,6 +118,7 @@ export default {
           "100%": { opacity: "1", transform: "scale(1)" },
         },
         shimmer: {
+          "0%": { transform: "translateX(-100%)" },
           "100%": { transform: "translateX(100%)" },
         },
         float: {
