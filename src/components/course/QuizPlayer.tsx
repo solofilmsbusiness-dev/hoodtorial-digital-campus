@@ -24,7 +24,10 @@ import {
   getDefaultTimeLimit,
   formatTimeRemaining,
   getPerQuestionTime,
-  type ShuffledQuestion 
+  getRandomMotivationalMessage,
+  formatCooldown,
+  type ShuffledQuestion,
+  type MotivationalMessage
 } from "@/lib/quizUtils";
 import { useQuizResults } from "@/hooks/useQuizResults";
 import { useAuth } from "@/contexts/AuthContext";
@@ -42,7 +45,7 @@ type QuizState = "intro" | "playing" | "review" | "results" | "expired";
 
 export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayerProps) {
   const { user } = useAuth();
-  const { saveQuizResult } = useQuizResults();
+  const { saveQuizResult, getCooldownStatus } = useQuizResults();
 
   // Fetch questions from database first, fall back to static if none found
   const { data: dbQuestions = [], isLoading: isLoadingQuestions } = useQuery({
@@ -79,6 +82,8 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
   const [startTime, setStartTime] = useState<number | null>(null);
   const [remainingTime, setRemainingTime] = useState<number>(0);
   const [isSaving, setIsSaving] = useState(false);
+  const [motivationalMessage, setMotivationalMessage] = useState<MotivationalMessage | null>(null);
+  const [cooldownRemaining, setCooldownRemaining] = useState<number | null>(null);
   
   // Per-question timer state
   const [questionStartTime, setQuestionStartTime] = useState<number | null>(null);
@@ -134,6 +139,10 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
   // Handle finishing the quiz
   const handleFinishQuiz = useCallback(async () => {
     setState("results");
+    
+    // Set motivational message based on pass/fail
+    const messageType = passed ? "success" : "failure";
+    setMotivationalMessage(getRandomMotivationalMessage(messageType));
     
     // Save to database if user is logged in
     if (user && startTime) {
@@ -522,42 +531,67 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
 
   // Results screen
   if (state === "results") {
+    const cooldownStatus = getCooldownStatus(quiz.id);
+    const isInCooldown = !passed && !cooldownStatus.canAttempt && cooldownStatus.cooldownEndsAt;
+    const hasImmediateRetake = !passed && cooldownStatus.canAttempt && cooldownStatus.attemptsUntilCooldown === 1;
+    const isFirstAttempt = !passed && cooldownStatus.failedAttempts === 1;
+    
     return (
       <div className="border-2 border-border bg-card p-8">
-        <div className="text-center max-w-md mx-auto">
+        <div className="text-center max-w-md mx-auto flex flex-col items-center justify-center min-h-[400px]">
+          {/* Icon */}
           <div className={cn(
-            "w-20 h-20 flex items-center justify-center mx-auto mb-6 border-4",
+            "w-24 h-24 flex items-center justify-center mx-auto mb-6 border-4",
             passed 
-              ? "bg-accent/20 border-accent" 
-              : "bg-destructive/20 border-destructive"
+              ? "bg-accent/20 border-accent animate-pulse" 
+              : isInCooldown
+                ? "bg-muted/50 border-muted-foreground"
+                : "bg-destructive/20 border-destructive"
           )}>
             {passed ? (
-              <Trophy className="w-10 h-10 text-accent" />
+              <Trophy className="w-12 h-12 text-accent" />
+            ) : isInCooldown ? (
+              <Clock className="w-12 h-12 text-muted-foreground" />
             ) : (
-              <XCircle className="w-10 h-10 text-destructive" />
+              <XCircle className="w-12 h-12 text-destructive" />
             )}
           </div>
 
-          <h2 className="heading-2 text-foreground mb-2">
-            {passed ? "CONGRATULATIONS!" : "KEEP PRACTICING"}
+          {/* Urban-style headline */}
+          <h2 className={cn(
+            "heading-1 mb-2",
+            passed ? "text-accent text-glow" : "text-foreground"
+          )} style={{ fontFamily: "'Permanent Marker', cursive" }}>
+            {motivationalMessage?.headline || (passed ? "YOU DID THAT!" : "NAH, YOU GOT THIS!")}
           </h2>
-          <p className="text-muted-foreground mb-8">
-            {passed 
-              ? "You've demonstrated your understanding of this material."
-              : `You need ${quiz.passingScore}% to pass. Review the material and try again.`
-            }
+          
+          {/* Subtext */}
+          <p className="text-muted-foreground mb-6 max-w-xs">
+            {motivationalMessage?.subtext || (passed 
+              ? "Knowledge unlocked. On to the next level."
+              : "Every master was once a disaster. Get back in there."
+            )}
           </p>
 
+          {/* Score */}
           <div className={cn(
-            "text-7xl font-black mb-2",
+            "text-8xl font-black mb-2",
             passed ? "text-accent text-glow" : "text-destructive"
           )}>
             {scorePercent}%
           </div>
-          <p className="text-muted-foreground mb-4">
+          <p className="text-muted-foreground mb-2">
             {correctCount} of {shuffledQuestions.length} correct
           </p>
+          
+          {/* Passing threshold reminder for failures */}
+          {!passed && (
+            <p className="text-sm text-muted-foreground mb-4">
+              Need {quiz.passingScore}% to pass
+            </p>
+          )}
 
+          {/* Status messages */}
           {isSaving && (
             <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4">
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -571,14 +605,61 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
             </p>
           )}
 
+          {/* Retake info for failed attempts */}
+          {!passed && !isInCooldown && hasImmediateRetake && (
+            <div className="flex items-center gap-2 text-sm text-primary mb-4 p-3 bg-primary/10 border border-primary/30">
+              <AlertCircle className="w-4 h-4" />
+              <span className="font-bold">1 immediate retake available</span>
+            </div>
+          )}
+
+          {!passed && !isInCooldown && isFirstAttempt && cooldownStatus.attemptsUntilCooldown === 2 && (
+            <div className="text-sm text-muted-foreground mb-4">
+              You have 2 attempts before cooldown
+            </div>
+          )}
+
+          {/* Cooldown message */}
+          {isInCooldown && cooldownStatus.minutesRemaining && (
+            <div className="mb-6 p-4 bg-muted/50 border border-border">
+              <div className="flex items-center justify-center gap-2 text-lg font-bold text-foreground mb-2">
+                <Clock className="w-5 h-5" />
+                Cooldown: {cooldownStatus.minutesRemaining} min remaining
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Go back and review the lessons before your next attempt.
+              </p>
+            </div>
+          )}
+
+          {/* Action buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center mt-4">
-            <button onClick={handleReviewAnswers} className="px-6 py-3 border-2 border-border text-muted-foreground hover:border-primary hover:text-foreground transition-colors font-bold">
+            <button 
+              onClick={handleReviewAnswers} 
+              className="px-6 py-3 border-2 border-border text-muted-foreground hover:border-primary hover:text-foreground transition-colors font-bold"
+            >
               Review Answers
             </button>
-            <button onClick={handleRestart} className="btn-brutal inline-flex items-center justify-center gap-2">
-              <RotateCcw className="w-4 h-4" />
-              Try Again
-            </button>
+            
+            {passed ? (
+              onClose && (
+                <button onClick={onClose} className="btn-brutal">
+                  Continue
+                </button>
+              )
+            ) : isInCooldown ? (
+              onClose && (
+                <button onClick={onClose} className="btn-brutal inline-flex items-center justify-center gap-2">
+                  <ChevronLeft className="w-4 h-4" />
+                  Back to Course
+                </button>
+              )
+            ) : (
+              <button onClick={handleRestart} className="btn-brutal inline-flex items-center justify-center gap-2">
+                <RotateCcw className="w-4 h-4" />
+                Retake Now
+              </button>
+            )}
           </div>
         </div>
       </div>
