@@ -13,6 +13,7 @@ import defaultVideo from "@/assets/hero-video.mp4";
 import { motion } from "framer-motion";
 import { SocialProof } from "@/components/auth/SocialProof";
 import { FilmOverlay } from "@/components/auth/FilmOverlay";
+import { TermsAcceptanceModal } from "@/components/auth/TermsAcceptanceModal";
 
 const emailSchema = z.string().email("Please enter a valid email address");
 const passwordSchema = z.string().min(4, "Password must be at least 4 characters");
@@ -25,6 +26,7 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; displayName?: string }>({});
+  const [showTermsModal, setShowTermsModal] = useState(false);
   
   // Dynamic media URLs (fall back to static imports)
   const [videoUrl, setVideoUrl] = useState<string>(defaultVideo);
@@ -198,10 +200,10 @@ export default function Auth() {
             });
           }
         } else if (data?.user) {
-          // Check if profile is complete and assessment is done
+          // Check if profile is complete, terms accepted, and assessment is done
           const { data: profile } = await supabase
             .from("profiles")
-            .select("display_name")
+            .select("display_name, terms_accepted_at, subscription_status")
             .eq("user_id", data.user.id)
             .maybeSingle();
           
@@ -213,6 +215,7 @@ export default function Auth() {
             .limit(1);
           
           const hasCompletedAssessment = assessmentResults && assessmentResults.length > 0;
+          const needsTerms = !profile?.terms_accepted_at;
           
           if (!profile?.display_name) {
             toast({
@@ -220,6 +223,9 @@ export default function Auth() {
               description: "Please fill out your profile to get started.",
             });
             navigate("/student/profile", { replace: true });
+          } else if (needsTerms) {
+            // Show terms acceptance modal
+            setShowTermsModal(true);
           } else if (!hasCompletedAssessment) {
             toast({
               title: "Take your entry assessment",
@@ -237,8 +243,19 @@ export default function Auth() {
     }
   };
 
+  const handleTermsAccepted = () => {
+    setShowTermsModal(false);
+    navigate("/assessment", { replace: true });
+  };
+
   return (
     <div className="min-h-screen relative overflow-hidden">
+      {/* Terms Acceptance Modal */}
+      <TermsAcceptanceModal
+        isOpen={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
+        onAccepted={handleTermsAccepted}
+      />
       {/* Background Audio */}
       {musicUrl && (
         <audio

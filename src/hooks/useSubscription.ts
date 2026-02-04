@@ -11,6 +11,7 @@ interface SubscriptionState {
   trialEndsAt: Date | null;
   subscriptionStartedAt: Date | null;
   subscriptionEndsAt: Date | null;
+  termsAcceptedAt: Date | null;
 }
 
 export function useSubscription() {
@@ -25,6 +26,7 @@ export function useSubscription() {
     trialEndsAt: null,
     subscriptionStartedAt: null,
     subscriptionEndsAt: null,
+    termsAcceptedAt: null,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -37,6 +39,7 @@ export function useSubscription() {
         trialEndsAt: null,
         subscriptionStartedAt: null,
         subscriptionEndsAt: null,
+        termsAcceptedAt: null,
       });
       setLoading(false);
       return;
@@ -46,7 +49,7 @@ export function useSubscription() {
       try {
         const { data, error } = await supabase
           .from("profiles")
-          .select("subscription_status, trial_started_at, trial_ends_at, subscription_started_at, subscription_ends_at")
+          .select("subscription_status, trial_started_at, trial_ends_at, subscription_started_at, subscription_ends_at, terms_accepted_at")
           .eq("user_id", user.id)
           .maybeSingle();
 
@@ -59,6 +62,7 @@ export function useSubscription() {
             trialEndsAt: data.trial_ends_at ? new Date(data.trial_ends_at) : null,
             subscriptionStartedAt: data.subscription_started_at ? new Date(data.subscription_started_at) : null,
             subscriptionEndsAt: data.subscription_ends_at ? new Date(data.subscription_ends_at) : null,
+            termsAcceptedAt: data.terms_accepted_at ? new Date(data.terms_accepted_at) : null,
           });
         }
       } catch (err) {
@@ -108,6 +112,10 @@ export function useSubscription() {
     );
   }, [subscription.status, subscription.trialEndsAt]);
 
+  const needsTermsAcceptance = useMemo(() => {
+    return subscription.termsAcceptedAt === null;
+  }, [subscription.termsAcceptedAt]);
+
   return {
     ...subscription,
     loading,
@@ -117,5 +125,6 @@ export function useSubscription() {
     hasAccess,
     trialDaysRemaining,
     trialExpired,
+    needsTermsAcceptance,
   };
 }

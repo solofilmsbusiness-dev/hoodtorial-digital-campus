@@ -33,6 +33,7 @@ import CommunityManager from "./pages/admin/CommunityManager";
 import ChallengeManager from "./pages/admin/ChallengeManager";
 import AdminSettings from "./pages/admin/AdminSettings";
 import SupportManager from "./pages/admin/SupportManager";
+import Checkout from "./pages/Checkout";
 
 const queryClient = new QueryClient();
 
@@ -67,6 +68,11 @@ const App = () => (
                   </AssessmentRequiredRoute>
                 } />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/checkout" element={
+                  <ProtectedRoute>
+                    <Checkout />
+                  </ProtectedRoute>
+                } />
                 <Route path="/assessment" element={
                   <ProtectedRoute>
                     <Assessment />

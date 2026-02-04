@@ -6,3 +6,4 @@ export { FilmCountdown } from "./FilmCountdown";
 export { FilmOverlay } from "./FilmOverlay";
 export { RotatingQuotes } from "./RotatingQuotes";
 export { SocialProof } from "./SocialProof";
+export { TermsAcceptanceModal } from "./TermsAcceptanceModal";
