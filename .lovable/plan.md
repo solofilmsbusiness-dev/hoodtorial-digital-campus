@@ -1,281 +1,96 @@
 
-# PDF-Based AI Quiz Question Generation
 
-## Overview
+# Redirect to Student Center After Enrollment
 
-Add an AI-powered feature that allows admins to upload a PDF document and automatically generate quiz questions, titles, and answers based on the content. This creates a streamlined workflow for rapidly creating test and extra credit material.
+## The Issue
+
+Currently, when you enroll in a course from the Course Detail page, you stay on the same page. This means you don't see your newly enrolled course in the Student Center's "Active Courses" section without manually navigating there.
+
+## The Solution
+
+After successfully enrolling in a course, automatically redirect you to the Student Center with the Active Courses section highlighted/scrolled into view, along with a visual indication of which course was just added.
 
 ---
 
-## User Experience Flow
+## Implementation Details
+
+### 1. Update Course Detail Page - Add Navigation After Enrollment
+
+**File: `src/pages/CourseDetail.tsx`**
+
+Modify the `handleEnroll` function to:
+- Wait for the enrollment to complete successfully
+- Navigate to the Student Center with a query parameter indicating the newly enrolled course
+- Example: `/student?enrolled=CIN-123`
 
 ```text
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│  QUESTION MANAGER DIALOG                                                        │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                 │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐                 │
-│  │ + Add Question  │  │ ✨ Generate AI  │  │ 📄 From PDF     │                 │
-│  └─────────────────┘  └─────────────────┘  └─────────────────┘                 │
-│                                                                                 │
-│  [Question list here...]                                                        │
-│                                                                                 │
-└─────────────────────────────────────────────────────────────────────────────────┘
+Current flow:
+User clicks "Enroll" → Enrollment saves → User stays on course page
+
+New flow:
+User clicks "Enroll" → Enrollment saves → Redirect to /student?enrolled=COURSE_CODE
 ```
 
-**Step 1: Upload PDF**
-- Admin clicks "From PDF" button in Question Manager
-- Drag-and-drop or file picker for PDF upload (max 20MB)
-- PDF is parsed and text extracted
+### 2. Update Student Center - Highlight New Enrollment
 
-**Step 2: Configure Generation**
-- Number of questions (5, 10, 15, 20)
-- Difficulty level (Beginner, Intermediate, Advanced)
-- Question type: "Test Questions" or "Extra Credit"
-- Optional: Focus areas or keywords
+**File: `src/pages/StudentCenter.tsx`**
 
-**Step 3: AI Processing**
-- Edge function receives PDF text content
-- Lovable AI analyzes the material
-- Generates questions with answers and explanations
+Add logic to:
+- Read the `enrolled` query parameter from the URL
+- Scroll to the Active Courses section automatically
+- Briefly highlight the newly enrolled course card with an animation
+- Clear the query parameter from the URL after showing the highlight
 
-**Step 4: Review & Save**
-- Preview all generated questions
-- Edit, remove, or approve each question
-- Bulk save to quiz
+### 3. Add Visual Feedback
+
+The newly enrolled course card will have:
+- A brief pulse/glow animation to draw attention
+- The card will be scrolled into view if not already visible
 
 ---
 
-## Technical Architecture
+## Technical Approach
 
-### New Components
+### Changes to `src/pages/CourseDetail.tsx`
 
-**1. `src/components/admin/PDFQuestionGeneratorDialog.tsx`**
+1. Import `useNavigate` from `react-router-dom`
+2. Update `handleEnroll`:
+   - Check if enrollment was successful (no error returned)
+   - If successful, navigate to `/student?enrolled={courseCode}`
 
-A new dialog component that handles:
-- PDF file upload with drag-and-drop
-- Text extraction from PDF (client-side using pdf.js or via edge function)
-- Configuration options (num questions, difficulty, type)
-- Loading/processing states
-- Preview and approval of generated questions
+### Changes to `src/pages/StudentCenter.tsx`
 
-**2. Update `supabase/functions/generate-questions/index.ts`**
+1. Import `useSearchParams` from `react-router-dom`
+2. Add a `useEffect` that:
+   - Reads `enrolled` query parameter
+   - Finds the corresponding course card element
+   - Scrolls it into view with smooth scrolling
+   - Adds a temporary highlight class
+   - Clears the query parameter from URL using `searchParams.delete()` + `setSearchParams()`
 
-Modify the existing edge function to accept:
-- `pdfContent`: Extracted text from PDF (instead of just topic)
-- `questionType`: "test" | "extra_credit" (adjusts prompt tone)
-- Keep existing `topic`, `numQuestions`, `difficulty`, `context` parameters
+### Changes to `src/components/enrollment/EnrollmentManagementCard.tsx`
 
-### PDF Text Extraction Options
-
-**Option A (Recommended): Server-side with Edge Function**
-
-Create a new edge function `parse-pdf` that:
-1. Receives PDF as base64 or FormData
-2. Uses a PDF parsing library (pdf-parse for Deno) to extract text
-3. Returns the extracted text content
-
-This keeps the frontend simple and handles complex PDFs better.
-
-**Option B: Client-side with pdf.js**
-
-Use Mozilla's pdf.js library:
-- Add `pdfjs-dist` dependency
-- Extract text in the browser before sending to AI
-- Lighter server load but larger client bundle
+1. Add an optional `isHighlighted` prop
+2. When `isHighlighted` is true, apply a pulsing border/glow animation that fades after 2-3 seconds
 
 ---
 
-## Implementation Plan
+## User Experience
 
-### Phase 1: Create PDF Parsing Edge Function
-
-**File: `supabase/functions/parse-pdf/index.ts`**
-
-```typescript
-// Receives PDF file, extracts and returns text content
-// Uses pdf-parse or similar library for Deno
-// Returns: { text: string, pageCount: number }
-```
-
-**Update: `supabase/config.toml`**
-```toml
-[functions.parse-pdf]
-verify_jwt = false
-```
-
-### Phase 2: Update Question Generation Edge Function
-
-**File: `supabase/functions/generate-questions/index.ts`**
-
-Add support for:
-- `pdfContent` parameter (extracted PDF text)
-- `questionType` parameter for test vs extra credit
-- Enhanced system prompt that:
-  - Analyzes document content thoroughly
-  - Extracts key concepts and facts
-  - Creates questions that test understanding of the material
-  - For extra credit: creates harder, more nuanced questions
-
-### Phase 3: Create PDF Generator Dialog Component
-
-**File: `src/components/admin/PDFQuestionGeneratorDialog.tsx`**
-
-Features:
-- Drag-and-drop file upload zone
-- File size validation (max 20MB)
-- Progress indicator for upload/parsing/generation
-- Configuration form (number, difficulty, type)
-- Question preview and editing
-- Bulk save functionality
-
-Props:
-```typescript
-interface PDFQuestionGeneratorDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  quizTitle: string;
-  onGenerated: (questions: GeneratedQuestion[]) => void;
-}
-```
-
-### Phase 4: Update Question Manager
-
-**File: `src/components/admin/QuestionManager.tsx`**
-
-Add:
-- "From PDF" button next to existing "Generate AI" button
-- State for PDF dialog open/close
-- Integration with `PDFQuestionGeneratorDialog`
+| Before | After |
+|--------|-------|
+| Click Enroll → Stay on course page | Click Enroll → Go to Student Center |
+| Toast shows "Enrolled!" | Toast shows "Enrolled!" + Redirect |
+| Manually navigate to see course | Course card visible and highlighted |
+| No visual confirmation | Pulsing highlight on new course |
 
 ---
 
-## UI Design for PDF Dialog
-
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│  📄 Generate Questions from PDF                             [X] │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │                                                           │ │
-│  │           📁 Drag & drop your PDF here                   │ │
-│  │              or click to browse                          │ │
-│  │                                                           │ │
-│  │              Supports: PDF (max 20MB)                    │ │
-│  │                                                           │ │
-│  └───────────────────────────────────────────────────────────┘ │
-│                                                                 │
-│  ──────────────────────────────────────────────────────────────│
-│                                                                 │
-│  Number of Questions        Difficulty                          │
-│  ┌──────────────────┐       ┌──────────────────┐               │
-│  │ 10 questions   ▾ │       │ Intermediate   ▾ │               │
-│  └──────────────────┘       └──────────────────┘               │
-│                                                                 │
-│  Question Type                                                  │
-│  ┌──────────────────┐                                          │
-│  │ Test Questions ▾ │  ← or "Extra Credit Questions"          │
-│  └──────────────────┘                                          │
-│                                                                 │
-│  Focus Keywords (optional)                                      │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │ lighting techniques, three-point setup                   │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│                      [Cancel]  [✨ Generate Questions]          │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-**After generation (preview step):**
-
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│  📄 Review Generated Questions                              [X] │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  Generated from: "Lighting_Fundamentals.pdf" (12 pages)         │
-│  10 intermediate-level test questions                           │
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │ 1. What is the primary purpose of a key light?        🗑│   │
-│  │    ✓ A. To create the main illumination on the subject │   │
-│  │    ✗ B. To fill in shadows                            │   │
-│  │    ✗ C. To separate subject from background           │   │
-│  │    ✗ D. To add dramatic color                         │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │ 2. In three-point lighting, what role does fill...    🗑│   │
-│  │    ...                                                  │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│              [← Back]  [Save 10 Questions]                      │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Enhanced System Prompt for PDF Content
-
-The AI will receive a specialized prompt for PDF-based generation:
-
-```text
-You are an expert quiz creator for filmmaking and cinematography education.
-
-You have been provided with educational content extracted from a PDF document.
-Your task is to create high-quality {questionType} questions based on this material.
-
-Guidelines:
-- Create {numQuestions} questions at {difficulty} difficulty level
-- Questions must be directly based on the provided content
-- Test understanding and application, not just memorization
-- For "test questions": Create fair, comprehensive assessments
-- For "extra credit": Create challenging questions that reward deeper understanding
-- Each question should have 4 answer options (A, B, C, D)
-- Include a brief explanation referencing the source material
-
-Document Content:
-{pdfContent}
-
-{focusKeywords ? `Focus especially on: ${focusKeywords}` : ''}
-```
-
----
-
-## Summary of Changes
+## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `supabase/functions/parse-pdf/index.ts` | **NEW** - Edge function to extract text from uploaded PDFs |
-| `supabase/functions/generate-questions/index.ts` | Add `pdfContent`, `questionType` params; enhanced prompt for document-based generation |
-| `supabase/config.toml` | Add `[functions.parse-pdf]` configuration |
-| `src/components/admin/PDFQuestionGeneratorDialog.tsx` | **NEW** - Dialog for PDF upload and question generation |
-| `src/components/admin/QuestionManager.tsx` | Add "From PDF" button and integrate new dialog |
-| `src/components/admin/index.ts` | Export new `PDFQuestionGeneratorDialog` |
+| `src/pages/CourseDetail.tsx` | Add `useNavigate`, update `handleEnroll` to redirect on success |
+| `src/pages/StudentCenter.tsx` | Add `useSearchParams`, scroll + highlight logic |
+| `src/components/enrollment/EnrollmentManagementCard.tsx` | Add `isHighlighted` prop with animation |
 
----
-
-## Dependencies
-
-No new npm dependencies required. PDF parsing will be handled server-side in the edge function.
-
----
-
-## Admin Workflow Summary
-
-**Creating Test Material:**
-1. Open any quiz in Course Editor
-2. Click "Questions" → "From PDF"
-3. Upload course notes, textbook chapters, or lecture materials
-4. Configure: 10 questions, Intermediate, Test Questions
-5. Click Generate → Review → Save
-6. Done in under a minute!
-
-**Creating Extra Credit:**
-1. Same flow, but select "Extra Credit Questions"
-2. AI generates harder, more nuanced questions
-3. Questions can be added to a separate "Extra Credit Quiz"
-
-This gives admins a powerful tool to rapidly create quality assessments from their existing educational materials.
