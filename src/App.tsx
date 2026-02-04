@@ -8,6 +8,8 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ProfileProvider } from "@/contexts/ProfileContext";
 import { TestModeProvider } from "@/contexts/TestModeContext";
+import { DemoModeProvider } from "@/contexts/DemoModeContext";
+import { DemoModeBanner } from "@/components/admin/DemoModeBanner";
 import { ProtectedRoute, AdminRoute, PaidRoute, AssessmentRequiredRoute } from "@/components/auth";
 import Degrees from "./pages/Degrees";
 import Academics from "./pages/Academics";
@@ -58,9 +60,11 @@ const App = () => (
         <AuthProvider>
           <ProfileProvider>
             <TestModeProvider>
+              <DemoModeProvider>
               <Toaster />
               <Sonner />
               <BrowserRouter>
+                <DemoModeBanner />
                 <ChatWidget />
               <Routes>
                 <Route path="/" element={<RootRedirect />} />
@@ -151,6 +155,7 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
+            </DemoModeProvider>
         </TestModeProvider>
       </ProfileProvider>
     </AuthProvider>

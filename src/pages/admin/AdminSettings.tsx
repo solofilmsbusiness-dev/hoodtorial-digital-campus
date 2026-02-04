@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { SiteCustomization } from "@/components/admin/SiteCustomization";
 import { TestModeSettingsCard } from "@/components/admin/TestModeSettingsCard";
+import { DemoModeSettingsCard } from "@/components/admin/DemoModeSettingsCard";
 
 type DisplayDensity = "comfortable" | "compact" | "cozy";
 
@@ -92,6 +93,9 @@ export default function AdminSettings() {
       <div className="grid gap-6 max-w-2xl">
         {/* Test Mode Settings */}
         <TestModeSettingsCard />
+
+        {/* Demo Mode Settings */}
+        <DemoModeSettingsCard />
 
         {/* Site Customization - Login Page Media */}
         <SiteCustomization />

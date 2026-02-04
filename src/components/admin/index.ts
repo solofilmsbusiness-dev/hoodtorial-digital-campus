@@ -1,6 +1,9 @@
 export { AdminLayout } from "./AdminLayout";
 export { AdminSidebar } from "./AdminSidebar";
 export { TestModeBanner } from "./TestModeBanner";
+export { DemoModeBanner } from "./DemoModeBanner";
+export { DemoModeSettingsCard } from "./DemoModeSettingsCard";
+export { DemoUserBadge } from "./DemoUserBadge";
 export { StudentDetailSheet } from "./StudentDetailSheet";
 export { StudentFilters } from "./StudentFilters";
 export { CourseFilters } from "./CourseFilters";

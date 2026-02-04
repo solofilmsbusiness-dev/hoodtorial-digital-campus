@@ -60,6 +60,7 @@ export type Database = {
           created_at: string
           credits_awarded: number | null
           id: string
+          is_demo: boolean
           post_id: string | null
           user_id: string
         }
@@ -69,6 +70,7 @@ export type Database = {
           created_at?: string
           credits_awarded?: number | null
           id?: string
+          is_demo?: boolean
           post_id?: string | null
           user_id: string
         }
@@ -78,6 +80,7 @@ export type Database = {
           created_at?: string
           credits_awarded?: number | null
           id?: string
+          is_demo?: boolean
           post_id?: string | null
           user_id?: string
         }
@@ -103,18 +106,21 @@ export type Database = {
           comment_id: string
           created_at: string
           id: string
+          is_demo: boolean
           user_id: string
         }
         Insert: {
           comment_id: string
           created_at?: string
           id?: string
+          is_demo?: boolean
           user_id: string
         }
         Update: {
           comment_id?: string
           created_at?: string
           id?: string
+          is_demo?: boolean
           user_id?: string
         }
         Relationships: [
@@ -133,6 +139,7 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          is_demo: boolean
           is_highlighted: boolean
           is_instructor_comment: boolean
           media_urls: string[] | null
@@ -148,6 +155,7 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          is_demo?: boolean
           is_highlighted?: boolean
           is_instructor_comment?: boolean
           media_urls?: string[] | null
@@ -163,6 +171,7 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          is_demo?: boolean
           is_highlighted?: boolean
           is_instructor_comment?: boolean
           media_urls?: string[] | null
@@ -198,6 +207,7 @@ export type Database = {
           course_code: string | null
           created_at: string
           id: string
+          is_demo: boolean
           is_highlighted: boolean
           is_pinned: boolean
           is_project_post: boolean
@@ -214,6 +224,7 @@ export type Database = {
           course_code?: string | null
           created_at?: string
           id?: string
+          is_demo?: boolean
           is_highlighted?: boolean
           is_pinned?: boolean
           is_project_post?: boolean
@@ -230,6 +241,7 @@ export type Database = {
           course_code?: string | null
           created_at?: string
           id?: string
+          is_demo?: boolean
           is_highlighted?: boolean
           is_pinned?: boolean
           is_project_post?: boolean
@@ -345,6 +357,42 @@ export type Database = {
         }
         Relationships: []
       }
+      demo_settings: {
+        Row: {
+          demo_comment_count: number
+          demo_post_count: number
+          demo_user_count: number
+          id: string
+          is_active: boolean
+          last_generated_at: string | null
+          show_demo_data: boolean
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          demo_comment_count?: number
+          demo_post_count?: number
+          demo_user_count?: number
+          id?: string
+          is_active?: boolean
+          last_generated_at?: string | null
+          show_demo_data?: boolean
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          demo_comment_count?: number
+          demo_post_count?: number
+          demo_user_count?: number
+          id?: string
+          is_active?: boolean
+          last_generated_at?: string | null
+          show_demo_data?: boolean
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       enrollments: {
         Row: {
           completed_at: string | null
@@ -353,6 +401,7 @@ export type Database = {
           dropped_at: string | null
           enrolled_at: string
           id: string
+          is_demo: boolean
           status: string
           swaps_used: number
           updated_at: string
@@ -365,6 +414,7 @@ export type Database = {
           dropped_at?: string | null
           enrolled_at?: string
           id?: string
+          is_demo?: boolean
           status?: string
           swaps_used?: number
           updated_at?: string
@@ -377,6 +427,7 @@ export type Database = {
           dropped_at?: string | null
           enrolled_at?: string
           id?: string
+          is_demo?: boolean
           status?: string
           swaps_used?: number
           updated_at?: string
@@ -544,18 +595,21 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_demo: boolean
           post_id: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          is_demo?: boolean
           post_id: string
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          is_demo?: boolean
           post_id?: string
           user_id?: string
         }
@@ -589,6 +643,7 @@ export type Database = {
           influences: string | null
           instagram_url: string | null
           is_banned: boolean
+          is_demo: boolean
           location: string | null
           membership_tier: Database["public"]["Enums"]["membership_tier"]
           portfolio_url: string | null
@@ -625,6 +680,7 @@ export type Database = {
           influences?: string | null
           instagram_url?: string | null
           is_banned?: boolean
+          is_demo?: boolean
           location?: string | null
           membership_tier?: Database["public"]["Enums"]["membership_tier"]
           portfolio_url?: string | null
@@ -661,6 +717,7 @@ export type Database = {
           influences?: string | null
           instagram_url?: string | null
           is_banned?: boolean
+          is_demo?: boolean
           location?: string | null
           membership_tier?: Database["public"]["Enums"]["membership_tier"]
           portfolio_url?: string | null
@@ -765,6 +822,7 @@ export type Database = {
           course_code: string
           created_at: string
           id: string
+          is_demo: boolean
           passed: boolean
           quiz_id: string
           score: number
@@ -777,6 +835,7 @@ export type Database = {
           course_code: string
           created_at?: string
           id?: string
+          is_demo?: boolean
           passed: boolean
           quiz_id: string
           score: number
@@ -789,6 +848,7 @@ export type Database = {
           course_code?: string
           created_at?: string
           id?: string
+          is_demo?: boolean
           passed?: boolean
           quiz_id?: string
           score?: number
@@ -955,6 +1015,7 @@ export type Database = {
           created_at: string
           credits_earned: number
           id: string
+          is_demo: boolean
           lesson_id: string | null
           updated_at: string
           user_id: string
@@ -969,6 +1030,7 @@ export type Database = {
           created_at?: string
           credits_earned?: number
           id?: string
+          is_demo?: boolean
           lesson_id?: string | null
           updated_at?: string
           user_id: string
@@ -983,6 +1045,7 @@ export type Database = {
           created_at?: string
           credits_earned?: number
           id?: string
+          is_demo?: boolean
           lesson_id?: string | null
           updated_at?: string
           user_id?: string
