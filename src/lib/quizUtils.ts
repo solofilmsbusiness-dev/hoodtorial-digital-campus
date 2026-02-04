@@ -88,7 +88,11 @@ export function mapShuffledAnswerToOriginal(
  * Calculate score from shuffled answers
  * Handles mapping from shuffled to original indices
  */
-export function calculateShuffledScore(
+/**
+ * Calculate raw correct count (not percentage)
+ * Used for storing in database where score = correct count
+ */
+export function calculateCorrectCount(
   answers: Record<string, number>,
   shuffledQuestions: ShuffledQuestion[]
 ): number {
@@ -99,7 +103,21 @@ export function calculateShuffledScore(
       correct++;
     }
   });
-  return Math.round((correct / shuffledQuestions.length) * 100);
+  return correct;
+}
+
+/**
+ * Calculate score as percentage from shuffled answers
+ * Handles mapping from shuffled to original indices
+ */
+export function calculateShuffledScore(
+  answers: Record<string, number>,
+  shuffledQuestions: ShuffledQuestion[]
+): number {
+  const correct = calculateCorrectCount(answers, shuffledQuestions);
+  return shuffledQuestions.length > 0 
+    ? Math.round((correct / shuffledQuestions.length) * 100) 
+    : 0;
 }
 
 /**
