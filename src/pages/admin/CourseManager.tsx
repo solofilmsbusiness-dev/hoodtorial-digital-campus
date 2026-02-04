@@ -132,6 +132,7 @@ export default function CourseManager() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-courses"] });
+      queryClient.invalidateQueries({ queryKey: ["course-status"] });
       toast({ title: "Course updated" });
     },
     onError: (error) => {
@@ -154,6 +155,7 @@ export default function CourseManager() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-courses"] });
+      queryClient.invalidateQueries({ queryKey: ["course-status"] });
       toast({ title: "Course updated" });
     },
     onError: (error) => {
@@ -176,6 +178,7 @@ export default function CourseManager() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-courses"] });
+      queryClient.invalidateQueries({ queryKey: ["course-status"] });
       toast({ title: "Course deleted successfully" });
     },
     onError: (error) => {
