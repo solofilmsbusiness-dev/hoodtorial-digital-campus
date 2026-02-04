@@ -18,7 +18,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Plus,
@@ -29,9 +28,11 @@ import {
   Sparkles,
   Check,
   X,
+  FileText,
 } from "lucide-react";
 import { QuestionDialog } from "./QuestionDialog";
 import { GenerateQuestionsDialog } from "./GenerateQuestionsDialog";
+import { PDFQuestionGeneratorDialog } from "./PDFQuestionGeneratorDialog";
 import {
   useAdminQuizContent,
   useAdminQuizQuestions,
@@ -48,6 +49,7 @@ interface QuestionManagerProps {
 export function QuestionManager({ open, onOpenChange, quiz }: QuestionManagerProps) {
   const [questionDialogOpen, setQuestionDialogOpen] = useState(false);
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
+  const [pdfDialogOpen, setPdfDialogOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<DbQuizQuestion | null>(null);
 
   const { questions, isLoading } = useAdminQuizQuestions(quiz.id);
@@ -145,6 +147,10 @@ export function QuestionManager({ open, onOpenChange, quiz }: QuestionManagerPro
                 {questions.length} question{questions.length !== 1 ? "s" : ""}
               </p>
               <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setPdfDialogOpen(true)}>
+                  <FileText className="h-4 w-4 mr-1" />
+                  From PDF
+                </Button>
                 <Button variant="outline" onClick={() => setGenerateDialogOpen(true)}>
                   <Sparkles className="h-4 w-4 mr-1" />
                   Generate AI
@@ -288,6 +294,13 @@ export function QuestionManager({ open, onOpenChange, quiz }: QuestionManagerPro
       <GenerateQuestionsDialog
         open={generateDialogOpen}
         onOpenChange={setGenerateDialogOpen}
+        quizTitle={quiz.title}
+        onGenerated={handleGeneratedQuestions}
+      />
+
+      <PDFQuestionGeneratorDialog
+        open={pdfDialogOpen}
+        onOpenChange={setPdfDialogOpen}
         quizTitle={quiz.title}
         onGenerated={handleGeneratedQuestions}
       />

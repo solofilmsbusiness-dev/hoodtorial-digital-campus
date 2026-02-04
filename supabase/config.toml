@@ -6,6 +6,9 @@ verify_jwt = false
 [functions.generate-questions]
 verify_jwt = false
 
+[functions.parse-pdf]
+verify_jwt = false
+
 [functions.student-insights]
 verify_jwt = false
 

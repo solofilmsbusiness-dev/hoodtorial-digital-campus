@@ -13,6 +13,7 @@ export { QuestionDialog } from "./QuestionDialog";
 export { QuestionManager } from "./QuestionManager";
 export { QuizSection } from "./QuizSection";
 export { GenerateQuestionsDialog } from "./GenerateQuestionsDialog";
+export { PDFQuestionGeneratorDialog } from "./PDFQuestionGeneratorDialog";
 export { CommandPalette } from "./CommandPalette";
 export { ActivityFeed } from "./ActivityFeed";
 export { AdminNotifications } from "./AdminNotifications";
