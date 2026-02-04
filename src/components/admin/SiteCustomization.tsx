@@ -32,11 +32,11 @@ export function SiteCustomization() {
       return;
     }
 
-    // Validate file size (50MB max)
-    if (file.size > 50 * 1024 * 1024) {
+    // Validate file size (200MB max)
+    if (file.size > 200 * 1024 * 1024) {
       toast({
         title: "File too large",
-        description: "Video must be under 50MB.",
+        description: "Video must be under 200MB.",
         variant: "destructive",
       });
       return;
@@ -274,7 +274,7 @@ export function SiteCustomization() {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Accepted formats: MP4, WebM (max 50MB)
+            Accepted formats: MP4, WebM (max 200MB)
           </p>
 
           <input
