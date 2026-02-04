@@ -15,8 +15,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowRightLeft, Clock, AlertTriangle } from "lucide-react";
-import { courses } from "@/data/courses";
+import { ArrowRightLeft, Clock, AlertTriangle, Loader2 } from "lucide-react";
+import { useCourseStatus } from "@/hooks/useCourseStatus";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface SwapCourseDialogProps {
   open: boolean;
@@ -46,10 +47,11 @@ export function SwapCourseDialog({
   isLoading = false,
 }: SwapCourseDialogProps) {
   const [selectedCourse, setSelectedCourse] = useState<string>("");
+  const { courses, isLoading: coursesLoading } = useCourseStatus();
 
-  // Get available courses (not already enrolled)
+  // Get available courses (not already enrolled, not coming soon)
   const availableCourses = courses.filter(
-    (c) => !enrolledCourseCodes.includes(c.code) && c.code !== fromCourseCode
+    (c) => !enrolledCourseCodes.includes(c.code) && c.code !== fromCourseCode && !c.isComingSoon
   );
 
   const formatTimeRemaining = (hours: number) => {
@@ -74,7 +76,7 @@ export function SwapCourseDialog({
   };
 
   const canSwap = isInGracePeriod || remainingSwaps > 0;
-  const selectedCourseDetails = courses.find((c) => c.code === selectedCourse);
+  const selectedCourseDetails = availableCourses.find((c) => c.code === selectedCourse);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -142,19 +144,27 @@ export function SwapCourseDialog({
                 <label className="text-sm font-medium text-foreground">
                   Select new course:
                 </label>
-                <Select value={selectedCourse} onValueChange={setSelectedCourse}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a course..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableCourses.map((course) => (
-                      <SelectItem key={course.code} value={course.code}>
-                        <span className="font-medium">{course.code}</span>
-                        <span className="text-muted-foreground"> - {course.title}</span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {coursesLoading ? (
+                  <Skeleton className="h-10 w-full" />
+                ) : availableCourses.length === 0 ? (
+                  <p className="text-sm text-muted-foreground p-3 bg-muted/50 rounded-lg">
+                    No other courses available to swap to.
+                  </p>
+                ) : (
+                  <Select value={selectedCourse} onValueChange={setSelectedCourse}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a course..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableCourses.map((course) => (
+                        <SelectItem key={course.code} value={course.code}>
+                          <span className="font-medium">{course.code}</span>
+                          <span className="text-muted-foreground"> - {course.title}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
 
                 {selectedCourseDetails && (
                   <div className="p-3 bg-card border border-border rounded-lg mt-3">
