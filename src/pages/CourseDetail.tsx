@@ -544,187 +544,200 @@ const CourseDetail = () => {
       {/* Course Content */}
       <Section className="py-8">
         <SubscriptionGate>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Video Player Area */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Enrollment Card for non-enrolled users (hidden in test mode) */}
-              {!enrolled && !isTestModeEnabled && (
-                <EnrollmentCard
-                  course={course}
-                  isEnrolled={false}
-                  canEnroll={canEnroll && hasAccess}
-                  slotsRemaining={slotsRemaining}
-                  maxSlots={maxSlots}
-                  onEnroll={handleEnroll}
-                  isLoading={enrolling}
-                />
-              )}
+          {enrolled ? (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Video Player Area */}
+              <div className="lg:col-span-2 space-y-6">
+                {/* Progression info */}
+                <ProgressionInfo isEnrolled={enrolled} />
 
-              {/* Progression info */}
-              <ProgressionInfo isEnrolled={enrolled} />
-
-            {activeLesson && enrolled ? (
-              <>
-                {/* Show DocumentViewer for reading lessons with document_url */}
-                {activeLesson.type === "reading" && (activeLesson as unknown as { document_url?: string }).document_url ? (
-                  <DocumentViewer 
-                    documentUrl={(activeLesson as unknown as { document_url: string }).document_url}
-                    title={activeLesson.title}
-                  />
-                ) : (
-                  <VideoPlayer 
-                    lesson={activeLesson} 
-                    onProgress={videoProgress.updateProgress}
-                    initialTime={videoProgress.getResumePosition()}
-                    watchPercentage={videoProgress.watchPercentage}
-                    isCompleted={videoProgress.isCompleted}
-                  />
-                )}
-                <div className="border-2 border-border p-6 bg-card/50">
-                  <h2 className="heading-4 text-foreground mb-2">{activeLesson.title}</h2>
-                  <p className="text-muted-foreground text-sm">
-                    {activeLesson.type === "video" 
-                      ? "Watch 90% of the video to complete this lesson and unlock the next content."
-                      : "Complete this lesson and move on to the next one to continue your progress."
-                    }
-                  </p>
-
-                  {/* Progress indicator for video lessons */}
-                  {activeLesson.type === "video" && (
-                    <div className="mt-4 p-4 bg-muted/50 border border-border">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-foreground">Watch Progress</span>
-                        <span className={cn(
-                          "text-sm font-bold",
-                          videoProgress.isCompleted ? "text-accent" : "text-primary"
-                        )}>
-                          {videoProgress.watchPercentage}%
-                        </span>
-                      </div>
-                      <Progress value={videoProgress.watchPercentage} className="h-2" />
-                      {videoProgress.isCompleted ? (
-                        <p className="text-xs text-accent mt-2 flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3" />
-                          Lesson complete! You can proceed to the next content.
-                        </p>
-                      ) : (
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Watch at least 90% to complete this lesson
-                        </p>
-                      )}
-                    </div>
+              {activeLesson ? (
+                <>
+                  {/* Show DocumentViewer for reading lessons with document_url */}
+                  {activeLesson.type === "reading" && (activeLesson as unknown as { document_url?: string }).document_url ? (
+                    <DocumentViewer 
+                      documentUrl={(activeLesson as unknown as { document_url: string }).document_url}
+                      title={activeLesson.title}
+                    />
+                  ) : (
+                    <VideoPlayer 
+                      lesson={activeLesson} 
+                      onProgress={videoProgress.updateProgress}
+                      initialTime={videoProgress.getResumePosition()}
+                      watchPercentage={videoProgress.watchPercentage}
+                      isCompleted={videoProgress.isCompleted}
+                    />
                   )}
+                  <div className="border-2 border-border p-6 bg-card/50">
+                    <h2 className="heading-4 text-foreground mb-2">{activeLesson.title}</h2>
+                    <p className="text-muted-foreground text-sm">
+                      {activeLesson.type === "video" 
+                        ? "Watch 90% of the video to complete this lesson and unlock the next content."
+                        : "Complete this lesson and move on to the next one to continue your progress."
+                      }
+                    </p>
 
-                  <div className="flex gap-4 mt-6">
-                    {/* Test Mode Quick Complete Button */}
-                    {isTestModeEnabled && (
-                      <button 
-                        onClick={handleMarkComplete}
-                        className="btn-brutal bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      >
-                        <Zap className="mr-2 h-5 w-5" />
-                        Quick Complete
-                      </button>
+                    {/* Progress indicator for video lessons */}
+                    {activeLesson.type === "video" && (
+                      <div className="mt-4 p-4 bg-muted/50 border border-border">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-foreground">Watch Progress</span>
+                          <span className={cn(
+                            "text-sm font-bold",
+                            videoProgress.isCompleted ? "text-accent" : "text-primary"
+                          )}>
+                            {videoProgress.watchPercentage}%
+                          </span>
+                        </div>
+                        <Progress value={videoProgress.watchPercentage} className="h-2" />
+                        {videoProgress.isCompleted ? (
+                          <p className="text-xs text-accent mt-2 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" />
+                            Lesson complete! You can proceed to the next content.
+                          </p>
+                        ) : (
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Watch at least 90% to complete this lesson
+                          </p>
+                        )}
+                      </div>
                     )}
 
-                    {!isTestModeEnabled && activeLesson.type === "video" ? (
-                      <button 
-                        onClick={handleMarkComplete} 
-                        disabled={!videoProgress.isCompleted && videoProgress.watchPercentage < 90}
-                        className={cn(
-                          "btn-brutal",
-                          (!videoProgress.isCompleted && videoProgress.watchPercentage < 90) && 
-                          "opacity-50 cursor-not-allowed"
-                        )}
-                      >
-                        {videoProgress.isCompleted || videoProgress.watchPercentage >= 90 ? (
-                          <>
-                            Complete Lesson
-                            <CheckCircle2 className="ml-2 h-5 w-5" />
-                          </>
-                        ) : (
-                          <>
-                            <Play className="mr-2 h-5 w-5" />
-                            Watch Video ({videoProgress.watchPercentage}%)
-                          </>
-                        )}
-                      </button>
-                    ) : !isTestModeEnabled ? (
-                      <button onClick={handleMarkComplete} className="btn-brutal">
-                        Mark Complete
-                        <CheckCircle2 className="ml-2 h-5 w-5" />
-                      </button>
-                    ) : null}
+                    <div className="flex gap-4 mt-6">
+                      {/* Test Mode Quick Complete Button */}
+                      {isTestModeEnabled && (
+                        <button 
+                          onClick={handleMarkComplete}
+                          className="btn-brutal bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          <Zap className="mr-2 h-5 w-5" />
+                          Quick Complete
+                        </button>
+                      )}
+
+                      {!isTestModeEnabled && activeLesson.type === "video" ? (
+                        <button 
+                          onClick={handleMarkComplete} 
+                          disabled={!videoProgress.isCompleted && videoProgress.watchPercentage < 90}
+                          className={cn(
+                            "btn-brutal",
+                            (!videoProgress.isCompleted && videoProgress.watchPercentage < 90) && 
+                            "opacity-50 cursor-not-allowed"
+                          )}
+                        >
+                          {videoProgress.isCompleted || videoProgress.watchPercentage >= 90 ? (
+                            <>
+                              Complete Lesson
+                              <CheckCircle2 className="ml-2 h-5 w-5" />
+                            </>
+                          ) : (
+                            <>
+                              <Play className="mr-2 h-5 w-5" />
+                              Watch Video ({videoProgress.watchPercentage}%)
+                            </>
+                          )}
+                        </button>
+                      ) : !isTestModeEnabled ? (
+                        <button onClick={handleMarkComplete} className="btn-brutal">
+                          Mark Complete
+                          <CheckCircle2 className="ml-2 h-5 w-5" />
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
-                </div>
-              </>
-            ) : !enrolled ? (
-              <div className="border-2 border-border p-12 bg-card/50 text-center">
-                <Lock className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="heading-4 text-foreground mb-2">Enroll to Access Content</h3>
-                <p className="text-muted-foreground mb-6">
-                  Enroll in this course to watch lessons and track your progress.
-                </p>
-              </div>
-            ) : null}
-          </div>
+                </>
+              ) : null}
+            </div>
 
-          {/* Course Modules Sidebar */}
-          <div className="space-y-4">
-            <h3 className="heading-4 text-foreground">Course Content</h3>
+            {/* Course Modules Sidebar */}
+            <div className="space-y-4">
+              <h3 className="heading-4 text-foreground">Course Content</h3>
 
-            <div className="space-y-3">
-              {course.modules.map((module, index) => (
-                <ProgressionModuleAccordion
-                  key={module.id}
-                  module={module}
-                  moduleIndex={index}
-                  activeLesson={activeLesson}
-                  onLessonSelect={handleLessonSelect}
-                  onQuizClick={handleQuizClick}
-                  isContentUnlocked={(mi, li, type) =>
-                    enrolled ? isContentUnlocked(mi, li, type) : false
-                  }
-                  isLessonCompleted={isLessonCompleted}
-                  isQuizPassed={isQuizPassed}
-                  isQuizActuallyPassed={isQuizActuallyPassed}
-                  getQuizAttempts={getQuizAttempts}
-                  canAttemptQuiz={canAttemptQuiz}
-                  moduleProgress={getModuleProgress(module)}
-                  defaultOpen={index === 0}
-                  getWatchPercentage={getWatchPercentage}
-                />
-              ))}
-
-              {course.finalExam && (
-                <div className="pt-4 border-t-2 border-border">
-                  <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">
-                    Final Exam
-                  </h4>
-                  <LockedQuizCard
-                    quiz={course.finalExam}
-                    type="final"
-                    isUnlocked={enrolled && isFinalExamUnlocked}
-                    isPassed={isQuizActuallyPassed(course.finalExam.id)}
-                    attemptCount={getQuizAttempts(course.finalExam.id)}
-                    maxAttempts={3}
-                    onClick={() => handleQuizClick(course.finalExam!)}
+              <div className="space-y-3">
+                {course.modules.map((module, index) => (
+                  <ProgressionModuleAccordion
+                    key={module.id}
+                    module={module}
+                    moduleIndex={index}
+                    activeLesson={activeLesson}
+                    onLessonSelect={handleLessonSelect}
+                    onQuizClick={handleQuizClick}
+                    isContentUnlocked={(mi, li, type) =>
+                      enrolled ? isContentUnlocked(mi, li, type) : false
+                    }
+                    isLessonCompleted={isLessonCompleted}
+                    isQuizPassed={isQuizPassed}
+                    isQuizActuallyPassed={isQuizActuallyPassed}
+                    getQuizAttempts={getQuizAttempts}
+                    canAttemptQuiz={canAttemptQuiz}
+                    moduleProgress={getModuleProgress(module)}
+                    defaultOpen={index === 0}
+                    getWatchPercentage={getWatchPercentage}
                   />
-                  {/* Test Mode: Auto-pass final exam button */}
-                  {isTestModeEnabled && shouldAutoPassQuiz && !isQuizActuallyPassed(course.finalExam.id) && (
-                    <button
-                      onClick={() => handleInstantPassQuiz(course.finalExam!)}
-                      className="mt-2 w-full flex items-center justify-center gap-2 py-2 px-4 bg-destructive/10 border border-destructive/30 text-destructive text-sm font-medium hover:bg-destructive/20 transition-colors"
-                    >
-                      <Zap className="w-4 h-4" />
-                      Auto-Pass Exam (Test Mode)
-                    </button>
-                  )}
+                ))}
+
+                {course.finalExam && (
+                  <div className="pt-4 border-t-2 border-border">
+                    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">
+                      Final Exam
+                    </h4>
+                    <LockedQuizCard
+                      quiz={course.finalExam}
+                      type="final"
+                      isUnlocked={enrolled && isFinalExamUnlocked}
+                      isPassed={isQuizActuallyPassed(course.finalExam.id)}
+                      attemptCount={getQuizAttempts(course.finalExam.id)}
+                      maxAttempts={3}
+                      onClick={() => handleQuizClick(course.finalExam!)}
+                    />
+                    {/* Test Mode: Auto-pass final exam button */}
+                    {isTestModeEnabled && shouldAutoPassQuiz && !isQuizActuallyPassed(course.finalExam.id) && (
+                      <button
+                        onClick={() => handleInstantPassQuiz(course.finalExam!)}
+                        className="mt-2 w-full flex items-center justify-center gap-2 py-2 px-4 bg-destructive/10 border border-destructive/30 text-destructive text-sm font-medium hover:bg-destructive/20 transition-colors"
+                      >
+                        <Zap className="w-4 h-4" />
+                        Auto-Pass Exam (Test Mode)
+                      </button>
+                    )}
+                  </div>
+                )}
                 </div>
-              )}
               </div>
             </div>
-          </div>
+          ) : (
+            /* Non-enrolled teaser view */
+            <div className="max-w-2xl mx-auto">
+              <EnrollmentCard
+                course={course}
+                isEnrolled={false}
+                canEnroll={canEnroll && hasAccess}
+                slotsRemaining={slotsRemaining}
+                maxSlots={maxSlots}
+                onEnroll={handleEnroll}
+                isLoading={enrolling}
+              />
+              
+              <div className="mt-8 p-8 border-2 border-dashed border-border text-center bg-card/50">
+                <Lock className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="heading-4 text-foreground mb-2">Course Content Locked</h3>
+                <p className="text-muted-foreground mb-6">
+                  Enroll in this course to access all lessons and quizzes.
+                </p>
+                <div className="flex flex-wrap justify-center gap-3">
+                  <Badge variant="secondary" className="text-sm px-3 py-1">
+                    📚 {course.modules.length} Modules
+                  </Badge>
+                  <Badge variant="secondary" className="text-sm px-3 py-1">
+                    🎬 {totalLessons} Lessons
+                  </Badge>
+                  <Badge variant="secondary" className="text-sm px-3 py-1">
+                    ✅ {totalQuizzes} Quizzes
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          )}
         </SubscriptionGate>
       </Section>
     </PageLayout>
