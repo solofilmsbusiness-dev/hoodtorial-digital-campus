@@ -11,7 +11,6 @@ import { supabase } from "@/integrations/supabase/client";
 import defaultLogo from "@/assets/hero-logo.png";
 import defaultVideo from "@/assets/hero-video.mp4";
 import { motion } from "framer-motion";
-import { FilmCountdown } from "@/components/auth/FilmCountdown";
 import { SocialProof } from "@/components/auth/SocialProof";
 import { FilmOverlay } from "@/components/auth/FilmOverlay";
 
@@ -184,9 +183,6 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Film Countdown Overlay */}
-      <FilmCountdown />
-
       {/* Full-screen Background Video */}
       <video
         autoPlay
@@ -212,7 +208,7 @@ export default function Auth() {
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 3.5 }}
+            transition={{ duration: 1.5, delay: 2.5, ease: "easeOut" }}
             className="text-center mb-6"
           >
             <img 
@@ -226,7 +222,7 @@ export default function Auth() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 3.7 }}
+            transition={{ duration: 1.5, delay: 3.0, ease: "easeOut" }}
             className="text-center mb-2"
           >
             <h1 className="heading-3 lg:heading-2">
@@ -242,7 +238,7 @@ export default function Auth() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 3.9 }}
+            transition={{ duration: 1.5, delay: 3.5, ease: "easeOut" }}
             className="mt-8 relative"
           >
             {/* Animated border glow */}
