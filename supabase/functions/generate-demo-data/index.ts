@@ -324,7 +324,9 @@ serve(async (req) => {
       };
       
       const { error } = await supabase.from('profiles').insert(profile);
-      if (!error) {
+      if (error) {
+        console.error(`Failed to create demo user ${i + 1}:`, error.message);
+      } else {
         demoUsers.push({ user_id: fakeUserId, display_name: displayName });
       }
       
@@ -336,6 +338,17 @@ serve(async (req) => {
     
     console.log(`Created ${demoUsers.length} demo users`);
     
+    // Fail early if no users were created
+    if (demoUsers.length === 0) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: "Failed to create any demo users. Check RLS policies or database constraints." 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    
     // Generate demo posts
     const categories = Object.keys(POST_TITLES_BY_CATEGORY) as (keyof typeof POST_TITLES_BY_CATEGORY)[];
     const demoPosts: { id: string; title: string; user_id: string }[] = [];
@@ -344,6 +357,10 @@ serve(async (req) => {
       const category = getRandomElement(categories);
       const title = getRandomElement(POST_TITLES_BY_CATEGORY[category]);
       const author = getRandomElement(demoUsers);
+      if (!author) {
+        console.error(`No author available for post ${i + 1}`);
+        continue;
+      }
       const content = await generatePostContentWithAI(lovableApiKey, title, category);
       
       const post = {
@@ -360,7 +377,9 @@ serve(async (req) => {
       };
       
       const { data, error } = await supabase.from('community_posts').insert(post).select('id').single();
-      if (!error && data) {
+      if (error) {
+        console.error(`Failed to create post ${i + 1}:`, error.message);
+      } else if (data) {
         demoPosts.push({ id: data.id, title: title, user_id: author.user_id });
       }
       
