@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTestModeContext } from "@/contexts/TestModeContext";
@@ -31,7 +31,7 @@ export function useSubscription() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
+  const fetchSubscription = useCallback(async () => {
     if (!user) {
       setSubscription({
         status: null,
@@ -45,35 +45,35 @@ export function useSubscription() {
       return;
     }
 
-    const fetchSubscription = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("subscription_status, trial_started_at, trial_ends_at, subscription_started_at, subscription_ends_at, terms_accepted_at")
-          .eq("user_id", user.id)
-          .maybeSingle();
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("subscription_status, trial_started_at, trial_ends_at, subscription_started_at, subscription_ends_at, terms_accepted_at")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
-        if (error) throw error;
+      if (error) throw error;
 
-        if (data) {
-          setSubscription({
-            status: data.subscription_status as SubscriptionStatus,
-            trialStartedAt: data.trial_started_at ? new Date(data.trial_started_at) : null,
-            trialEndsAt: data.trial_ends_at ? new Date(data.trial_ends_at) : null,
-            subscriptionStartedAt: data.subscription_started_at ? new Date(data.subscription_started_at) : null,
-            subscriptionEndsAt: data.subscription_ends_at ? new Date(data.subscription_ends_at) : null,
-            termsAcceptedAt: data.terms_accepted_at ? new Date(data.terms_accepted_at) : null,
-          });
-        }
-      } catch (err) {
-        setError(err as Error);
-      } finally {
-        setLoading(false);
+      if (data) {
+        setSubscription({
+          status: data.subscription_status as SubscriptionStatus,
+          trialStartedAt: data.trial_started_at ? new Date(data.trial_started_at) : null,
+          trialEndsAt: data.trial_ends_at ? new Date(data.trial_ends_at) : null,
+          subscriptionStartedAt: data.subscription_started_at ? new Date(data.subscription_started_at) : null,
+          subscriptionEndsAt: data.subscription_ends_at ? new Date(data.subscription_ends_at) : null,
+          termsAcceptedAt: data.terms_accepted_at ? new Date(data.terms_accepted_at) : null,
+        });
       }
-    };
-
-    fetchSubscription();
+    } catch (err) {
+      setError(err as Error);
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
+
+  useEffect(() => {
+    fetchSubscription();
+  }, [fetchSubscription]);
 
   const now = new Date();
 
@@ -126,5 +126,6 @@ export function useSubscription() {
     trialDaysRemaining,
     trialExpired,
     needsTermsAcceptance,
+    refetch: fetchSubscription,
   };
 }
