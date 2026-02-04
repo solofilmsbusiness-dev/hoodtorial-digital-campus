@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,7 @@ interface EnrollmentManagementCardProps {
   enrolledCourseCodes: string[];
   onDrop: (courseCode: string) => Promise<void>;
   onSwap: (fromCode: string, toCode: string) => Promise<void>;
+  isHighlighted?: boolean;
 }
 
 export function EnrollmentManagementCard({
@@ -54,10 +55,21 @@ export function EnrollmentManagementCard({
   enrolledCourseCodes,
   onDrop,
   onSwap,
+  isHighlighted = false,
 }: EnrollmentManagementCardProps) {
   const [dropDialogOpen, setDropDialogOpen] = useState(false);
   const [swapDialogOpen, setSwapDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showHighlight, setShowHighlight] = useState(isHighlighted);
+
+  // Auto-fade the highlight after 3 seconds
+  useEffect(() => {
+    if (isHighlighted) {
+      setShowHighlight(true);
+      const timer = setTimeout(() => setShowHighlight(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isHighlighted]);
 
   const handleDrop = async () => {
     setIsLoading(true);
@@ -84,10 +96,19 @@ export function EnrollmentManagementCard({
 
   return (
     <>
-      <Card className={cn(
-        "card-urban hover:border-primary transition-all relative overflow-hidden",
-        isComplete && "border-green-500/50 bg-green-500/5"
-      )}>
+      <Card 
+        data-course-code={course.code}
+        className={cn(
+          "card-urban hover:border-primary transition-all relative overflow-hidden",
+          isComplete && "border-green-500/50 bg-green-500/5",
+          showHighlight && "ring-2 ring-primary ring-offset-2 ring-offset-background animate-pulse"
+        )}
+      >
+        {/* Highlight glow effect for newly enrolled courses */}
+        {showHighlight && (
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/20 to-transparent animate-[shimmer_1s_ease-in-out_infinite] pointer-events-none" />
+        )}
+        
         {/* Celebration shimmer effect for completed courses */}
         {isComplete && (
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-green-500/10 to-transparent animate-[shimmer_2s_ease-in-out_infinite] pointer-events-none" />

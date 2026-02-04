@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { PageLayout, Section } from "@/components/layout";
 import { 
@@ -296,6 +296,8 @@ const CourseDetail = () => {
   const totalLessons = getTotalLessonsCount(course);
   const totalQuizzes = getTotalQuizzesCount(course);
 
+  const navigate = useNavigate();
+
   const handleEnroll = async () => {
     if (!user) {
       toast({
@@ -306,8 +308,13 @@ const CourseDetail = () => {
       return;
     }
     setEnrolling(true);
-    await enroll(course.code);
+    const result = await enroll(course.code);
     setEnrolling(false);
+    
+    // Redirect to Student Center with highlight on success
+    if (!result.error) {
+      navigate(`/student?enrolled=${course.code}`);
+    }
   };
 
   const handleQuizComplete = (score: number, passed: boolean) => {
