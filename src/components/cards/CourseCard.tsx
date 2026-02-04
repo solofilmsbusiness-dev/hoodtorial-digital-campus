@@ -1,10 +1,11 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Clock, BookOpen, ArrowRight, Lock } from "lucide-react";
+import { Clock, BookOpen, ArrowRight, Lock, CheckCircle2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { useRef } from "react";
+import { useEnrollments } from "@/hooks/useEnrollments";
 
 interface CourseCardProps {
   code: string;
@@ -32,6 +33,10 @@ export function CourseCard({
   isComingSoon = false,
 }: CourseCardProps) {
   const ref = useRef<HTMLAnchorElement>(null);
+  const { isEnrolled, getEnrollment } = useEnrollments();
+  
+  const enrolled = isEnrolled(code);
+  const enrollment = getEnrollment(code);
   
   // 3D tilt effect
   const x = useMotionValue(0);
@@ -105,7 +110,21 @@ export function CourseCard({
 
         {/* Header */}
         <div className="flex items-start justify-between mb-4 relative">
-          <span className="tag-sticker text-[10px]">{code}</span>
+          <div className="flex items-center gap-2">
+            <span className="tag-sticker text-[10px]">{code}</span>
+            {enrolled && enrollment?.status === "active" && (
+              <Badge className="bg-accent/20 text-accent border border-accent/50 text-[10px] font-bold">
+                <CheckCircle2 className="w-3 h-3 mr-1" />
+                Enrolled
+              </Badge>
+            )}
+            {enrollment?.status === "completed" && (
+              <Badge className="bg-primary/20 text-primary border border-primary/50 text-[10px] font-bold">
+                <CheckCircle2 className="w-3 h-3 mr-1" />
+                Completed
+              </Badge>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             {isComingSoon && (
               <Badge variant="outline" className="text-xs font-bold border-2 bg-muted/50 text-muted-foreground border-muted-foreground/50">
