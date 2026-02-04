@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
+import { useDemoModeContext } from "@/contexts/DemoModeContext";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
 type MembershipTier = Database["public"]["Enums"]["membership_tier"];
@@ -41,6 +42,7 @@ export interface StudentSummary {
   isBanned: boolean;
   bannedAt: string | null;
   banReason: string | null;
+  isDemo: boolean;
 }
 
 export interface StudentDetails extends StudentSummary {
@@ -51,6 +53,7 @@ export interface StudentDetails extends StudentSummary {
   bannedBy: string | null;
   progressData: ProgressEntry[];
   quizResultsData: QuizResultEntry[];
+  isDemo: boolean;
 }
 
 export interface ProgressEntry {
@@ -70,14 +73,23 @@ export interface QuizResultEntry {
 }
 
 export function useAdminStudents() {
+  const { showDemoData } = useDemoModeContext();
+
   return useQuery({
-    queryKey: ["admin-students"],
+    queryKey: ["admin-students", showDemoData],
     queryFn: async (): Promise<StudentSummary[]> => {
-      // Fetch all profiles with ban info
-      const { data: profiles, error: profilesError } = await supabase
+      // Build query with optional demo filtering
+      let query = supabase
         .from("profiles")
-        .select("user_id, display_name, avatar_url, location, membership_tier, subscription_status, trial_ends_at, enrolled_at, is_banned, banned_at, ban_reason")
+        .select("user_id, display_name, avatar_url, location, membership_tier, subscription_status, trial_ends_at, enrolled_at, is_banned, banned_at, ban_reason, is_demo")
         .order("enrolled_at", { ascending: false });
+
+      // Filter out demo users if showDemoData is false
+      if (!showDemoData) {
+        query = query.eq("is_demo", false);
+      }
+
+      const { data: profiles, error: profilesError } = await query;
 
       if (profilesError) throw profilesError;
 
@@ -167,6 +179,7 @@ export function useAdminStudents() {
           isBanned: profile.is_banned || false,
           bannedAt: profile.banned_at,
           banReason: profile.ban_reason,
+          isDemo: profile.is_demo || false,
         };
       });
 
@@ -304,6 +317,7 @@ export function useStudentDetails(userId: string | null) {
         bannedAt: profile.banned_at,
         banReason: profile.ban_reason,
         bannedBy: profile.banned_by,
+        isDemo: profile.is_demo || false,
         progressData: progress?.map((p) => ({
           watch_percentage: p.watch_percentage,
           watched_seconds: p.watched_seconds,
