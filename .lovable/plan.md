@@ -1,182 +1,122 @@
 
+# Fix Database Courses Display & Completion Badges in Student Center
 
-# Fix Demo User Filtering, Enrollment Slots, and Swap Limits
+## Problem Summary
 
-## Overview
+Two related issues in the Student Center:
 
-This plan addresses three issues that were reported as "reset":
+1. **Database-only courses not appearing**: Courses like "CIN-123 - Advanced VFX Tracking" that exist only in the database (not in static `courses.ts`) don't show up in the Active Courses section
+2. **Completed courses missing badges**: Progress calculation fails for database-only courses, so the 100% completion badge never displays
 
-1. **Admin User List Demo Filtering** - Add ability to filter out demo users in admin panels
-2. **Paid User Course Slots** - Ensure paid users get 3 active course slots (not 2)
-3. **Swap Limit** - Change from 2 swaps per enrollment to 1 swap per enrollment
+## Root Cause
 
----
-
-## Issue 1: Filter Demo Users in Admin Views
-
-Currently, the `useAllUsers` and `useAdminStudents` hooks fetch all profiles including demo users. We need to add demo filtering similar to how `useCommunityPosts` was updated.
-
-### Changes Required
-
-**File: `src/hooks/useAllUsers.ts`**
-- Import `useDemoModeContext` to access `showDemoData` setting
-- Add `is_demo` to the profile select query
-- Filter out demo users when `showDemoData` is false
-- Add `showDemoData` to the query key for proper cache invalidation
-- Export `isDemo` field in the `UserWithRoles` interface
-
-**File: `src/hooks/useAdminStudents.ts`**
-- Import `useDemoModeContext` to access `showDemoData` setting
-- Add `is_demo` to the profile select query
-- Filter out demo users when `showDemoData` is false
-- Add `showDemoData` to the query key
-- Add `isDemo` field to `StudentSummary` interface
-
----
-
-## Issue 2: Active Courses Showing 2 Instead of 3
-
-Looking at `useEnrollments.ts`, the logic appears correct:
+The Student Center uses `getCourseByCode()` from `src/data/courses.ts`, which only searches **static courses**. Database-only courses return `undefined` and get filtered out:
 
 ```typescript
-const MAX_ACTIVE_COURSES_PAID = 3;
-const MAX_ACTIVE_COURSES_TRIAL = 2;
-
-const maxCourses = isTestModeEnabled || isPaid ? MAX_ACTIVE_COURSES_PAID : MAX_ACTIVE_COURSES_TRIAL;
+// Current code in StudentCenter.tsx (line 70-75)
+const activeCourseDetails = activeEnrollments
+  .map((e) => {
+    const course = getCourseByCode(e.course_code);  // Returns undefined for DB-only courses!
+    return course ? { ...course, enrollment: e } : null;
+  })
+  .filter(Boolean);  // Removes all DB-only courses
 ```
 
-The issue is that `isPaid` from `useSubscription` might not be returning `true` when it should. Let me verify the conditions:
-
-```typescript
-const isPaid = useMemo(() => {
-  return (
-    subscription.status === "active" &&
-    (subscription.subscriptionEndsAt === null || subscription.subscriptionEndsAt > now)
-  );
-}, [subscription.status, subscription.subscriptionEndsAt]);
-```
-
-**Potential Issue:** If a user completes payment and their `subscription_status` is set to `"active"` but `subscription_ends_at` is set to a past date or not properly handled, they could be treated as trial users.
-
-### Changes Required
-
-**File: `src/hooks/useEnrollments.ts`**
-- Add debug logging to verify `isPaid` status (temporary)
-- Ensure the logic correctly identifies paid users
-- The current code looks correct, so this may be a data issue in the database
-
-**Verification Steps:**
-1. Check that after payment, the user's profile has `subscription_status = 'active'`
-2. Verify `subscription_ends_at` is either `null` or a future date
+Similarly, `getCourseProgress()` returns 0 for courses not found in static data.
 
 ---
 
-## Issue 3: Change Swap Limit from 2 to 1
+## Solution
 
-This is a simple constant change.
+Use the `useCourseStatus()` hook which already merges static courses with database courses. This hook:
+- Fetches all courses from the database
+- Merges them with static course data
+- Provides both `courses` (published only) and `allCourses` (all courses)
 
-### Changes Required
+### File Changes
 
-**File: `src/hooks/useEnrollments.ts`**
-- Change `MAX_SWAPS_PER_ENROLLMENT` from `2` to `1`
+**File: `src/pages/StudentCenter.tsx`**
 
-```typescript
-// Before
-const MAX_SWAPS_PER_ENROLLMENT = 2;
+1. **Import `useCourseStatus` hook**:
+   ```typescript
+   import { useCourseStatus } from "@/hooks/useCourseStatus";
+   ```
 
-// After
-const MAX_SWAPS_PER_ENROLLMENT = 1;
-```
+2. **Use the hook to get all courses**:
+   ```typescript
+   const { allCourses: allCoursesFromStatus, isLoading: coursesLoading } = useCourseStatus();
+   ```
+
+3. **Create a helper to find courses from merged list**:
+   ```typescript
+   const getCourse = (code: string) => {
+     return allCoursesFromStatus.find(c => c.code === code);
+   };
+   ```
+
+4. **Update `activeCourseDetails` to use the merged course list**:
+   ```typescript
+   const activeCourseDetails = activeEnrollments
+     .map((e) => {
+       const course = getCourse(e.course_code);
+       return course ? { ...course, enrollment: e } : null;
+     })
+     .filter(Boolean);
+   ```
+
+5. **Update `getCourseProgress()` to use the merged course list**:
+   ```typescript
+   const getCourseProgress = (courseCode: string) => {
+     const course = getCourse(courseCode);
+     if (!course) return 0;
+     
+     // For DB-only courses with no modules, check if there's any tracked progress
+     const totalLessons = course.modules?.length > 0 
+       ? getTotalLessonsCount(course) 
+       : 0;
+     const totalQuizzes = course.modules?.length > 0 
+       ? getTotalQuizzesCount(course) 
+       : 0;
+     // ... rest of progress calculation
+   };
+   ```
+
+6. **Handle loading state** (optional but recommended):
+   ```typescript
+   if (profileLoading || coursesLoading) {
+     return (/* loading UI */);
+   }
+   ```
 
 ---
 
-## Implementation Details
+## Additional Fix for Empty Modules
 
-### File 1: `src/hooks/useAllUsers.ts`
+Database-only courses may have empty `modules: []` arrays. The progress calculation needs to handle this:
+
+- If a course has no modules defined, check the enrollment status
+- If `enrollment.status === 'completed'`, show 100% progress
+- Otherwise, show 0% (since there's no content to track)
 
 ```typescript
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { Database } from "@/integrations/supabase/types";
-import { useDemoModeContext } from "@/contexts/DemoModeContext";
-
-type AppRole = Database["public"]["Enums"]["app_role"];
-
-export interface UserWithRoles {
-  id: string;
-  email: string;
-  displayName: string | null;
-  roles: AppRole[];
-  enrolledAt: string;
-  isDemo: boolean;  // NEW FIELD
-}
-
-export function useAllUsers() {
-  const { showDemoData } = useDemoModeContext();
+const getCourseProgress = (courseCode: string) => {
+  const course = getCourse(courseCode);
+  const enrollment = activeEnrollments.find(e => e.course_code === courseCode);
   
-  return useQuery({
-    queryKey: ["all-users", showDemoData],  // Include in query key
-    queryFn: async () => {
-      // Build query
-      let query = supabase
-        .from("profiles")
-        .select("user_id, display_name, enrolled_at, is_demo")
-        .order("enrolled_at", { ascending: false });
-
-      // Filter out demo users if showDemoData is false
-      if (!showDemoData) {
-        query = query.eq("is_demo", false);
-      }
-
-      const { data: profiles, error: profilesError } = await query;
-      if (profilesError) throw profilesError;
-
-      // ... rest of the hook logic with isDemo field added
-    },
-  });
-}
-```
-
-### File 2: `src/hooks/useAdminStudents.ts`
-
-```typescript
-// Add import
-import { useDemoModeContext } from "@/contexts/DemoModeContext";
-
-// Add to StudentSummary interface
-export interface StudentSummary {
-  // ... existing fields
-  isDemo: boolean;  // NEW FIELD
-}
-
-export function useAdminStudents() {
-  const { showDemoData } = useDemoModeContext();
+  // If enrollment is marked complete, always show 100%
+  if (enrollment?.status === 'completed') return 100;
   
-  return useQuery({
-    queryKey: ["admin-students", showDemoData],  // Include in query key
-    queryFn: async (): Promise<StudentSummary[]> => {
-      // Build query with demo filtering
-      let query = supabase
-        .from("profiles")
-        .select("user_id, display_name, avatar_url, location, membership_tier, subscription_status, trial_ends_at, enrolled_at, is_banned, banned_at, ban_reason, is_demo")
-        .order("enrolled_at", { ascending: false });
-
-      if (!showDemoData) {
-        query = query.eq("is_demo", false);
-      }
-
-      const { data: profiles, error: profilesError } = await query;
-      // ... rest with isDemo field added to return
-    },
-  });
-}
-```
-
-### File 3: `src/hooks/useEnrollments.ts`
-
-```typescript
-// Line 22: Change from 2 to 1
-const MAX_SWAPS_PER_ENROLLMENT = 1;
+  if (!course) return 0;
+  
+  // Handle DB-only courses with no modules
+  const totalLessons = course.modules?.length > 0 ? getTotalLessonsCount(course) : 0;
+  const totalQuizzes = course.modules?.length > 0 ? getTotalQuizzesCount(course) : 0;
+  const total = totalLessons + totalQuizzes;
+  
+  if (total === 0) return 0;
+  
+  // ... existing progress calculation
+};
 ```
 
 ---
@@ -185,19 +125,17 @@ const MAX_SWAPS_PER_ENROLLMENT = 1;
 
 | File | Change |
 |------|--------|
-| `src/hooks/useAllUsers.ts` | Add demo filtering with `showDemoData` toggle |
-| `src/hooks/useAdminStudents.ts` | Add demo filtering with `showDemoData` toggle, add `isDemo` to interface |
-| `src/hooks/useEnrollments.ts` | Change `MAX_SWAPS_PER_ENROLLMENT` from `2` to `1` |
+| `src/pages/StudentCenter.tsx` | Import and use `useCourseStatus()` instead of relying only on static `getCourseByCode()` |
+| `src/pages/StudentCenter.tsx` | Update `getCourseProgress()` to handle DB-only courses with empty modules |
+| `src/pages/StudentCenter.tsx` | Add `coursesLoading` to loading state check |
 
 ---
 
 ## Testing Checklist
 
 After implementation:
-1. Go to Admin Settings and toggle "Show Demo Data" off
-2. Navigate to User Manager - demo users should be hidden
-3. Toggle "Show Demo Data" on - demo users should appear
-4. Create a paid subscription user and verify they see 3 course slots
-5. Test course swapping - verify only 1 swap is allowed per enrollment
-6. Verify the swap messaging shows "0 swaps remaining" after the first swap
-
+1. Navigate to Student Center while enrolled in "Advanced VFX Tracking" (CIN-123) - course should now appear
+2. Verify course card displays correctly with proper title, department, and credits
+3. Check that progress calculation works for both static and database-only courses
+4. Complete a course and verify the green completion badge appears at 100%
+5. Test that the swap course dialog still shows database-only courses as options
