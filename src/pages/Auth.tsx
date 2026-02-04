@@ -209,12 +209,12 @@ export default function Auth() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1.5, delay: 2.5, ease: "easeOut" }}
-            className="text-center mb-6"
+            className="text-center mt-8 mb-6"
           >
             <img 
               src={logoUrl}
               alt="Hoodtorial University" 
-              className="h-56 md:h-72 w-auto mx-auto animate-logo-pulse"
+              className="h-72 md:h-96 w-auto mx-auto animate-logo-pulse"
             />
           </motion.div>
 
