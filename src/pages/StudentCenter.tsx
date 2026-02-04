@@ -1,7 +1,9 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { PageLayout } from "@/components/layout";
+import { StampBadge } from "@/components/ui/custom-badges";
 import { useAuth } from "@/contexts/AuthContext";
+import { format } from "date-fns";
 import { useProfileContext } from "@/contexts/ProfileContext";
 import { useQuizResults } from "@/hooks/useQuizResults";
 import { useUserProgress } from "@/hooks/useUserProgress";
@@ -85,6 +87,17 @@ export default function StudentCenter() {
 
   // Get enrolled course codes for swap dialog
   const enrolledCourseCodes = activeEnrollments.map((e) => e.course_code);
+
+  // Get completed course details with enrollment data
+  const completedCourseDetails = completedEnrollments
+    .map((e) => {
+      const course = getCourse(e.course_code);
+      return course ? { ...course, enrollment: e } : null;
+    })
+    .filter(Boolean);
+
+  // Total credits from completed courses
+  const totalCompletedCredits = completedCourseDetails.reduce((sum, c) => sum + (c?.credits || 0), 0);
 
   const getInitials = (name?: string | null) => {
     if (!name) return user?.email?.charAt(0).toUpperCase() || "S";
@@ -252,8 +265,66 @@ export default function StudentCenter() {
                   )}
                 </div>
               )}
-            </CardContent>
+          </CardContent>
           </Card>
+
+          {/* Achievements Section - Completed Courses */}
+          {completedEnrollments.length > 0 && (
+            <Card className="card-urban mb-8">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Trophy className="h-5 w-5 text-primary" />
+                  Your Achievements
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {completedCourseDetails.map((courseData) => (
+                    <div 
+                      key={courseData!.code}
+                      className="relative p-4 border-2 border-primary/50 bg-primary/5 rounded-lg text-center overflow-hidden group"
+                    >
+                      {/* Shimmer effect */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/10 to-transparent animate-[shimmer_3s_ease-in-out_infinite] pointer-events-none" />
+                      
+                      {/* Badge content */}
+                      <Award className="h-8 w-8 text-primary mx-auto mb-2" />
+                      <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">
+                        {courseData!.code}
+                      </span>
+                      <h4 className="font-bold text-sm mt-2 line-clamp-2">
+                        {courseData!.title}
+                      </h4>
+                      
+                      {/* Certification stamp */}
+                      <StampBadge variant="filled" className="mt-3">
+                        ✓ Certified
+                      </StampBadge>
+                      
+                      {/* Completion date */}
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {(courseData as any).enrollment.completed_at 
+                          ? format(new Date((courseData as any).enrollment.completed_at), 'MMM d, yyyy')
+                          : 'Completed'}
+                      </p>
+                      
+                      {/* Credits */}
+                      <p className="text-xs font-bold text-primary mt-1">
+                        {courseData!.credits} credits earned
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Summary */}
+                <div className="mt-6 pt-4 border-t border-border text-center">
+                  <p className="text-sm text-muted-foreground">
+                    You've earned <span className="font-bold text-primary">{totalCompletedCredits} credits</span> from {completedEnrollments.length} completed {completedEnrollments.length === 1 ? 'course' : 'courses'}!
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Quick Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
