@@ -1,55 +1,63 @@
 
 
-# Increase Video Upload Limit to 200MB for Homepage
+# Remove Countdown and Add Slower Fade-In for Login Page
 
 ## Overview
 
-Increase the maximum video file size limit from 50MB to 200MB for higher quality video uploads. This applies to the admin Site Customization panel where videos can be uploaded for the login/auth page background.
+Remove the film countdown animation and make the login section fade in more slowly to allow users to enjoy the intro video longer before the UI appears.
 
-**Note:** The current homepage video (`hero-video.mp4`) is a static asset bundled in the codebase, not uploaded via admin settings. This change will also extend the system to allow admins to customize the homepage hero video.
+## Current Behavior
+
+| Element | Current Delay | Duration |
+|---------|--------------|----------|
+| Countdown | Shows immediately | ~4.6 seconds total |
+| Logo | 3.5s delay | 0.5s fade |
+| University name | 3.7s delay | 0.5s fade |
+| Form card | 3.9s delay | 0.5s fade |
+
+## New Behavior
+
+| Element | New Delay | New Duration |
+|---------|----------|--------------|
+| Countdown | **REMOVED** | - |
+| Logo | 2.5s delay | 1.5s fade |
+| University name | 3.0s delay | 1.5s fade |
+| Form card | 3.5s delay | 1.5s fade |
+
+This gives ~3.5 seconds of pure video viewing before the form starts slowly fading in, with a longer 1.5s fade duration for a more cinematic reveal.
 
 ## Changes Required
 
-### 1. Update SiteCustomization.tsx
+### 1. Remove FilmCountdown from Auth.tsx
 
-Increase the video file size validation from 50MB to 200MB:
+- Remove the `<FilmCountdown />` component from the page
+- Remove the import statement
 
-| Current | New |
-|---------|-----|
-| `50 * 1024 * 1024` (50MB) | `200 * 1024 * 1024` (200MB) |
-| "Video must be under 50MB" | "Video must be under 200MB" |
-| "max 50MB" | "max 200MB" |
+### 2. Update Animation Timings
 
-### 2. Add Homepage Video Setting (Optional Enhancement)
-
-To allow the homepage video to also be customizable:
-
-**Database:** Add `homepage_video_url` to site_settings table
-
-**SiteCustomization.tsx:** Add a second video upload section for "Homepage Hero Video"
-
-**Index.tsx:** Fetch and use the custom homepage video URL with fallback to the static asset
+Adjust the Framer Motion transitions on each element:
+- Increase fade-in duration from 0.5s to 1.5s
+- Adjust delays to start at 2.5s and stagger 0.5s apart
+- Add easing for smoother cinematic feel
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/components/admin/SiteCustomization.tsx` | Change 50MB limit to 200MB, update help text |
+| `src/pages/Auth.tsx` | Remove FilmCountdown, update animation delays and durations |
 
-## Optional: Add Homepage Video Customization
+## Visual Timeline
 
-If you also want to make the homepage video editable via admin:
-
-| File | Changes |
-|------|---------|
-| Database migration | Add `homepage_video_url` column to site_settings |
-| `src/components/admin/SiteCustomization.tsx` | Add homepage video upload section |
-| `src/hooks/useSiteSettings.ts` | Include new setting |
-| `src/pages/Index.tsx` | Fetch custom video URL, fallback to static asset |
+```text
+0s                    2.5s        3.0s        3.5s        5s
+|------ Video Only ----|--- Logo ---|-- Title --|-- Form --|
+                       └── 1.5s fade in each ──┘
+```
 
 ## Expected Outcome
 
-1. Admins can upload videos up to 200MB for higher quality
-2. The UI shows the updated limit text: "max 200MB"
-3. (Optional) Homepage hero video can be customized via admin panel
+1. No countdown animation when page loads
+2. Video plays unobstructed for ~2.5 seconds
+3. Logo, title, and form fade in slowly over 1.5 seconds each
+4. More cinematic, elegant reveal of the login interface
 
