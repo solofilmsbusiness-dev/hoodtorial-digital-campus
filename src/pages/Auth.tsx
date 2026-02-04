@@ -209,7 +209,7 @@ export default function Auth() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1.5, delay: 2.5, ease: "easeOut" }}
-            className="text-center mt-12 mb-2"
+            className="text-center mt-12 -mb-24 md:-mb-36 relative z-10"
           >
             <img 
               src={logoUrl}
