@@ -3,13 +3,12 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ChatWidget } from "@/components/chat";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ProfileProvider } from "@/contexts/ProfileContext";
 import { TestModeProvider } from "@/contexts/TestModeContext";
 import { ProtectedRoute, AdminRoute, PaidRoute, AssessmentRequiredRoute } from "@/components/auth";
-import Index from "./pages/Index";
 import Degrees from "./pages/Degrees";
 import Academics from "./pages/Academics";
 import CourseDetail from "./pages/CourseDetail";
@@ -37,6 +36,21 @@ import Checkout from "./pages/Checkout";
 
 const queryClient = new QueryClient();
 
+// Root redirect component - always sends users to login or student center
+function RootRedirect() {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse text-primary font-bold text-xl">Loading...</div>
+      </div>
+    );
+  }
+  
+  return <Navigate to={user ? "/student" : "/auth"} replace />;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
@@ -49,7 +63,7 @@ const App = () => (
               <BrowserRouter>
                 <ChatWidget />
               <Routes>
-                <Route path="/" element={<Index />} />
+                <Route path="/" element={<RootRedirect />} />
                 <Route path="/degrees" element={<Degrees />} />
                 <Route path="/skill-tree/:path" element={<SkillTree />} />
                 <Route path="/academics" element={<Academics />} />
