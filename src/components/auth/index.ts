@@ -5,5 +5,6 @@ export { AssessmentRequiredRoute } from "./AssessmentRequiredRoute";
 export { FilmCountdown } from "./FilmCountdown";
 export { FilmOverlay } from "./FilmOverlay";
 export { RotatingQuotes } from "./RotatingQuotes";
+export { WelcomeHeadlines } from "./WelcomeHeadlines";
 export { SocialProof } from "./SocialProof";
 export { TermsAcceptanceModal } from "./TermsAcceptanceModal";
