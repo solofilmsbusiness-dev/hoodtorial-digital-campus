@@ -1,19 +1,19 @@
 
 
-# Increase Login Page Logo Size
+# Make Login Logo Much Bigger
 
 ## Overview
 
-Make the logo on the login screen significantly larger and more prominent to create a stronger visual impact when the page loads.
+The current logo size (`h-40 md:h-48` = 160px/192px) is still not prominent enough. Let's make it significantly larger to dominate the screen as the hero element.
 
 ## Current vs New Size
 
 | Property | Current | New |
 |----------|---------|-----|
-| Height | `h-24` (96px) | `h-40 md:h-48` (160px / 192px on desktop) |
-| Width | `w-auto` | `w-auto` (maintains aspect ratio) |
+| Height (mobile) | `h-40` (160px) | `h-56` (224px) |
+| Height (desktop) | `h-48` (192px) | `h-72` (288px) |
 
-The logo will be approximately **2x larger** on mobile and **2.5x larger** on desktop, making it a commanding presence as the first element that fades in.
+This makes the logo approximately **50% larger** than the current size and **3x larger** than the original.
 
 ## Changes Required
 
@@ -23,35 +23,29 @@ Update the logo image className:
 
 ```tsx
 // Current
-className="h-24 w-auto mx-auto animate-logo-pulse"
-
-// New
 className="h-40 md:h-48 w-auto mx-auto animate-logo-pulse"
+
+// New  
+className="h-56 md:h-72 w-auto mx-auto animate-logo-pulse"
 ```
 
-## Visual Impact
-
-The larger logo creates a more cinematic reveal sequence:
+## Visual Comparison
 
 ```text
-┌─────────────────────────────────────┐
-│                                     │
-│         [  LARGE LOGO  ]            │  ← 160-192px tall
-│                                     │
-│           HOODTORIAL                │
-│           UNIVERSITY                │
-│                                     │
-│      ┌─────────────────────┐        │
-│      │   Login Form Card   │        │
-│      └─────────────────────┘        │
-│                                     │
-└─────────────────────────────────────┘
+Before (h-40/h-48):          After (h-56/h-72):
+                             
+   ┌────────────┐               ┌──────────────────┐
+   │   LOGO     │               │                  │
+   │  160-192px │               │      LOGO        │
+   └────────────┘               │    224-288px     │
+                                │                  │
+                                └──────────────────┘
 ```
 
 ## Expected Outcome
 
-1. Logo is immediately eye-catching when it fades in
-2. Creates stronger brand presence
-3. Responsive sizing (slightly smaller on mobile, larger on desktop)
+1. Logo is much more commanding and eye-catching
+2. Creates a powerful first impression when it fades in
+3. Responsive sizing maintains proportions across devices
 4. Maintains the pulsing glow animation
 
