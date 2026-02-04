@@ -38,6 +38,9 @@ export interface StudentSummary {
   roles: AppRole[];
   enrollmentCount: number;
   quizStats: QuizStats;
+  isBanned: boolean;
+  bannedAt: string | null;
+  banReason: string | null;
 }
 
 export interface StudentDetails extends StudentSummary {
@@ -45,16 +48,35 @@ export interface StudentDetails extends StudentSummary {
   enrollments: StudentEnrollment[];
   assessmentResult: AssessmentResult | null;
   lessonsCompleted: number;
+  bannedBy: string | null;
+  progressData: ProgressEntry[];
+  quizResultsData: QuizResultEntry[];
+}
+
+export interface ProgressEntry {
+  watch_percentage: number | null;
+  watched_seconds: number | null;
+  completed: boolean;
+  course_code: string;
+  updated_at: string;
+}
+
+export interface QuizResultEntry {
+  score: number;
+  total_questions: number;
+  passed: boolean;
+  created_at: string;
+  course_code: string;
 }
 
 export function useAdminStudents() {
   return useQuery({
     queryKey: ["admin-students"],
     queryFn: async (): Promise<StudentSummary[]> => {
-      // Fetch all profiles
+      // Fetch all profiles with ban info
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
-        .select("user_id, display_name, avatar_url, location, membership_tier, subscription_status, trial_ends_at, enrolled_at")
+        .select("user_id, display_name, avatar_url, location, membership_tier, subscription_status, trial_ends_at, enrolled_at, is_banned, banned_at, ban_reason")
         .order("enrolled_at", { ascending: false });
 
       if (profilesError) throw profilesError;
@@ -142,6 +164,9 @@ export function useAdminStudents() {
             ...stats,
             passRate,
           },
+          isBanned: profile.is_banned || false,
+          bannedAt: profile.banned_at,
+          banReason: profile.ban_reason,
         };
       });
 
@@ -210,17 +235,24 @@ export function useStudentDetails(userId: string | null) {
 
       if (assessmentError) throw assessmentError;
 
-      // Fetch lesson completion count
+      // Fetch lesson progress with full data for analytics
       const { data: progress, error: progressError } = await supabase
         .from("user_progress")
-        .select("id")
-        .eq("user_id", userId)
-        .eq("completed", true);
+        .select("id, watch_percentage, watched_seconds, completed, course_code, updated_at")
+        .eq("user_id", userId);
 
       if (progressError) throw progressError;
 
+      // Fetch quiz results with full data for analytics
+      const { data: fullQuizResults, error: fullQuizError } = await supabase
+        .from("quiz_results")
+        .select("score, total_questions, passed, created_at, course_code")
+        .eq("user_id", userId);
+
+      if (fullQuizError) throw fullQuizError;
+
       // Calculate quiz stats
-      const quizStats = quizResults?.reduce(
+      const quizStats = fullQuizResults?.reduce(
         (acc, { passed }) => {
           acc.totalAttempts += 1;
           if (passed) acc.passed += 1;
@@ -233,6 +265,9 @@ export function useStudentDetails(userId: string | null) {
       const passRate = quizStats.totalAttempts > 0 
         ? Math.round((quizStats.passed / quizStats.totalAttempts) * 100) 
         : 0;
+
+      // Count completed lessons
+      const lessonsCompleted = progress?.filter((p) => p.completed).length || 0;
 
       // Fetch email for this user
       const { data: email } = await supabase.rpc("get_user_email", { _user_id: userId });
@@ -264,7 +299,25 @@ export function useStudentDetails(userId: string | null) {
               totalScore: assessment.total_score,
             }
           : null,
-        lessonsCompleted: progress?.length || 0,
+        lessonsCompleted,
+        isBanned: profile.is_banned || false,
+        bannedAt: profile.banned_at,
+        banReason: profile.ban_reason,
+        bannedBy: profile.banned_by,
+        progressData: progress?.map((p) => ({
+          watch_percentage: p.watch_percentage,
+          watched_seconds: p.watched_seconds,
+          completed: p.completed,
+          course_code: p.course_code,
+          updated_at: p.updated_at,
+        })) || [],
+        quizResultsData: fullQuizResults?.map((r) => ({
+          score: r.score,
+          total_questions: r.total_questions,
+          passed: r.passed,
+          created_at: r.created_at,
+          course_code: r.course_code,
+        })) || [],
       };
     },
     enabled: !!userId,
