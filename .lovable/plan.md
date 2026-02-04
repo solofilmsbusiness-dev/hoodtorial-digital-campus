@@ -1,166 +1,124 @@
 
-# Add Completed Courses Achievements Section
 
-## Overview
+# Auto-Complete Courses When Reaching 100% Progress
 
-Display completed courses (100% progress) as celebratory badges/awards in a dedicated section of the Student Center. This creates a sense of accomplishment and showcases the student's earned credentials.
+## Problem
 
----
+When students complete all lessons and pass all quizzes in a course, the progress shows as 100% visually, but:
+- The enrollment `status` remains "active" in the database
+- The course doesn't appear in the "Your Achievements" section
+- There's no automatic mechanism to mark the course as "completed"
 
-## Design
+Currently, the `completeCourse()` function exists in `useEnrollments` but is never called.
 
-### New "Achievements" Section
+## Solution
 
-Add a new section between "Active Courses" and "Quick Stats" that displays completed courses as award badges:
+Add automatic course completion detection that triggers when:
+1. A quiz is passed (in case it's the final quiz/exam)
+2. A lesson is marked complete (in case there are no quizzes or it's the last piece of content)
 
-```text
-┌─────────────────────────────────────────────────────────────────────┐
-│  🏆 Achievements                                                    │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐              │
-│  │   🎬         │  │   🎥         │  │   🎞️         │              │
-│  │              │  │              │  │              │              │
-│  │   CIN-101    │  │   DIR-201    │  │   PRO-301    │              │
-│  │   Intro to   │  │   Scene      │  │   Advanced   │              │
-│  │   Cinema     │  │   Direction  │  │   Production │              │
-│  │              │  │              │  │              │              │
-│  │ ✓ CERTIFIED  │  │ ✓ CERTIFIED  │  │ ✓ CERTIFIED  │              │
-│  │ Jan 15, 2025 │  │ Jan 20, 2025 │  │ Feb 1, 2025  │              │
-│  │   3 credits  │  │   4 credits  │  │   5 credits  │              │
-│  └──────────────┘  └──────────────┘  └──────────────┘              │
-│                                                                     │
-│  "You've earned 12 credits from 3 completed courses!"               │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-### Badge Design
-
-Each completed course badge will feature:
-- Urban "CERTIFIED" stamp (using the existing `StampBadge` component)
-- Course code prominently displayed
-- Course title
-- Completion date (`completed_at` from enrollment)
-- Credits earned
-- Green/gold accent styling for celebration
-- Trophy or award icon
+After each of these events, check if progress has reached 100%, and if so, call `completeCourse()`.
 
 ---
 
-## Implementation
+## Changes Overview
 
-### File: `src/pages/StudentCenter.tsx`
+### File 1: `src/pages/CourseDetail.tsx`
 
-**Changes:**
+1. **Destructure `completeCourse` from `useEnrollments`**
 
-1. **Import StampBadge component** for the certification stamp styling
-
-2. **Create completedCourseDetails array** (similar to activeCourseDetails):
+2. **Create a completion check function** that calculates current progress and triggers course completion:
    ```typescript
-   const completedCourseDetails = completedEnrollments
-     .map((e) => {
-       const course = getCourse(e.course_code);
-       return course ? { ...course, enrollment: e } : null;
-     })
-     .filter(Boolean);
+   const checkAndCompleteCourse = useCallback(async () => {
+     if (!enrolled || !course) return;
+     
+     // Calculate current completion
+     let completedLessons = 0;
+     let completedQuizzes = 0;
+     
+     course.modules.forEach((module) => {
+       module.lessons.forEach((lesson) => {
+         if (isLessonCompleted(lesson.id)) completedLessons++;
+       });
+       if (module.quiz && isQuizActuallyPassed(module.quiz.id)) completedQuizzes++;
+     });
+     
+     if (course.finalExam && isQuizActuallyPassed(course.finalExam.id)) {
+       completedQuizzes++;
+     }
+
+     const totalLessons = getTotalLessonsCount(course);
+     const totalQuizzes = getTotalQuizzesCount(course);
+     const total = totalLessons + totalQuizzes;
+     const completed = completedLessons + completedQuizzes;
+     
+     if (completed >= total && total > 0) {
+       await completeCourse(course.code);
+     }
+   }, [course, enrolled, isLessonCompleted, isQuizActuallyPassed, completeCourse]);
    ```
 
-3. **Add new "Achievements" Card section** after "Active Courses":
-   - Trophy icon header with "Your Achievements" title
-   - Grid of completed course badges
-   - Each badge shows:
-     - Course code in a tag
-     - Course title
-     - "CERTIFIED" stamp badge (rotated, urban style)
-     - Completion date formatted nicely
-     - Credits earned
-   - Summary text showing total credits earned from completed courses
-   - Empty state: "Complete your first course to earn an achievement badge!"
+3. **Update `handleQuizComplete`** to check for course completion after a quiz is passed:
+   ```typescript
+   const handleQuizComplete = async (score: number, passed: boolean) => {
+     toast({...});
+     
+     if (passed) {
+       // Small delay to allow quiz result to be saved and state to update
+       setTimeout(() => {
+         checkAndCompleteCourse();
+       }, 500);
+     }
+   };
+   ```
 
-4. **Style the badges** with:
-   - Gold/green gradient border or accent
-   - Celebratory shimmer animation (similar to EnrollmentManagementCard)
-   - Urban brutalist styling consistent with the app
-
----
-
-## Component Structure
-
-```tsx
-{/* Achievements Section - Completed Courses */}
-{completedEnrollments.length > 0 && (
-  <Card className="card-urban mb-8">
-    <CardHeader>
-      <CardTitle className="flex items-center gap-2">
-        <Trophy className="h-5 w-5 text-primary" />
-        Your Achievements
-      </CardTitle>
-    </CardHeader>
-    <CardContent>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {completedCourseDetails.map((courseData) => (
-          <div 
-            key={courseData!.code}
-            className="relative p-4 border-2 border-primary/50 bg-primary/5 rounded-lg text-center overflow-hidden"
-          >
-            {/* Shimmer effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/10 to-transparent animate-[shimmer_3s_ease-in-out_infinite] pointer-events-none" />
-            
-            {/* Badge content */}
-            <Award className="h-8 w-8 text-primary mx-auto mb-2" />
-            <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">
-              {courseData!.code}
-            </span>
-            <h4 className="font-bold text-sm mt-2 line-clamp-2">
-              {courseData!.title}
-            </h4>
-            
-            {/* Certification stamp */}
-            <StampBadge variant="filled" className="mt-3">
-              ✓ Certified
-            </StampBadge>
-            
-            {/* Completion date */}
-            <p className="text-xs text-muted-foreground mt-2">
-              {formatDate((courseData as any).enrollment.completed_at)}
-            </p>
-            
-            {/* Credits */}
-            <p className="text-xs font-bold text-primary mt-1">
-              {courseData!.credits} credits earned
-            </p>
-          </div>
-        ))}
-      </div>
-      
-      {/* Summary */}
-      <div className="mt-6 pt-4 border-t border-border text-center">
-        <p className="text-sm text-muted-foreground">
-          You've earned <span className="font-bold text-primary">
-            {completedCourseDetails.reduce((sum, c) => sum + c!.credits, 0)} credits
-          </span> from {completedEnrollments.length} completed {completedEnrollments.length === 1 ? 'course' : 'courses'}!
-        </p>
-      </div>
-    </CardContent>
-  </Card>
-)}
-```
+4. **Update `handleMarkComplete`** (lesson completion) to also check for course completion:
+   ```typescript
+   const handleMarkComplete = async () => {
+     // ... existing logic ...
+     
+     await markLessonComplete(course.code, activeLesson.id, 0);
+     
+     // Check if course is now complete
+     setTimeout(() => {
+       checkAndCompleteCourse();
+     }, 500);
+   };
+   ```
 
 ---
 
-## Summary of Changes
+## Technical Details
+
+### Why `isQuizActuallyPassed` instead of `isQuizPassed`?
+
+The `isQuizPassed` function in `useLessonProgress` returns `true` in Test Mode for all quizzes (for unlock bypass). But for completion calculation, we need the **real** status, so we use `isQuizActuallyPassed` which always returns the actual database value.
+
+### Why use `setTimeout`?
+
+The quiz results and lesson progress are saved asynchronously. A small delay ensures the progress data has been updated before we calculate the total completion percentage.
+
+### Handling Edge Cases
+
+- **Courses with no modules**: If `total === 0`, don't mark as complete
+- **Already completed**: `completeCourse` should handle idempotency (won't fail if called twice)
+- **Empty courses**: The check `total > 0` prevents auto-completing courses with no content
+
+---
+
+## Summary
 
 | File | Changes |
 |------|---------|
-| `src/pages/StudentCenter.tsx` | Import `StampBadge`, create `completedCourseDetails` array, add new "Achievements" section with celebratory badge cards |
+| `src/pages/CourseDetail.tsx` | Add `completeCourse` from useEnrollments, create `checkAndCompleteCourse()` helper, call it after quiz pass and lesson completion |
 
 ---
 
-## Technical Notes
+## Expected Behavior After Fix
 
-- Uses existing `completedEnrollments` from `useEnrollments()` hook (already has `completed_at` timestamp)
-- Leverages `getCourse()` helper to get full course data from merged database + static list
-- Applies consistent urban brutalist styling with shimmer animations
-- Conditionally renders only when there are completed courses
-- Shows empty state in Quick Stats to encourage completion
+1. Student completes final quiz of CIN-123 → quiz passes
+2. System checks progress: 2/2 lessons complete + 1/1 quiz passed = 100%
+3. `completeCourse("CIN-123")` is called automatically
+4. Database updates enrollment `status` from "active" to "completed"
+5. Student sees CIN-123 in the "Your Achievements" section with certification badge
 
