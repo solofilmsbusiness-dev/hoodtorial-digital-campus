@@ -89,6 +89,7 @@ const transformDbCourse = (dbCourse: any): Course => {
 
 const CourseDetail = () => {
   const { code } = useParams<{ code: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
   
   // Fetch course from database first
@@ -296,7 +297,6 @@ const CourseDetail = () => {
   const totalLessons = getTotalLessonsCount(course);
   const totalQuizzes = getTotalQuizzesCount(course);
 
-  const navigate = useNavigate();
 
   const handleEnroll = async () => {
     if (!user) {
