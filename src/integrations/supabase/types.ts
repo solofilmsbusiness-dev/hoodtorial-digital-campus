@@ -350,9 +350,11 @@ export type Database = {
           completed_at: string | null
           course_code: string
           created_at: string
+          dropped_at: string | null
           enrolled_at: string
           id: string
           status: string
+          swaps_used: number
           updated_at: string
           user_id: string
         }
@@ -360,9 +362,11 @@ export type Database = {
           completed_at?: string | null
           course_code: string
           created_at?: string
+          dropped_at?: string | null
           enrolled_at?: string
           id?: string
           status?: string
+          swaps_used?: number
           updated_at?: string
           user_id: string
         }
@@ -370,9 +374,11 @@ export type Database = {
           completed_at?: string | null
           course_code?: string
           created_at?: string
+          dropped_at?: string | null
           enrolled_at?: string
           id?: string
           status?: string
+          swaps_used?: number
           updated_at?: string
           user_id?: string
         }

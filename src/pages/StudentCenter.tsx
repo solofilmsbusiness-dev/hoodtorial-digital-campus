@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { PageLayout } from "@/components/layout";
 import { useAuth } from "@/contexts/AuthContext";
@@ -7,11 +7,13 @@ import { useQuizResults } from "@/hooks/useQuizResults";
 import { useUserProgress } from "@/hooks/useUserProgress";
 import { useAssessmentResults } from "@/hooks/useAssessmentResults";
 import { useEnrollments } from "@/hooks/useEnrollments";
-import { courses } from "@/data/courses";
+import { useLessonProgress } from "@/hooks/useLessonProgress";
+import { courses, getCourseByCode } from "@/data/courses";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ContactAdminSheet } from "@/components/support";
+import { EnrollmentManagementCard } from "@/components/enrollment";
 import { 
   BookOpen, 
   Trophy, 
@@ -38,7 +40,18 @@ export default function StudentCenter() {
   const { getTotalCredits, getCompletedCourses } = useUserProgress();
   const [supportSheetOpen, setSupportSheetOpen] = useState(false);
   const { latestResult, hasCompletedAssessment } = useAssessmentResults();
-  const { activeEnrollments, completedEnrollments, slotsRemaining, maxSlots } = useEnrollments();
+  const { 
+    activeEnrollments, 
+    completedEnrollments, 
+    slotsRemaining, 
+    maxSlots,
+    isInGracePeriod,
+    getGracePeriodRemaining,
+    getRemainingSwaps,
+    maxSwapsPerEnrollment,
+    dropCourse,
+    swapCourse,
+  } = useEnrollments();
 
   const totalCredits = getTotalCredits();
   const completedCourses = getCompletedCourses();
@@ -53,10 +66,16 @@ export default function StudentCenter() {
     .filter(Boolean)
     .slice(0, 3) || [];
 
-  // Get active course details
+  // Get active course details with full course data
   const activeCourseDetails = activeEnrollments
-    .map((e) => courses.find((c) => c.code === e.course_code))
+    .map((e) => {
+      const course = getCourseByCode(e.course_code);
+      return course ? { ...course, enrollment: e } : null;
+    })
     .filter(Boolean);
+
+  // Get enrolled course codes for swap dialog
+  const enrolledCourseCodes = activeEnrollments.map((e) => e.course_code);
 
   const getInitials = (name?: string | null) => {
     if (!name) return user?.email?.charAt(0).toUpperCase() || "S";
@@ -69,6 +88,27 @@ export default function StudentCenter() {
       case "sophomore": return "bg-accent text-accent-foreground";
       default: return "bg-secondary text-secondary-foreground";
     }
+  };
+
+  // Calculate course progress for each enrollment
+  const getCourseProgress = (courseCode: string) => {
+    const course = getCourseByCode(courseCode);
+    if (!course) return 0;
+    
+    // This is a simplified calculation - ideally we'd use the same logic as CourseDetail
+    const totalLessons = course.modules?.reduce((acc, m) => acc + (m.lessons?.length || 0), 0) || 0;
+    if (totalLessons === 0) return 0;
+    
+    // Return a placeholder - in a real implementation, we'd calculate from lesson progress
+    return 0;
+  };
+
+  const handleDropCourse = async (courseCode: string) => {
+    await dropCourse(courseCode);
+  };
+
+  const handleSwapCourse = async (fromCode: string, toCode: string) => {
+    await swapCourse(fromCode, toCode);
   };
 
   if (profileLoading) {
@@ -120,7 +160,7 @@ export default function StudentCenter() {
             </Link>
           </div>
 
-          {/* Active Courses Section */}
+          {/* Active Courses Section - Now with management */}
           <Card className="card-urban mb-8">
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -150,31 +190,31 @@ export default function StudentCenter() {
                   </Link>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {activeCourseDetails.map((course) => (
-                    <Link
-                      key={course!.code}
-                      to={`/course/${course!.code}`}
-                      className="group p-4 border-2 border-border hover:border-primary bg-card/50 hover:bg-primary/5 transition-all"
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-1">
-                          {course!.code}
-                        </span>
-                        <Play className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                      </div>
-                      <h4 className="font-bold text-foreground mb-1 line-clamp-2">
-                        {course!.title}
-                      </h4>
-                      <p className="text-xs text-muted-foreground">
-                        {course!.department} • {course!.credits} credits
-                      </p>
-                    </Link>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {activeCourseDetails.map((courseData) => (
+                    <EnrollmentManagementCard
+                      key={courseData!.code}
+                      course={{
+                        code: courseData!.code,
+                        title: courseData!.title,
+                        department: courseData!.department,
+                        credits: courseData!.credits,
+                      }}
+                      enrolledAt={(courseData as any).enrollment.enrolled_at}
+                      progress={getCourseProgress(courseData!.code)}
+                      isInGracePeriod={isInGracePeriod(courseData!.code)}
+                      gracePeriodHoursRemaining={getGracePeriodRemaining(courseData!.code)}
+                      remainingSwaps={getRemainingSwaps(courseData!.code)}
+                      maxSwaps={maxSwapsPerEnrollment}
+                      enrolledCourseCodes={enrolledCourseCodes}
+                      onDrop={handleDropCourse}
+                      onSwap={handleSwapCourse}
+                    />
                   ))}
                   {slotsRemaining > 0 && (
                     <Link
                       to="/academics"
-                      className="p-4 border-2 border-dashed border-border hover:border-primary flex flex-col items-center justify-center text-center text-muted-foreground hover:text-primary transition-all"
+                      className="p-4 border-2 border-dashed border-border hover:border-primary flex flex-col items-center justify-center text-center text-muted-foreground hover:text-primary transition-all min-h-[180px] rounded-lg"
                     >
                       <BookOpen className="h-8 w-8 mb-2 opacity-50" />
                       <span className="text-sm font-medium">
