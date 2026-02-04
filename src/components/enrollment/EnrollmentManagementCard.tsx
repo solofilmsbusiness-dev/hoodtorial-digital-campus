@@ -15,7 +15,8 @@ import {
   ArrowRightLeft, 
   Trash2, 
   Clock,
-  RefreshCw
+  RefreshCw,
+  CheckCircle2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DropCourseDialog } from "./DropCourseDialog";
@@ -129,9 +130,21 @@ export function EnrollmentManagementCard({
           <div className="mb-3">
             <div className="flex justify-between text-xs mb-1">
               <span className="text-muted-foreground">Progress</span>
-              <span className="font-medium text-foreground">{progress}%</span>
+              <span className={cn(
+                "font-medium flex items-center gap-1",
+                progress === 100 ? "text-green-500" : "text-foreground"
+              )}>
+                {progress === 100 && <CheckCircle2 className="w-3 h-3" />}
+                {progress}%
+              </span>
             </div>
-            <Progress value={progress} className="h-1.5" />
+            <Progress 
+              value={progress} 
+              className={cn(
+                "h-1.5",
+                progress === 100 && "[&>div]:bg-green-500"
+              )} 
+            />
           </div>
 
           {/* Meta info */}
