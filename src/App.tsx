@@ -45,8 +45,8 @@ const App = () => (
             <TestModeProvider>
               <Toaster />
               <Sonner />
-            <ChatWidget />
-            <BrowserRouter>
+              <BrowserRouter>
+                <ChatWidget />
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/degrees" element={<Degrees />} />
@@ -127,10 +127,10 @@ const App = () => (
                     <SupportManager />
                   </AdminRoute>
                 } />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
         </TestModeProvider>
       </ProfileProvider>
     </AuthProvider>
