@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { NotificationBell } from "@/components/community/NotificationBell";
+import { LivePresenceIndicator } from "@/components/animations/LivePresenceIndicator";
 import logo from "@/assets/logo.png";
 
 const navLinks = [
@@ -22,7 +23,6 @@ const navLinks = [
   { name: "About", href: "/about" },
   { name: "Shop", href: "/shop" },
 ];
-
 export function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
   const { user, signOut } = useAuth();
@@ -70,7 +70,8 @@ export function Navigation() {
             ))}
           </div>
 
-          <div className="hidden md:flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-3">
+            <LivePresenceIndicator />
             {user ? (
               <>
                 <NotificationBell />

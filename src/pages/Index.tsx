@@ -1,18 +1,18 @@
 import { PageLayout, Section, SectionHeader } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { CourseCard, TierCard } from "@/components/cards";
+import { ScrollReveal, CountingNumber } from "@/components/animations";
 import { Link } from "react-router-dom";
 import { ArrowRight, Play, Trophy, Target, Sparkles, Film, GraduationCap, Check } from "lucide-react";
 import heroLogo from "@/assets/hero-logo.png";
 import heroVideo from "@/assets/hero-video.mp4";
 
 const stats = [
-  { value: "12", label: "Courses" },
-  { value: "60", label: "Credits" },
-  { value: "4", label: "Departments" },
+  { value: 12, label: "Courses" },
+  { value: 60, label: "Credits" },
+  { value: 4, label: "Departments" },
   { value: "∞", label: "Potential" },
 ];
-
 const features = [
   {
     icon: Film,
@@ -181,14 +181,20 @@ const Index = () => {
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-20 w-full">
               {stats.map((stat, index) => (
-                <div 
-                  key={index} 
-                  className="text-center p-6 border-2 border-border bg-card/30 backdrop-blur-sm animate-reveal hover:border-primary transition-all duration-300"
-                  style={{ animationDelay: `${0.6 + index * 0.1}s` }}
+                <ScrollReveal
+                  key={index}
+                  delay={0.1 * index}
+                  direction="up"
                 >
-                  <div className="text-4xl md:text-5xl font-black text-primary mb-1">{stat.value}</div>
-                  <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{stat.label}</div>
-                </div>
+                  <div 
+                    className="text-center p-6 border-2 border-border bg-card/30 backdrop-blur-sm hover:border-primary transition-all duration-300"
+                  >
+                    <div className="text-4xl md:text-5xl font-black text-primary mb-1">
+                      <CountingNumber value={stat.value} duration={2} />
+                    </div>
+                    <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{stat.label}</div>
+                  </div>
+                </ScrollReveal>
               ))}
             </div>
           </div>
@@ -213,17 +219,19 @@ const Index = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {features.map((feature, index) => (
-            <div 
-              key={index} 
-              className="card-urban group animate-reveal"
-              style={{ animationDelay: `${index * 0.15}s` }}
+            <ScrollReveal
+              key={index}
+              delay={0.15 * index}
+              direction="up"
             >
-              <div className="w-16 h-16 mb-6 bg-primary/10 border-2 border-primary/50 flex items-center justify-center group-hover:bg-primary group-hover:border-primary transition-all duration-500">
-                <feature.icon className="h-8 w-8 text-primary group-hover:text-primary-foreground transition-colors duration-500" />
+              <div className="card-urban group h-full">
+                <div className="w-16 h-16 mb-6 bg-primary/10 border-2 border-primary/50 flex items-center justify-center group-hover:bg-primary group-hover:border-primary transition-all duration-500">
+                  <feature.icon className="h-8 w-8 text-primary group-hover:text-primary-foreground transition-colors duration-500" />
+                </div>
+                <h3 className="heading-4 text-foreground mb-3 group-hover:text-primary transition-colors duration-300">{feature.title}</h3>
+                <p className="text-muted-foreground">{feature.description}</p>
               </div>
-              <h3 className="heading-4 text-foreground mb-3 group-hover:text-primary transition-colors duration-300">{feature.title}</h3>
-              <p className="text-muted-foreground">{feature.description}</p>
-            </div>
+            </ScrollReveal>
           ))}
         </div>
       </Section>
@@ -238,24 +246,26 @@ const Index = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {graduationSteps.map((step, index) => (
-            <div 
-              key={index} 
-              className="relative text-center group animate-reveal"
-              style={{ animationDelay: `${index * 0.1}s` }}
+            <ScrollReveal
+              key={index}
+              delay={0.1 * index}
+              direction="up"
             >
-              {/* Connector line */}
-              {index < graduationSteps.length - 1 && (
-                <div className="hidden md:block absolute top-8 left-1/2 w-full h-0.5 bg-gradient-to-r from-primary/50 to-transparent" />
-              )}
-              
-              {/* Number */}
-              <div className="relative z-10 w-16 h-16 mx-auto mb-4 bg-primary text-primary-foreground flex items-center justify-center font-black text-xl border-2 border-primary group-hover:bg-transparent group-hover:text-primary transition-all duration-500 group-hover:animate-glow-pulse">
-                {step.number}
+              <div className="relative text-center group">
+                {/* Connector line */}
+                {index < graduationSteps.length - 1 && (
+                  <div className="hidden md:block absolute top-8 left-1/2 w-full h-0.5 bg-gradient-to-r from-primary/50 to-transparent" />
+                )}
+                
+                {/* Number */}
+                <div className="relative z-10 w-16 h-16 mx-auto mb-4 bg-primary text-primary-foreground flex items-center justify-center font-black text-xl border-2 border-primary group-hover:bg-transparent group-hover:text-primary transition-all duration-500 group-hover:animate-glow-pulse">
+                  {step.number}
+                </div>
+                
+                <h3 className="heading-4 text-foreground mb-2">{step.title}</h3>
+                <p className="text-sm text-muted-foreground">{step.description}</p>
               </div>
-              
-              <h3 className="heading-4 text-foreground mb-2">{step.title}</h3>
-              <p className="text-sm text-muted-foreground">{step.description}</p>
-            </div>
+            </ScrollReveal>
           ))}
         </div>
       </Section>
@@ -270,9 +280,9 @@ const Index = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {featuredCourses.map((course, index) => (
-            <div key={index} className="animate-reveal" style={{ animationDelay: `${index * 0.15}s` }}>
+            <ScrollReveal key={index} delay={0.15 * index} direction="up">
               <CourseCard {...course} />
-            </div>
+            </ScrollReveal>
           ))}
         </div>
 
@@ -369,9 +379,9 @@ const Index = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
           {membershipTiers.map((tier, index) => (
-            <div key={index} className="animate-reveal" style={{ animationDelay: `${index * 0.15}s` }}>
+            <ScrollReveal key={index} delay={0.15 * index} direction="up">
               <TierCard {...tier} />
-            </div>
+            </ScrollReveal>
           ))}
         </div>
       </Section>
