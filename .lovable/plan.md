@@ -1,56 +1,60 @@
 
-# Position Logo Directly Above University Text
+# Overlap Logo onto University Text by 35%
 
 ## Overview
 
-Remove the spacing between the logo and the "Hoodtorial University" text so they appear as a unified header element, with the logo sitting directly on top of the title.
+Make the logo overlap/sit on top of the "Hoodtorial University" text by approximately 35% of its height, creating a layered, unified brand header where the logo descends into the text.
 
-## Current Issue
+## Approach
 
-The logo has `mt-8 mb-6` spacing which creates a gap between it and the university name, making them feel like separate elements.
+Use a negative bottom margin on the logo container to pull it down and overlap the text below. With the logo being `h-72` (288px) on mobile and `h-96` (384px) on desktop, a 35% overlap means:
+
+- Mobile: 288px × 35% = ~100px overlap → `-mb-24` to `-mb-28`
+- Desktop: 384px × 35% = ~135px overlap → `md:-mb-36`
 
 ## Changes Required
 
 ### src/pages/Auth.tsx
 
-**Line 212** - Remove top margin and reduce bottom margin to bring logo closer to text:
+**Line 212** - Add negative bottom margin for overlap:
 ```tsx
 // Current
-className="text-center mt-8 mb-6"
+className="text-center mt-12 mb-2"
 
 // New
-className="text-center mb-2"
+className="text-center mt-12 -mb-24 md:-mb-36 relative z-10"
 ```
 
-This removes the `mt-8` (which pushed the logo down) and changes `mb-6` to `mb-2` (tighter spacing to the text below).
+The `relative z-10` ensures the logo stays on top of the text layer.
 
 ## Visual Layout
 
 ```text
 Before:                          After:
                                  
-     ┌────────────┐                  ┌────────────┐
-     │   LOGO     │                  │   LOGO     │
-     └────────────┘                  └────────────┘
-           ↓                              ↓
-     (mb-6 = 24px gap)              (mb-2 = 8px gap)
-           ↓                              ↓
-       HOODTORIAL                     HOODTORIAL
-       UNIVERSITY                     UNIVERSITY
+     ┌────────────┐              ┌────────────┐
+     │   LOGO     │              │   LOGO     │
+     └────────────┘              │            │
+          ↓                      └──────┬─────┘
+     (small gap)                        │ 35% overlap
+          ↓                             ↓
+       HOODTORIAL                    HOODTORIAL
+       UNIVERSITY                    UNIVERSITY
                                  
-    (feels separate)              (feels unified)
+    (stacked)                    (overlapping)
 ```
 
 ## Technical Details
 
 | Property | Current | New |
 |----------|---------|-----|
-| Top margin | `mt-8` (32px) | None |
-| Bottom margin | `mb-6` (24px) | `mb-2` (8px) |
+| Bottom margin | `mb-2` (8px) | `-mb-24 md:-mb-36` (~100-144px overlap) |
+| Z-index | none | `z-10` (logo on top) |
+| Position | static | `relative` (for z-index) |
 
 ## Expected Outcome
 
-1. Logo appears directly above the text as a unified header
-2. Logo and title feel like one cohesive brand element
-3. Maintains the large logo size (h-72 / h-96)
-4. Preserves the staggered fade-in animations
+1. Logo descends ~35% into the university text
+2. Creates a dramatic, layered brand header effect
+3. Logo appears to "crown" the text below
+4. Maintains responsive behavior on mobile/desktop
