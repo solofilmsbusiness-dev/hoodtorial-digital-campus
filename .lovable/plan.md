@@ -1,145 +1,132 @@
 
 
-# Fix Enrollment Slot Limit Not Updating After Subscription Upgrade
+# Fix Admin Student Details & Enhance Test Mode
 
-## Problem
+## Problems Identified
 
-When a student upgrades from trial to a paid subscription, their enrollment slot limit stays stuck at 2 (trial limit) instead of increasing to 3 (paid limit). The extra slot only appears after refreshing the page.
+### 1. Admin Student Details Not Loading/Working
+The admin panel cannot perform certain student management actions due to missing RLS policies:
 
-### Root Cause
+| Action | Table | Missing Policy |
+|--------|-------|----------------|
+| Reset All Progress | user_progress | Admins cannot DELETE |
+| Ban/Unban User | profiles | Admins cannot UPDATE |
 
-The `useSubscription` hook fetches subscription data from the database in a `useEffect` that only runs when the `user` changes. After a successful payment:
+### 2. Test Mode Limited Functionality
+Currently, Test Mode only provides:
+- Toggle via Command Palette (Cmd+K)
+- Auto-pass quizzes
+- Bypass video progress
 
-1. The `Checkout.tsx` page updates the profile with `subscription_status: "active"` in the database
-2. But `useSubscription` doesn't know to refetch the data
-3. The `isPaid` value stays `false` (stale data)
-4. `useEnrollments` uses this stale `isPaid` value, keeping `maxCourses` at 2
+Missing features:
+- No dedicated settings panel in Admin Settings
+- No visibility into what features are bypassed
+- No quick actions for common test scenarios
 
 ---
 
 ## Solution
 
-Add a `refetch` function to `useSubscription` and call it after successful payment in `Checkout.tsx`. This ensures the subscription state is immediately updated when a user upgrades.
+### Part 1: Fix RLS Policies for Admin Student Management
 
----
+Add missing policies to enable admin control:
 
-## Implementation
+```sql
+-- Allow admins to delete user progress (for reset functionality)
+CREATE POLICY "Admins can delete user progress"
+  ON user_progress FOR DELETE
+  USING (has_role(auth.uid(), 'admin'::app_role));
 
-### File 1: `src/hooks/useSubscription.ts`
-
-**Changes:**
-
-1. Extract the fetch logic into a reusable function
-2. Expose a `refetch` function that can be called externally
-3. Use `useCallback` to memoize the fetch function
-
-```typescript
-// Add useCallback to imports
-import { useEffect, useState, useMemo, useCallback } from "react";
-
-// Inside the hook:
-const fetchSubscription = useCallback(async () => {
-  if (!user) return;
-  
-  try {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("subscription_status, trial_started_at, trial_ends_at, subscription_started_at, subscription_ends_at, terms_accepted_at")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (error) throw error;
-
-    if (data) {
-      setSubscription({
-        status: data.subscription_status as SubscriptionStatus,
-        // ... rest of state update
-      });
-    }
-  } catch (err) {
-    setError(err as Error);
-  } finally {
-    setLoading(false);
-  }
-}, [user]);
-
-// Use it in useEffect
-useEffect(() => {
-  if (!user) {
-    // reset state
-    return;
-  }
-  fetchSubscription();
-}, [user, fetchSubscription]);
-
-// Return refetch in the hook
-return {
-  ...subscription,
-  refetch: fetchSubscription,  // <-- Add this
-  // ...rest
-};
+-- Allow admins to update profiles (for ban/unban functionality)
+CREATE POLICY "Admins can update profiles"
+  ON profiles FOR UPDATE
+  USING (has_role(auth.uid(), 'admin'::app_role));
 ```
 
-### File 2: `src/pages/Checkout.tsx`
+### Part 2: Enhanced Test Mode Panel in Admin Settings
 
-**Changes:**
+Add a dedicated "Test Mode" card in Admin Settings with:
 
-1. Get the `refetch` function from `useSubscription`
-2. Call `refetch()` after successful payment before showing the success modal
+1. **Master Toggle** - Enable/disable test mode
+2. **Feature Toggles**:
+   - Auto-Pass Quizzes (skip quiz questions)
+   - Bypass Video Progress (mark videos complete instantly)
+   - Bypass Enrollment Check (access any course without enrolling)
+   - Bypass Subscription Check (access paid content without subscription)
+3. **Quick Actions**:
+   - Reset My Progress (clear current admin's test data)
+   - Simulate Student View (see what students see)
+
+### Part 3: Improved Test Mode Context
+
+Extend the context to support new bypass options:
 
 ```typescript
-// Add useSubscription import
-import { useSubscription } from "@/hooks/useSubscription";
-
-// Inside component:
-const { refetch: refetchSubscription } = useSubscription();
-
-// In handlePayment, after successful database update:
-try {
-  const { error } = await supabase
-    .from("profiles")
-    .update({...})
-    .eq("user_id", user!.id);
-
-  if (error) throw error;
-
-  // Refresh subscription state so hooks get updated values
-  await refetchSubscription();
-
-  setIsProcessing(false);
-  setShowSuccess(true);
-} catch (err) {
-  // ...
+interface TestModeState {
+  enabled: boolean;
+  autoPassQuizzes: boolean;
+  bypassVideoProgress: boolean;
+  bypassEnrollmentCheck: boolean;  // NEW
+  skipProgressionLocks: boolean;   // NEW
 }
 ```
 
 ---
 
-## Data Flow After Fix
+## Implementation Details
+
+### File 1: Database Migration
+Add RLS policies for admin student management
+
+### File 2: `src/contexts/TestModeContext.tsx`
+- Add new bypass options to state
+- Update localStorage key structure
+- Add new setter functions
+
+### File 3: `src/hooks/useTestMode.ts`
+- Expose new bypass helpers
+- Add computed values for new features
+
+### File 4: `src/pages/admin/AdminSettings.tsx`
+- Add new "Test Mode" card section
+- Include master toggle with warning indicator
+- Feature toggles with descriptions
+- Visual indicator showing test mode is active
+
+### File 5: `src/components/admin/TestModeBanner.tsx`
+- Show which features are currently bypassed
+- Add quick disable button for each feature
+
+---
+
+## UI Design for Test Mode Settings Card
 
 ```text
-Payment Success
-      |
-      v
-Update profiles table (subscription_status: "active")
-      |
-      v
-Call refetchSubscription()
-      |
-      v
-useSubscription fetches new data
-      |
-      v
-isPaid = true (updated)
-      |
-      v
-useEnrollments recalculates maxCourses
-      |
-      v
-maxCourses = 3 (paid limit)
-      |
-      v
-UI shows 3 slots available
+┌─────────────────────────────────────────────┐
+│  🧪 Test Mode                       [ACTIVE]│
+│  Bypass content restrictions for testing    │
+├─────────────────────────────────────────────┤
+│                                             │
+│  ⚠️ Test Mode Active                        │
+│  Content restrictions are currently bypassed│
+│                                             │
+│  ─────────────────────────────────────────  │
+│                                             │
+│  Features:                                  │
+│                                             │
+│  Auto-Pass Quizzes              [  ON  ]    │
+│  Skip quiz questions and auto-pass          │
+│                                             │
+│  Bypass Video Progress          [  ON  ]    │
+│  Mark videos complete instantly             │
+│                                             │
+│  Bypass Enrollment Check        [  OFF ]    │
+│  Access courses without enrolling           │
+│                                             │
+│  Skip Progression Locks         [  OFF ]    │
+│  Access all content regardless of progress  │
+│                                             │
+└─────────────────────────────────────────────┘
 ```
 
 ---
@@ -148,15 +135,18 @@ UI shows 3 slots available
 
 | File | Change |
 |------|--------|
-| `src/hooks/useSubscription.ts` | Add `refetch` function and expose it in return value |
-| `src/pages/Checkout.tsx` | Import `useSubscription`, call `refetch()` after payment success |
+| Database Migration | Add 2 new RLS policies for user_progress and profiles |
+| `src/contexts/TestModeContext.tsx` | Add new bypass options and setters |
+| `src/hooks/useTestMode.ts` | Expose new bypass helpers |
+| `src/pages/admin/AdminSettings.tsx` | Add Test Mode settings card |
+| `src/components/admin/TestModeBanner.tsx` | Show active bypasses and quick toggles |
 
 ---
 
-## Additional Benefit
+## Security Considerations
 
-This `refetch` pattern can be reused for other scenarios where subscription status might change, such as:
-- After cancellation
-- After renewal
-- When returning from an external payment provider
+- RLS policies use `has_role()` function which is `SECURITY DEFINER` to prevent recursion
+- Test mode state is stored in localStorage with admin check on load
+- Test mode automatically disables if user loses admin status
+- All test mode features require verified admin role from database, not client storage
 
