@@ -178,11 +178,117 @@ export function useAdminQuizManagement() {
     }
   }, [queryClient]);
 
+  // Delete all enrollments for a user (expel from all classes)
+  const deleteAllEnrollments = useCallback(async (userId: string) => {
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("enrollments")
+        .delete()
+        .eq("user_id", userId);
+
+      if (error) throw error;
+
+      // Invalidate queries
+      queryClient.invalidateQueries({ queryKey: ["admin-student-detail", userId] });
+      queryClient.invalidateQueries({ queryKey: ["admin-students"] });
+      
+      return { success: true };
+    } catch (error) {
+      return { success: false, error };
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [queryClient]);
+
+  // Delete all progress for a user (reset all lesson progress)
+  const deleteAllProgress = useCallback(async (userId: string) => {
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("user_progress")
+        .delete()
+        .eq("user_id", userId);
+
+      if (error) throw error;
+
+      // Invalidate queries
+      queryClient.invalidateQueries({ queryKey: ["admin-student-detail", userId] });
+      queryClient.invalidateQueries({ queryKey: ["admin-students"] });
+      
+      return { success: true };
+    } catch (error) {
+      return { success: false, error };
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [queryClient]);
+
+  // Ban a user
+  const banUser = useCallback(async (userId: string, reason: string, bannedBy: string) => {
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          is_banned: true,
+          banned_at: new Date().toISOString(),
+          banned_by: bannedBy,
+          ban_reason: reason,
+        })
+        .eq("user_id", userId);
+
+      if (error) throw error;
+
+      // Invalidate queries
+      queryClient.invalidateQueries({ queryKey: ["admin-student-detail", userId] });
+      queryClient.invalidateQueries({ queryKey: ["admin-students"] });
+      
+      return { success: true };
+    } catch (error) {
+      return { success: false, error };
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [queryClient]);
+
+  // Unban a user
+  const unbanUser = useCallback(async (userId: string) => {
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          is_banned: false,
+          banned_at: null,
+          banned_by: null,
+          ban_reason: null,
+        })
+        .eq("user_id", userId);
+
+      if (error) throw error;
+
+      // Invalidate queries
+      queryClient.invalidateQueries({ queryKey: ["admin-student-detail", userId] });
+      queryClient.invalidateQueries({ queryKey: ["admin-students"] });
+      
+      return { success: true };
+    } catch (error) {
+      return { success: false, error };
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [queryClient]);
+
   return {
     fetchQuizResultsWithAnswers,
     deleteQuizResult,
     deleteAllQuizResults,
     deleteEnrollment,
+    deleteAllEnrollments,
+    deleteAllProgress,
+    banUser,
+    unbanUser,
     isDeleting,
   };
 }

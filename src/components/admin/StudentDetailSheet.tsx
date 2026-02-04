@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { format } from "date-fns";
 import {
   Sheet,
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,6 +29,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
+  Ban,
   BookOpen,
   CheckCircle,
   ChevronDown,
@@ -38,13 +40,19 @@ import {
   Loader2,
   MapPin,
   RotateCcw,
+  ShieldOff,
   Target,
   Trash2,
   Trophy,
   XCircle,
+  AlertTriangle,
 } from "lucide-react";
 import { useStudentDetails, type StudentDetails } from "@/hooks/useAdminStudents";
 import { useAdminQuizManagement, type QuizResultDetail } from "@/hooks/useAdminQuizManagement";
+import { useStudentAnalytics } from "@/hooks/useStudentAnalytics";
+import { useAuth } from "@/contexts/AuthContext";
+import { StudentAnalyticsCard } from "./StudentAnalyticsCard";
+import { AIInsightsPanel } from "./AIInsightsPanel";
 import { Database } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -61,7 +69,11 @@ interface StudentDetailSheetProps {
 type ConfirmAction = 
   | { type: "removeEnrollment"; courseCode: string; courseTitle: string }
   | { type: "resetQuiz"; quizResultId: string; quizId: string }
-  | { type: "resetAllQuizzes" };
+  | { type: "resetAllQuizzes" }
+  | { type: "removeAllEnrollments" }
+  | { type: "resetAllProgress" }
+  | { type: "banUser" }
+  | { type: "unbanUser" };
 
 export function StudentDetailSheet({
   userId,
@@ -69,12 +81,17 @@ export function StudentDetailSheet({
   onOpenChange,
   onManageRoles,
 }: StudentDetailSheetProps) {
+  const { user: currentUser } = useAuth();
   const { data: student, isLoading, refetch } = useStudentDetails(userId);
   const { 
     fetchQuizResultsWithAnswers, 
     deleteQuizResult, 
     deleteAllQuizResults, 
     deleteEnrollment,
+    deleteAllEnrollments,
+    deleteAllProgress,
+    banUser,
+    unbanUser,
     isDeleting 
   } = useAdminQuizManagement();
 
@@ -82,6 +99,22 @@ export function StudentDetailSheet({
   const [loadingQuizResults, setLoadingQuizResults] = useState(false);
   const [expandedQuizzes, setExpandedQuizzes] = useState<Set<string>>(new Set());
   const [confirmDialog, setConfirmDialog] = useState<ConfirmAction | null>(null);
+  const [banReason, setBanReason] = useState("");
+
+  // Calculate analytics from student data
+  const analyticsInput = useMemo(() => {
+    if (!student) return null;
+    return {
+      progress: student.progressData || [],
+      quizResults: student.quizResultsData || [],
+      enrollments: student.enrollments.map((e) => ({
+        course_code: e.courseCode,
+        status: e.status,
+      })),
+    };
+  }, [student]);
+
+  const metrics = useStudentAnalytics(analyticsInput);
 
   // Fetch detailed quiz results when sheet opens
   useEffect(() => {
@@ -97,6 +130,7 @@ export function StudentDetailSheet({
     } else {
       setQuizResults([]);
       setExpandedQuizzes(new Set());
+      setBanReason("");
     }
   }, [open, userId, fetchQuizResultsWithAnswers]);
 
@@ -187,6 +221,43 @@ export function StudentDetailSheet({
         } else {
           throw result.error;
         }
+      } else if (confirmDialog.type === "removeAllEnrollments") {
+        const result = await deleteAllEnrollments(userId);
+        if (result.success) {
+          toast.success("Removed all enrollments");
+          refetch();
+        } else {
+          throw result.error;
+        }
+      } else if (confirmDialog.type === "resetAllProgress") {
+        const result = await deleteAllProgress(userId);
+        if (result.success) {
+          toast.success("All lesson progress reset");
+          refetch();
+        } else {
+          throw result.error;
+        }
+      } else if (confirmDialog.type === "banUser") {
+        if (!banReason.trim()) {
+          toast.error("Please provide a reason for the ban");
+          return;
+        }
+        const result = await banUser(userId, banReason.trim(), currentUser?.id || "");
+        if (result.success) {
+          toast.success("User has been banned");
+          setBanReason("");
+          refetch();
+        } else {
+          throw result.error;
+        }
+      } else if (confirmDialog.type === "unbanUser") {
+        const result = await unbanUser(userId);
+        if (result.success) {
+          toast.success("User has been unbanned");
+          refetch();
+        } else {
+          throw result.error;
+        }
       }
     } catch (error) {
       console.error("Action failed:", error);
@@ -220,6 +291,36 @@ export function StudentDetailSheet({
           ) : student ? (
             <ScrollArea className="h-[calc(100vh-120px)] mt-6 pr-4">
               <div className="space-y-6">
+                {/* Banned Banner */}
+                {student.isBanned && (
+                  <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20">
+                    <div className="flex items-start gap-3">
+                      <Ban className="h-5 w-5 text-destructive mt-0.5" />
+                      <div className="flex-1">
+                        <p className="font-medium text-destructive">Account Banned</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {student.banReason || "No reason provided"}
+                        </p>
+                        {student.bannedAt && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Banned on {format(new Date(student.bannedAt), "MMM d, yyyy")}
+                          </p>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-2"
+                          onClick={() => setConfirmDialog({ type: "unbanUser" })}
+                          disabled={isDeleting}
+                        >
+                          <ShieldOff className="h-4 w-4 mr-1.5" />
+                          Unban User
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Profile Header */}
                 <div className="flex items-start gap-4">
                   <Avatar className="h-16 w-16">
@@ -252,6 +353,12 @@ export function StudentDetailSheet({
                           {role}
                         </Badge>
                       ))}
+                      {student.isBanned && (
+                        <Badge variant="destructive">
+                          <Ban className="h-3 w-3 mr-1" />
+                          Banned
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -261,6 +368,21 @@ export function StudentDetailSheet({
                 )}
 
                 <Separator />
+
+                {/* Learning Analytics */}
+                {metrics && (
+                  <>
+                    <StudentAnalyticsCard metrics={metrics} />
+                    <Separator />
+                    <AIInsightsPanel
+                      studentName={student.displayName || "Student"}
+                      studentId={student.id}
+                      metrics={metrics}
+                      enrolledCourses={student.enrollments.map((e) => e.courseCode)}
+                    />
+                    <Separator />
+                  </>
+                )}
 
                 {/* Subscription Status */}
                 <div className="space-y-2">
@@ -326,10 +448,24 @@ export function StudentDetailSheet({
 
                 {/* Enrolled Courses with Remove Action */}
                 <div className="space-y-2">
-                  <h4 className="font-medium flex items-center gap-2">
-                    <BookOpen className="h-4 w-4" />
-                    Enrolled Courses ({student.enrollments.length})
-                  </h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium flex items-center gap-2">
+                      <BookOpen className="h-4 w-4" />
+                      Enrolled Courses ({student.enrollments.length})
+                    </h4>
+                    {student.enrollments.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => setConfirmDialog({ type: "removeAllEnrollments" })}
+                        disabled={isDeleting}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                        Remove All
+                      </Button>
+                    )}
+                  </div>
                   {student.enrollments.length > 0 ? (
                     <div className="space-y-2">
                       {student.enrollments.map((enrollment) => (
@@ -542,11 +678,23 @@ export function StudentDetailSheet({
                     </p>
                   )}
 
-                  <div className="p-3 rounded-lg bg-muted/50">
-                    <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                    <div className="flex items-center gap-2 text-sm">
                       <span className="text-muted-foreground">Lessons Completed</span>
                       <span className="font-medium">{student.lessonsCompleted}</span>
                     </div>
+                    {student.lessonsCompleted > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => setConfirmDialog({ type: "resetAllProgress" })}
+                        disabled={isDeleting}
+                      >
+                        <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                        Reset Progress
+                      </Button>
+                    )}
                   </div>
                 </div>
 
@@ -566,6 +714,16 @@ export function StudentDetailSheet({
                       View Public Profile
                     </a>
                   </Button>
+                  {!student.isBanned && (
+                    <Button
+                      variant="destructive"
+                      onClick={() => setConfirmDialog({ type: "banUser" })}
+                      disabled={isDeleting}
+                    >
+                      <Ban className="h-4 w-4 mr-2" />
+                      Ban User
+                    </Button>
+                  )}
                 </div>
               </div>
             </ScrollArea>
@@ -585,36 +743,80 @@ export function StudentDetailSheet({
               {confirmDialog?.type === "removeEnrollment" && "Remove Enrollment"}
               {confirmDialog?.type === "resetQuiz" && "Reset Quiz Result"}
               {confirmDialog?.type === "resetAllQuizzes" && "Reset All Quiz Results"}
+              {confirmDialog?.type === "removeAllEnrollments" && "Remove All Enrollments"}
+              {confirmDialog?.type === "resetAllProgress" && "Reset All Progress"}
+              {confirmDialog?.type === "banUser" && "Ban User"}
+              {confirmDialog?.type === "unbanUser" && "Unban User"}
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirmDialog?.type === "removeEnrollment" && (
-                <>
-                  Are you sure you want to remove this student from{" "}
-                  <strong>{confirmDialog.courseTitle}</strong>? This action cannot be undone.
-                  The student's progress data will be preserved.
-                </>
-              )}
-              {confirmDialog?.type === "resetQuiz" && (
-                <>
-                  Are you sure you want to reset the quiz result for{" "}
-                  <strong>{confirmDialog.quizId}</strong>? This will delete this attempt and allow
-                  the student to retake the quiz.
-                </>
-              )}
-              {confirmDialog?.type === "resetAllQuizzes" && (
-                <>
-                  <strong className="text-destructive">Warning:</strong> This will delete ALL quiz
-                  results for this student. This action cannot be undone.
-                </>
-              )}
+            <AlertDialogDescription asChild>
+              <div>
+                {confirmDialog?.type === "removeEnrollment" && (
+                  <>
+                    Are you sure you want to remove this student from{" "}
+                    <strong>{confirmDialog.courseTitle}</strong>? This action cannot be undone.
+                    The student's progress data will be preserved.
+                  </>
+                )}
+                {confirmDialog?.type === "resetQuiz" && (
+                  <>
+                    Are you sure you want to reset the quiz result for{" "}
+                    <strong>{confirmDialog.quizId}</strong>? This will delete this attempt and allow
+                    the student to retake the quiz.
+                  </>
+                )}
+                {confirmDialog?.type === "resetAllQuizzes" && (
+                  <>
+                    <strong className="text-destructive">Warning:</strong> This will delete ALL quiz
+                    results for this student. This action cannot be undone.
+                  </>
+                )}
+                {confirmDialog?.type === "removeAllEnrollments" && (
+                  <>
+                    <strong className="text-destructive">Warning:</strong> This will remove the student
+                    from ALL courses. They will lose access to all enrolled content.
+                  </>
+                )}
+                {confirmDialog?.type === "resetAllProgress" && (
+                  <>
+                    <strong className="text-destructive">Warning:</strong> This will reset ALL lesson
+                    progress for this student. They will need to rewatch all content.
+                  </>
+                )}
+                {confirmDialog?.type === "banUser" && (
+                  <div className="space-y-3">
+                    <p>
+                      Banning this user will block their access to the platform. Their data will be
+                      preserved but they will not be able to log in.
+                    </p>
+                    <div>
+                      <label className="text-sm font-medium">Ban Reason (required)</label>
+                      <Textarea
+                        value={banReason}
+                        onChange={(e) => setBanReason(e.target.value)}
+                        placeholder="Enter reason for ban..."
+                        className="mt-1.5"
+                      />
+                    </div>
+                  </div>
+                )}
+                {confirmDialog?.type === "unbanUser" && (
+                  <>
+                    Are you sure you want to unban this user? They will regain access to the platform.
+                  </>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmAction}
-              disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting || (confirmDialog?.type === "banUser" && !banReason.trim())}
+              className={cn(
+                confirmDialog?.type === "unbanUser" 
+                  ? "" 
+                  : "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              )}
             >
               {isDeleting ? (
                 <>

@@ -45,6 +45,8 @@ import {
   Trophy,
   MapPin,
   Download,
+  Ban,
+  ShieldOff,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Database } from "@/integrations/supabase/types";
@@ -299,45 +301,55 @@ export default function UserManager() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredStudents.map((student) => (
-                  <TableRow key={student.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleViewDetails(student.id)}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className={`h-10 w-10 ${getStatusIndicator(student.subscriptionStatus, student.trialEndsAt)}`}>
-                          <AvatarImage src={student.avatarUrl || undefined} />
-                          <AvatarFallback className="bg-primary text-primary-foreground">
-                            {getInitials(student.displayName, student.id)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium truncate">
-                              {student.displayName || "No name"}
-                            </p>
-                            {student.id === currentUser?.id && (
-                              <span className="text-xs text-muted-foreground">(you)</span>
+                  filteredStudents.map((student) => (
+                    <TableRow key={student.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleViewDetails(student.id)}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="relative">
+                            <Avatar className={`h-10 w-10 ${getStatusIndicator(student.subscriptionStatus, student.trialEndsAt)}`}>
+                              <AvatarImage src={student.avatarUrl || undefined} />
+                              <AvatarFallback className="bg-primary text-primary-foreground">
+                                {getInitials(student.displayName, student.id)}
+                              </AvatarFallback>
+                            </Avatar>
+                            {student.isBanned && (
+                              <div className="absolute -bottom-1 -right-1 bg-destructive rounded-full p-0.5">
+                                <Ban className="h-3 w-3 text-destructive-foreground" />
+                              </div>
                             )}
                           </div>
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                            {student.location ? (
-                              <>
-                                <MapPin className="h-3 w-3" />
-                                <span className="truncate max-w-[150px]">{student.location}</span>
-                              </>
-                            ) : (
-                              <span className="text-muted-foreground/50">—</span>
-                            )}
-                          </div>
-                          <div className="flex gap-1 mt-1 flex-wrap md:hidden">
-                            {student.roles.map((role) => (
-                              <Badge key={role} variant={getRoleBadgeVariant(role)} className="text-xs">
-                                {role}
-                              </Badge>
-                            ))}
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className={`font-medium truncate ${student.isBanned ? "text-muted-foreground line-through" : ""}`}>
+                                {student.displayName || "No name"}
+                              </p>
+                              {student.id === currentUser?.id && (
+                                <span className="text-xs text-muted-foreground">(you)</span>
+                              )}
+                              {student.isBanned && (
+                                <Badge variant="destructive" className="text-xs">Banned</Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              {student.location ? (
+                                <>
+                                  <MapPin className="h-3 w-3" />
+                                  <span className="truncate max-w-[150px]">{student.location}</span>
+                                </>
+                              ) : (
+                                <span className="text-muted-foreground/50">—</span>
+                              )}
+                            </div>
+                            <div className="flex gap-1 mt-1 flex-wrap md:hidden">
+                              {student.roles.map((role) => (
+                                <Badge key={role} variant={getRoleBadgeVariant(role)} className="text-xs">
+                                  {role}
+                                </Badge>
+                              ))}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </TableCell>
+                      </TableCell>
                     <TableCell className="hidden md:table-cell">
                       <span className="font-medium">{student.enrollmentCount}</span>
                     </TableCell>

@@ -567,6 +567,9 @@ export type Database = {
         Row: {
           avatar_border_style: string | null
           avatar_url: string | null
+          ban_reason: string | null
+          banned_at: string | null
+          banned_by: string | null
           bio: string | null
           camera_gear: string | null
           cover_banner_url: string | null
@@ -579,6 +582,7 @@ export type Database = {
           imdb_url: string | null
           influences: string | null
           instagram_url: string | null
+          is_banned: boolean
           location: string | null
           membership_tier: Database["public"]["Enums"]["membership_tier"]
           portfolio_url: string | null
@@ -599,6 +603,9 @@ export type Database = {
         Insert: {
           avatar_border_style?: string | null
           avatar_url?: string | null
+          ban_reason?: string | null
+          banned_at?: string | null
+          banned_by?: string | null
           bio?: string | null
           camera_gear?: string | null
           cover_banner_url?: string | null
@@ -611,6 +618,7 @@ export type Database = {
           imdb_url?: string | null
           influences?: string | null
           instagram_url?: string | null
+          is_banned?: boolean
           location?: string | null
           membership_tier?: Database["public"]["Enums"]["membership_tier"]
           portfolio_url?: string | null
@@ -631,6 +639,9 @@ export type Database = {
         Update: {
           avatar_border_style?: string | null
           avatar_url?: string | null
+          ban_reason?: string | null
+          banned_at?: string | null
+          banned_by?: string | null
           bio?: string | null
           camera_gear?: string | null
           cover_banner_url?: string | null
@@ -643,6 +654,7 @@ export type Database = {
           imdb_url?: string | null
           influences?: string | null
           instagram_url?: string | null
+          is_banned?: boolean
           location?: string | null
           membership_tier?: Database["public"]["Enums"]["membership_tier"]
           portfolio_url?: string | null
