@@ -1,60 +1,76 @@
 
-# Overlap Logo onto University Text by 35%
+# Resize Logo and Overlap onto University Text
 
 ## Overview
 
-Make the logo overlap/sit on top of the "Hoodtorial University" text by approximately 35% of its height, creating a layered, unified brand header where the logo descends into the text.
+Two adjustments to the logo:
+1. **Make logo 35% smaller** - reduce from current size to approximately 65% of original
+2. **Overlap 30% onto text** - logo descends into "Hoodtorial University" title
 
-## Approach
+## Size Calculations
 
-Use a negative bottom margin on the logo container to pull it down and overlap the text below. With the logo being `h-72` (288px) on mobile and `h-96` (384px) on desktop, a 35% overlap means:
+### Current vs New Logo Size
 
-- Mobile: 288px × 35% = ~100px overlap → `-mb-24` to `-mb-28`
-- Desktop: 384px × 35% = ~135px overlap → `md:-mb-36`
+| Breakpoint | Current | 35% Smaller | Tailwind Class |
+|------------|---------|-------------|----------------|
+| Mobile | `h-72` (288px) | ~187px | `h-48` (192px) |
+| Desktop | `h-96` (384px) | ~250px | `h-64` (256px) |
+
+### Overlap Calculations
+
+With the new smaller sizes, 30% overlap means:
+- Mobile: 192px × 30% = ~58px → `-mb-14` (56px)
+- Desktop: 256px × 30% = ~77px → `md:-mb-20` (80px)
 
 ## Changes Required
 
 ### src/pages/Auth.tsx
 
-**Line 212** - Add negative bottom margin for overlap:
+**Line 212** - Add negative margin for overlap:
 ```tsx
 // Current
 className="text-center mt-12 mb-2"
 
-// New
-className="text-center mt-12 -mb-24 md:-mb-36 relative z-10"
+// New  
+className="text-center mt-12 -mb-14 md:-mb-20 relative z-10"
 ```
 
-The `relative z-10` ensures the logo stays on top of the text layer.
+**Line 217** - Reduce logo size:
+```tsx
+// Current
+className="h-72 md:h-96 w-auto mx-auto animate-logo-pulse"
+
+// New
+className="h-48 md:h-64 w-auto mx-auto animate-logo-pulse"
+```
 
 ## Visual Layout
 
 ```text
 Before:                          After:
                                  
-     ┌────────────┐              ┌────────────┐
-     │   LOGO     │              │   LOGO     │
-     └────────────┘              │            │
-          ↓                      └──────┬─────┘
-     (small gap)                        │ 35% overlap
-          ↓                             ↓
-       HOODTORIAL                    HOODTORIAL
-       UNIVERSITY                    UNIVERSITY
-                                 
-    (stacked)                    (overlapping)
+┌──────────────────┐             ┌────────────┐
+│                  │             │   LOGO     │  ← 35% smaller
+│   LARGE LOGO     │             │  (smaller) │
+│                  │             └─────┬──────┘
+└──────────────────┘                   │ 30% overlap
+        ↓                              ↓
+   HOODTORIAL                     HOODTORIAL
+   UNIVERSITY                     UNIVERSITY
 ```
 
-## Technical Details
+## Technical Summary
 
 | Property | Current | New |
 |----------|---------|-----|
-| Bottom margin | `mb-2` (8px) | `-mb-24 md:-mb-36` (~100-144px overlap) |
-| Z-index | none | `z-10` (logo on top) |
-| Position | static | `relative` (for z-index) |
+| Logo height (mobile) | `h-72` (288px) | `h-48` (192px) |
+| Logo height (desktop) | `h-96` (384px) | `h-64` (256px) |
+| Bottom margin | `mb-2` | `-mb-14 md:-mb-20` |
+| Z-index | none | `z-10` |
 
 ## Expected Outcome
 
-1. Logo descends ~35% into the university text
-2. Creates a dramatic, layered brand header effect
-3. Logo appears to "crown" the text below
-4. Maintains responsive behavior on mobile/desktop
+1. Logo is approximately 35% smaller than before
+2. Logo overlaps the university text by ~30%
+3. Creates a cohesive, layered brand header
+4. Maintains responsive sizing and animations
