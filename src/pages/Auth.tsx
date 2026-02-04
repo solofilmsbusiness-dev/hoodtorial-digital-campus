@@ -14,6 +14,7 @@ import { motion } from "framer-motion";
 import { SocialProof } from "@/components/auth/SocialProof";
 import { FilmOverlay } from "@/components/auth/FilmOverlay";
 import { TermsAcceptanceModal } from "@/components/auth/TermsAcceptanceModal";
+import { WelcomeHeadlines } from "@/components/auth/WelcomeHeadlines";
 
 const emailSchema = z.string().email("Please enter a valid email address");
 const passwordSchema = z.string().min(4, "Password must be at least 4 characters");
@@ -207,6 +208,11 @@ export default function Auth() {
             .eq("user_id", data.user.id)
             .maybeSingle();
           
+          // Store user name for personalized welcome on next visit
+          if (profile?.display_name) {
+            localStorage.setItem('hoodtorial-last-user', profile.display_name);
+          }
+          
           // Check if user has completed assessment
           const { data: assessmentResults } = await supabase
             .from("assessment_results")
@@ -346,22 +352,7 @@ export default function Auth() {
             <div className="absolute -inset-[1px] bg-gradient-to-r from-primary via-neon-purple to-primary rounded-lg opacity-30 blur-sm animate-border-flow" />
             
             <div className="relative backdrop-blur-xl bg-card/70 border border-border/50 rounded-lg p-6 md:p-8 shadow-2xl">
-              <div className="text-center mb-6">
-                <h2 
-                  key={isSignUp ? 'signup' : 'signin'} 
-                  className="heading-4 text-foreground"
-                >
-                  {isSignUp ? "Join the University" : "Welcome Back"}
-                </h2>
-                <p 
-                  key={isSignUp ? 'signup-desc' : 'signin-desc'} 
-                  className="text-sm text-muted-foreground mt-1"
-                >
-                  {isSignUp 
-                    ? "Create your account to start your journey" 
-                    : "Sign in to access your Student Center"}
-                </p>
-              </div>
+              <WelcomeHeadlines isSignUp={isSignUp} />
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 {/* Display Name (Sign Up only) */}
