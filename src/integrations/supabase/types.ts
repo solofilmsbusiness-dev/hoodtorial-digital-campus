@@ -586,6 +586,7 @@ export type Database = {
           subscription_ends_at: string | null
           subscription_started_at: string | null
           subscription_status: string | null
+          terms_accepted_at: string | null
           tiktok_url: string | null
           trial_ends_at: string | null
           trial_started_at: string | null
@@ -617,6 +618,7 @@ export type Database = {
           subscription_ends_at?: string | null
           subscription_started_at?: string | null
           subscription_status?: string | null
+          terms_accepted_at?: string | null
           tiktok_url?: string | null
           trial_ends_at?: string | null
           trial_started_at?: string | null
@@ -648,6 +650,7 @@ export type Database = {
           subscription_ends_at?: string | null
           subscription_started_at?: string | null
           subscription_status?: string | null
+          terms_accepted_at?: string | null
           tiktok_url?: string | null
           trial_ends_at?: string | null
           trial_started_at?: string | null

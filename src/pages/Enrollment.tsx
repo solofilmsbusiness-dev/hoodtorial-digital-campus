@@ -1,7 +1,12 @@
 import { PageLayout } from "@/components/layout/PageLayout";
 import { TierCard } from "@/components/cards/TierCard";
-import { Check, X } from "lucide-react";
+import { Check, X, Clock, AlertCircle } from "lucide-react";
 import mascot from "@/assets/mascot.png";
+import { useSubscription } from "@/hooks/useSubscription";
+import { useAuth } from "@/contexts/AuthContext";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 const tiers = [
   {
@@ -67,21 +72,73 @@ const comparisonFeatures = [
 ];
 
 export default function Enrollment() {
+  const { user } = useAuth();
+  const { isTrialing, isPaid, trialDaysRemaining, status } = useSubscription();
+  
   return (
     <PageLayout>
+      {/* Trial Banner */}
+      {isTrialing && (
+        <div className="bg-primary/10 border-b border-primary/30">
+          <div className="container-wide py-3">
+            <div className="flex items-center justify-center gap-3 text-sm">
+              <Clock className="w-4 h-4 text-primary" />
+              <span className="text-foreground">
+                <strong>{trialDaysRemaining} days</strong> remaining in your free trial
+              </span>
+              <Badge variant="outline" className="border-primary text-primary">
+                Trial Active
+              </Badge>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Already Subscribed Banner */}
+      {isPaid && (
+        <div className="bg-accent/10 border-b border-accent/30">
+          <div className="container-wide py-3">
+            <div className="flex items-center justify-center gap-3 text-sm">
+              <Check className="w-4 h-4 text-accent" />
+              <span className="text-foreground">
+                You're subscribed! Full access to all content.
+              </span>
+              <Button asChild size="sm" variant="outline">
+                <Link to="/student">Go to Dashboard</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Hero Section */}
       <section className="relative py-20 md:py-32 bg-background overflow-hidden">
         <div className="absolute inset-0 bg-grid opacity-50" />
         <div className="container-wide relative z-10">
           <div className="max-w-4xl mx-auto text-center">
-            <span className="tag-sticker mb-6">Enrollment Open</span>
+            <span className="tag-sticker mb-6">
+              {isTrialing ? "Upgrade Your Plan" : isPaid ? "Your Subscription" : "Enrollment Open"}
+            </span>
             <h1 className="heading-1 text-gold-gradient mb-6">
-              Choose Your Path
+              {isTrialing ? "Unlock Full Access" : isPaid ? "Manage Your Plan" : "Choose Your Path"}
             </h1>
             <p className="body-large text-muted-foreground max-w-2xl mx-auto">
-              Join Hoodtorial University and master mobile filmmaking. 
-              Pick the tier that matches your ambitions.
+              {isTrialing 
+                ? "Your trial gives you a taste. Subscribe to unlock all courses, final exams, and community features."
+                : isPaid 
+                  ? "You have full access to all courses and features included in your plan."
+                  : "Join Hoodtorial University and master mobile filmmaking. Pick the tier that matches your ambitions."
+              }
             </p>
+            
+            {!user && (
+              <div className="mt-8">
+                <Button asChild className="btn-brutal">
+                  <Link to="/auth">Sign Up for Free Trial</Link>
+                </Button>
+                <p className="text-sm text-muted-foreground mt-2">3 days free, no credit card required</p>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -89,6 +146,24 @@ export default function Enrollment() {
       {/* Pricing Tiers */}
       <section className="py-16 md:py-24 bg-charcoal-dark">
         <div className="container-wide">
+          {/* Trial limits reminder */}
+          {isTrialing && (
+            <div className="max-w-2xl mx-auto mb-12 p-4 bg-muted/30 border border-border rounded-lg">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-foreground mb-1">Trial Limitations</p>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• Access to first 2 modules per course</li>
+                    <li>• 2 active course enrollments</li>
+                    <li>• View-only community access</li>
+                    <li>• No final exams or certificates</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+          
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
             {tiers.map((tier) => (
               <TierCard
@@ -98,7 +173,8 @@ export default function Enrollment() {
                 description={tier.description}
                 features={tier.features}
                 highlighted={tier.highlighted}
-                ctaHref="/enroll"
+                ctaHref={user ? `/checkout?tier=${tier.name.toLowerCase()}` : "/auth"}
+                ctaText={user ? "Subscribe Now" : "Start Free Trial"}
               />
             ))}
           </div>

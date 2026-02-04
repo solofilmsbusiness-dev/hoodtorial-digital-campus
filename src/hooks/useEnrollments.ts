@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useTestModeContext } from "@/contexts/TestModeContext";
+import { useTrialLimits } from "@/hooks/useTrialLimits";
 
 export interface Enrollment {
   id: string;
@@ -14,15 +15,20 @@ export interface Enrollment {
   completed_at: string | null;
 }
 
-const MAX_ACTIVE_COURSES = 3;
+// Default max is 3 for paid, but trial users get 2
+const MAX_ACTIVE_COURSES_PAID = 3;
+const MAX_ACTIVE_COURSES_TRIAL = 2;
 
 export function useEnrollments() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { hasAccess } = useSubscription();
+  const { hasAccess, isTrialing, isPaid } = useSubscription();
   // Use context directly to avoid circular dependency
   const testModeContext = useTestModeContext();
   const isTestModeEnabled = testModeContext.isTestModeEnabled;
+  
+  // Determine max courses based on subscription status
+  const maxCourses = isTestModeEnabled || isPaid ? MAX_ACTIVE_COURSES_PAID : MAX_ACTIVE_COURSES_TRIAL;
   
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,7 +63,7 @@ export function useEnrollments() {
 
   const activeEnrollments = enrollments.filter((e) => e.status === "active");
   const completedEnrollments = enrollments.filter((e) => e.status === "completed");
-  const canEnroll = isTestModeEnabled || activeEnrollments.length < MAX_ACTIVE_COURSES;
+  const canEnroll = isTestModeEnabled || activeEnrollments.length < maxCourses;
 
   const isEnrolled = useCallback(
     (courseCode: string) => {
@@ -103,7 +109,7 @@ export function useEnrollments() {
       if (!isTestModeEnabled && !canEnroll) {
         toast({
           title: "Enrollment limit reached",
-          description: `You can only have ${MAX_ACTIVE_COURSES} active courses at a time. Complete a course to enroll in more.`,
+          description: `You can only have ${maxCourses} active courses at a time. Complete a course or upgrade to enroll in more.`,
           variant: "destructive",
         });
         return { error: new Error("Max enrollments reached"), data: null };
@@ -151,7 +157,7 @@ export function useEnrollments() {
         return { error: err as Error, data: null };
       }
     },
-    [user, canEnroll, hasAccess, toast, isTestModeEnabled]
+    [user, canEnroll, hasAccess, toast, isTestModeEnabled, maxCourses]
   );
 
   const completeCourse = useCallback(
@@ -196,8 +202,8 @@ export function useEnrollments() {
     loading,
     error,
     canEnroll,
-    slotsRemaining: isTestModeEnabled ? MAX_ACTIVE_COURSES : MAX_ACTIVE_COURSES - activeEnrollments.length,
-    maxSlots: MAX_ACTIVE_COURSES,
+    slotsRemaining: isTestModeEnabled ? maxCourses : maxCourses - activeEnrollments.length,
+    maxSlots: maxCourses,
     isEnrolled,
     getEnrollment,
     enroll,
