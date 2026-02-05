@@ -15,3 +15,9 @@
 export { ProfileAcademicStats } from "./ProfileAcademicStats";
 export { ProfileAchievements } from "./ProfileAchievements";
 export { ProfileGallery } from "./ProfileGallery";
+export { GalleryEditor } from "./GalleryEditor";
+export { SortableGalleryItem } from "./SortableGalleryItem";
+export { FeaturedProjectEditor } from "./FeaturedProjectEditor";
+export { FeaturedProjectShowcase } from "./FeaturedProjectShowcase";
+export { SectionLayoutEditor } from "./SectionLayoutEditor";
+export { SortableSectionItem } from "./SortableSectionItem";

@@ -35,15 +35,15 @@
    });
  
    const addMedia = async (files: File[]) => {
-     if (!isOwnProfile || !user) {
-       toast.error("You can only edit your own gallery");
-       return;
+    if (!user) {
+      toast.error("You must be logged in");
+      return [];
      }
  
      const remainingSlots = MAX_GALLERY_ITEMS - currentGallery.length;
      if (remainingSlots <= 0) {
        toast.error(`Gallery is full (max ${MAX_GALLERY_ITEMS} items)`);
-       return;
+      return [];
      }
  
      const filesToUpload = files.slice(0, remainingSlots);
@@ -57,11 +57,12 @@
        await updateGalleryMutation.mutateAsync(newGallery);
        toast.success(`Added ${uploadedUrls.length} item(s) to gallery`);
      }
+    return uploadedUrls;
    };
  
    const removeMedia = async (urlToRemove: string) => {
-     if (!isOwnProfile || !user) {
-       toast.error("You can only edit your own gallery");
+    if (!user) {
+      toast.error("You must be logged in");
        return;
      }
  
@@ -82,9 +83,24 @@
      }
    };
  
+  const reorderGallery = async (newOrder: string[]) => {
+    if (!user) {
+      toast.error("You must be logged in");
+      return;
+    }
+    
+    try {
+      await updateGalleryMutation.mutateAsync(newOrder);
+    } catch (error) {
+      console.error("Error reordering gallery:", error);
+      toast.error("Failed to reorder gallery");
+    }
+  };
+
    return {
      addMedia,
      removeMedia,
+    reorderGallery,
      isUploading,
      isDeleting,
      uploadProgress,

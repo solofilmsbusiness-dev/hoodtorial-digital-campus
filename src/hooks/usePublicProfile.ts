@@ -24,6 +24,10 @@
    profile_accent_color: string | null;
    avatar_border_style: string | null;
   portfolio_gallery: string[] | null;
+  featured_project_url: string | null;
+  featured_project_title: string | null;
+  featured_project_thumbnail: string | null;
+  profile_section_order: string[] | null;
  }
  
  export type UserRole = "admin" | "professor" | "moderator" | "tester" | "student";

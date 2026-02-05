@@ -801,6 +801,9 @@ export type Database = {
           display_name: string | null
           enrolled_at: string
           favorite_films: string[] | null
+          featured_project_thumbnail: string | null
+          featured_project_title: string | null
+          featured_project_url: string | null
           filmmaking_style: string | null
           id: string
           imdb_url: string | null
@@ -814,6 +817,7 @@ export type Database = {
           portfolio_gallery: string[] | null
           portfolio_url: string | null
           profile_accent_color: string | null
+          profile_section_order: string[] | null
           recommended_degree_path: string | null
           subscription_ends_at: string | null
           subscription_started_at: string | null
@@ -843,6 +847,9 @@ export type Database = {
           display_name?: string | null
           enrolled_at?: string
           favorite_films?: string[] | null
+          featured_project_thumbnail?: string | null
+          featured_project_title?: string | null
+          featured_project_url?: string | null
           filmmaking_style?: string | null
           id?: string
           imdb_url?: string | null
@@ -856,6 +863,7 @@ export type Database = {
           portfolio_gallery?: string[] | null
           portfolio_url?: string | null
           profile_accent_color?: string | null
+          profile_section_order?: string[] | null
           recommended_degree_path?: string | null
           subscription_ends_at?: string | null
           subscription_started_at?: string | null
@@ -885,6 +893,9 @@ export type Database = {
           display_name?: string | null
           enrolled_at?: string
           favorite_films?: string[] | null
+          featured_project_thumbnail?: string | null
+          featured_project_title?: string | null
+          featured_project_url?: string | null
           filmmaking_style?: string | null
           id?: string
           imdb_url?: string | null
@@ -898,6 +909,7 @@ export type Database = {
           portfolio_gallery?: string[] | null
           portfolio_url?: string | null
           profile_accent_color?: string | null
+          profile_section_order?: string[] | null
           recommended_degree_path?: string | null
           subscription_ends_at?: string | null
           subscription_started_at?: string | null
@@ -1265,6 +1277,9 @@ export type Database = {
           current_project: string | null
           display_name: string | null
           favorite_films: string[] | null
+          featured_project_thumbnail: string | null
+          featured_project_title: string | null
+          featured_project_url: string | null
           filmmaking_style: string | null
           imdb_url: string | null
           influences: string | null
@@ -1272,6 +1287,7 @@ export type Database = {
           portfolio_gallery: string[] | null
           portfolio_url: string | null
           profile_accent_color: string | null
+          profile_section_order: string[] | null
           tiktok_url: string | null
           twitter_url: string | null
           user_id: string | null
@@ -1287,6 +1303,9 @@ export type Database = {
           current_project?: string | null
           display_name?: string | null
           favorite_films?: string[] | null
+          featured_project_thumbnail?: string | null
+          featured_project_title?: string | null
+          featured_project_url?: string | null
           filmmaking_style?: string | null
           imdb_url?: string | null
           influences?: string | null
@@ -1294,6 +1313,7 @@ export type Database = {
           portfolio_gallery?: string[] | null
           portfolio_url?: string | null
           profile_accent_color?: string | null
+          profile_section_order?: string[] | null
           tiktok_url?: string | null
           twitter_url?: string | null
           user_id?: string | null
@@ -1309,6 +1329,9 @@ export type Database = {
           current_project?: string | null
           display_name?: string | null
           favorite_films?: string[] | null
+          featured_project_thumbnail?: string | null
+          featured_project_title?: string | null
+          featured_project_url?: string | null
           filmmaking_style?: string | null
           imdb_url?: string | null
           influences?: string | null
@@ -1316,6 +1339,7 @@ export type Database = {
           portfolio_gallery?: string[] | null
           portfolio_url?: string | null
           profile_accent_color?: string | null
+          profile_section_order?: string[] | null
           tiktok_url?: string | null
           twitter_url?: string | null
           user_id?: string | null
