@@ -1,122 +1,132 @@
 
-
-# Full Messaging Ecosystem Enhancement
+# Add "Tester" Role for Full Platform Testing Access
 
 ## Overview
 
-Transform the messaging system into a complete communication ecosystem with:
-1. **Contact Cards Visibility** - Ensure contact cards display properly in messages
-2. **Message Deletion** - Users can delete their own messages
-3. **Typing Indicators** - Show when someone is typing
-4. **Read Receipts** - Visual indicator when messages are read
-5. **Message Reactions** - Quick emoji reactions to messages
-6. **Delete Conversations** - Ability to remove entire conversations
+Create a new "tester" role that grants designated users full access to test the platform without needing admin privileges. Testers get:
+- All courses unlocked (bypass enrollment requirements)
+- All modules accessible (skip progression locks)
+- Ability to take quizzes normally (results tracked for testing purposes)
+- Full video access (bypass video watch requirements)
+- No subscription/trial restrictions
+
+Unlike admin test mode, testers:
+- Do NOT have admin panel access
+- Do NOT have the ability to toggle bypasses on/off
+- Have a distinct visual indicator (purple "Tester Mode" banner vs red "Admin Test Mode")
+- Their quiz results and progress ARE tracked normally for testing validation
 
 ---
 
 ## System Architecture
 
 ```text
-                    MESSAGING ECOSYSTEM
+                    ROLE-BASED TEST ACCESS
 ┌─────────────────────────────────────────────────────────────────┐
 │                                                                 │
-│  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐        │
-│  │   Messages   │   │   Typing     │   │   Reactions  │        │
-│  │   CRUD       │   │   Indicator  │   │   (emoji)    │        │
-│  └──────────────┘   └──────────────┘   └──────────────┘        │
-│         │                  │                  │                 │
-│         ▼                  ▼                  ▼                 │
-│  ┌────────────────────────────────────────────────────────┐    │
-│  │              Supabase Realtime                          │    │
-│  │   - postgres_changes for messages                       │    │
-│  │   - presence for typing indicators                      │    │
-│  └────────────────────────────────────────────────────────┘    │
+│   ┌────────────┐    ┌────────────┐    ┌────────────┐           │
+│   │   Admin    │    │   Tester   │    │  Student   │           │
+│   │            │    │            │    │            │           │
+│   │ Full admin │    │ Full test  │    │ Normal     │           │
+│   │ + test mode│    │ access     │    │ access     │           │
+│   └────────────┘    └────────────┘    └────────────┘           │
+│         │                 │                 │                   │
+│         ▼                 ▼                 ▼                   │
+│   ┌────────────────────────────────────────────────────────┐   │
+│   │              TestModeContext (enhanced)                 │   │
+│   │   - Checks for 'admin' OR 'tester' role                │   │
+│   │   - Testers get automatic full access                   │   │
+│   │   - Admins toggle test mode manually                    │   │
+│   └────────────────────────────────────────────────────────┘   │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Implementation Details
+## Database Changes
 
-### 1. Message Deletion
+### Add 'tester' to app_role enum
 
-Add a delete button/menu for own messages with confirmation.
+```sql
+ALTER TYPE public.app_role ADD VALUE 'tester';
+```
 
-| Feature | Description |
-|---------|-------------|
-| Delete Button | Trash icon appears on hover for own messages |
-| Confirmation | Alert dialog to confirm deletion |
-| RLS Policy | Only sender can delete their messages |
-| Realtime | Messages removed from UI in real-time |
-
-### 2. Typing Indicator
-
-Using Supabase Presence to show real-time typing status.
-
-| Feature | Description |
-|---------|-------------|
-| Detection | Fires when user types in composer |
-| Display | "User is typing..." with animated dots |
-| Timeout | Clears after 2 seconds of no typing |
-| Presence | Uses Supabase channel presence API |
-
-### 3. Read Receipts
-
-Visual confirmation when messages have been read.
-
-| Feature | Description |
-|---------|-------------|
-| Single Check | Message sent |
-| Double Check | Message read (blue checkmarks) |
-| Update | Marks as read when conversation is viewed |
-
-### 4. Message Reactions
-
-Quick emoji reactions to any message.
-
-| Feature | Description |
-|---------|-------------|
-| Quick Reactions | Heart, thumbs up, laugh, fire, sad |
-| Display | Small emoji badges under messages |
-| Multiple | Same user can add multiple reactions |
-
-### 5. Delete Conversation
-
-Remove entire conversation from user's view.
-
-| Feature | Description |
-|---------|-------------|
-| Menu Option | In conversation header or list |
-| Confirmation | Alert dialog before deletion |
-| Soft Delete | Only removes for requesting user |
+This adds the new role value to the existing enum used in the `user_roles` table.
 
 ---
 
-## Database Changes Required
+## Implementation Details
 
-### New RLS Policy for Message Deletion
-```sql
--- Allow users to delete their own messages
-CREATE POLICY "Users can delete their own messages"
-ON direct_messages FOR DELETE
-USING (auth.uid() = sender_id);
+### 1. New Hook: useTesterAuth
+
+Similar to `useAdminAuth`, this hook checks if the current user has the "tester" role.
+
+```typescript
+// src/hooks/useTesterAuth.ts
+export function useTesterAuth() {
+  const { user, loading: authLoading } = useAuth();
+
+  const { data: isTester, isLoading: roleLoading } = useQuery({
+    queryKey: ["tester-role", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return false;
+      const { data } = await supabase.rpc("has_role", {
+        _user_id: user.id,
+        _role: "tester",
+      });
+      return data === true;
+    },
+    enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  return {
+    isTester: isTester ?? false,
+    isLoading: authLoading || roleLoading,
+    user,
+  };
+}
 ```
 
-### New Table: Message Reactions
-```sql
-CREATE TABLE message_reactions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  message_id UUID REFERENCES direct_messages(id) ON DELETE CASCADE,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  emoji TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(message_id, user_id, emoji)
-);
+### 2. Enhanced TestModeContext
 
--- RLS: Users can manage their own reactions
--- Users can view reactions on messages they can see
+Update the context to recognize testers as having automatic test access:
+
+| Check | Admin | Tester | Student |
+|-------|-------|--------|---------|
+| `canUseTestMode` | Yes (toggle) | N/A (always on) | No |
+| `isTestModeEnabled` | Manual toggle | Always true | No |
+| `isTesterRole` | false | true | false |
+
+Key changes:
+- Add `isTester` check from new hook
+- Testers get `isTestModeEnabled = true` automatically (no toggle)
+- All bypass flags enabled by default for testers
+- Add `isTesterRole` flag to distinguish display
+
+### 3. TesterModeBanner Component
+
+A distinct purple banner for testers (different from admin's red banner):
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│ 🧪 Tester Mode Active — Full platform access for testing       │
+└─────────────────────────────────────────────────────────────────┘
 ```
+
+Unlike the admin banner:
+- No "Disable" button (testers can't toggle off)
+- Purple/violet color scheme to distinguish from admin
+- Shows simpler message (no bypass toggles)
+
+### 4. Update UserManager for Tester Role
+
+Add "Make Tester" and "Remove Tester" options to the user management dropdown, similar to existing admin/moderator/professor role management.
+
+### 5. Update StudentFilters for Tester Role
+
+Add "tester" option to the role filter dropdown so admins can filter to see all testers.
 
 ---
 
@@ -124,146 +134,68 @@ CREATE TABLE message_reactions (
 
 | File | Purpose |
 |------|---------|
-| `src/components/messaging/TypingIndicator.tsx` | Animated typing dots component |
-| `src/components/messaging/MessageActions.tsx` | Delete, react dropdown for messages |
-| `src/components/messaging/ReactionPicker.tsx` | Emoji reaction selector popup |
-| `src/components/messaging/MessageReactions.tsx` | Display reactions on a message |
-| `src/hooks/useTypingIndicator.ts` | Presence-based typing detection hook |
-| `src/hooks/useMessageReactions.ts` | CRUD for message reactions |
+| `src/hooks/useTesterAuth.ts` | Hook to check if user has tester role |
+| `src/components/admin/TesterModeBanner.tsx` | Purple banner shown to testers |
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/components/messaging/MessageBubble.tsx` | Add delete button, reactions, read receipts |
-| `src/components/messaging/MessageComposer.tsx` | Add typing indicator trigger |
-| `src/components/messaging/ChatWindow.tsx` | Show typing indicator at bottom |
-| `src/components/messaging/ConversationItem.tsx` | Add delete conversation option |
-| `src/hooks/useDirectMessages.ts` | Add deleteMessage function, handle DELETE events |
+| `src/contexts/TestModeContext.tsx` | Add tester role detection, automatic enabling |
+| `src/hooks/useTestMode.ts` | Add `isTesterRole` flag |
+| `src/pages/admin/UserManager.tsx` | Add Make/Remove Tester menu options |
+| `src/components/admin/StudentFilters.tsx` | Add "tester" to RoleFilter type |
+| `src/App.tsx` | Include TesterModeBanner component |
+| Database migration | Add 'tester' to app_role enum |
 
 ---
 
-## UI Preview
+## Behavior Matrix
 
-### Message with Actions
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│                                                                 │
-│                    ┌──────────────────────────┐  ┌───┐         │
-│                    │ Hey! How's filming going?│  │ 🗑 │ <- hover│
-│                    └──────────────────────────┘  └───┘         │
-│                    ❤️ 2  👍 1           3:45 PM ✓✓             │
-│                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │ 📇 Contact Card                                           │  │
-│  │ ┌────────────────────────────────────────────────────────┐│  │
-│  │ │ 👤 John Smith                                          ││  │
-│  │ │    Cinematographer                                     ││  │
-│  │ │    📷 RED Komodo, Sony A7S III                        ││  │
-│  │ │    [📸] [🎬] [🐦]          [View Portfolio]           ││  │
-│  │ └────────────────────────────────────────────────────────┘│  │
-│  └──────────────────────────────────────────────────────────┘  │
-│                                                                 │
-│  ┌────────────────────────────────────────────────────────────┐│
-│  │ 💭 Alex is typing...                                       ││
-│  └────────────────────────────────────────────────────────────┘│
-│                                                                 │
-│  ┌──────────────────────────────────────────────────────┐      │
-│  │ 💳 │ Type a message...                      │  📤   │      │
-│  └──────────────────────────────────────────────────────┘      │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Reaction Picker
-```text
-┌──────────────────────────────────────┐
-│  React:  ❤️  👍  😂  🔥  😢  ➕     │
-└──────────────────────────────────────┘
-```
+| Feature | Admin (Test Mode OFF) | Admin (Test Mode ON) | Tester | Student |
+|---------|----------------------|---------------------|--------|---------|
+| Course enrollment check | Normal | Bypassed | Bypassed | Normal |
+| Video progress tracking | Normal | Optional bypass | Bypassed | Normal |
+| Quiz taking | Normal | Auto-pass option | Normal (tracked) | Normal |
+| Progression locks | Normal | Can skip | Unlocked | Normal |
+| Subscription check | Normal | Bypassed | Bypassed | Normal |
+| Admin panel access | Yes | Yes | No | No |
+| Banner shown | None | Red | Purple | None |
+| Can toggle mode | N/A | Yes | No | N/A |
 
 ---
 
-## Technical Implementation
+## Key Differences: Tester vs Admin Test Mode
 
-### Typing Indicator Hook
-```typescript
-// useTypingIndicator.ts
-export function useTypingIndicator(conversationId: string | null) {
-  const [typingUsers, setTypingUsers] = useState<string[]>([]);
-  
-  // Use Supabase Presence to track typing
-  useEffect(() => {
-    if (!conversationId) return;
-    
-    const channel = supabase.channel(`typing:${conversationId}`);
-    
-    channel
-      .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState();
-        const typing = Object.values(state)
-          .flat()
-          .filter(p => p.is_typing && p.user_id !== currentUserId)
-          .map(p => p.display_name);
-        setTypingUsers(typing);
-      })
-      .subscribe();
-      
-    return () => supabase.removeChannel(channel);
-  }, [conversationId]);
-  
-  const setTyping = (isTyping: boolean) => {
-    channel.track({ user_id, display_name, is_typing: isTyping });
-  };
-  
-  return { typingUsers, setTyping };
-}
-```
-
-### Delete Message Function
-```typescript
-// In useDirectMessages.ts
-const deleteMessage = async (messageId: string) => {
-  const { error } = await supabase
-    .from("direct_messages")
-    .delete()
-    .eq("id", messageId)
-    .eq("sender_id", user.id); // Extra safety
-    
-  if (error) throw error;
-};
-```
-
-### Read Receipts Display
-```typescript
-// In MessageBubble.tsx
-{isOwn && (
-  <span className="text-xs text-muted-foreground">
-    {message.is_read ? (
-      <CheckCheck className="h-3 w-3 text-primary" />
-    ) : (
-      <Check className="h-3 w-3" />
-    )}
-  </span>
-)}
-```
+| Aspect | Tester Role | Admin Test Mode |
+|--------|-------------|-----------------|
+| Access control | Role-based (permanent until removed) | Toggle (admin chooses when to use) |
+| Quiz results | Always tracked normally | Can auto-pass (skip tracking) |
+| Banner color | Purple (tester) | Red (warning) |
+| Disable button | None | Yes |
+| Admin panel | No access | Full access |
+| Purpose | QA testing by non-admins | Admin development/debugging |
 
 ---
 
-## Implementation Order
+## User Experience Flow
 
-| Step | Task | Priority |
-|------|------|----------|
-| 1 | Add DELETE RLS policy for messages | High |
-| 2 | Add deleteMessage to hook + realtime DELETE event | High |
-| 3 | Add delete button to MessageBubble with confirmation | High |
-| 4 | Create TypingIndicator component | Medium |
-| 5 | Add useTypingIndicator hook with Presence | Medium |
-| 6 | Integrate typing into Composer + ChatWindow | Medium |
-| 7 | Add read receipt icons to messages | Medium |
-| 8 | Create message_reactions table + RLS | Low |
-| 9 | Build reaction picker + display components | Low |
-| 10 | Add delete conversation option | Low |
+### Granting Tester Access
+1. Admin navigates to User Management (`/admin/users`)
+2. Finds the user to make a tester
+3. Clicks dropdown menu → "Make Tester"
+4. Confirms in dialog
+5. User now has tester role
+
+### Tester Using Platform
+1. Tester logs in normally
+2. Purple "Tester Mode Active" banner appears
+3. All courses visible and accessible
+4. Can enroll in any course without limits
+5. All modules unlocked within courses
+6. Can take quizzes (results tracked for validation)
+7. Progress saved normally for testing verification
+8. No admin panel access (404 if attempted)
 
 ---
 
@@ -271,10 +203,12 @@ const deleteMessage = async (messageId: string) => {
 
 | Category | Changes |
 |----------|---------|
-| Database | 1 new RLS policy, 1 new table (reactions) |
-| New Files | 5 components, 2 hooks |
-| Modified Files | 5 messaging components/hooks |
-| Features | Delete messages, typing indicator, read receipts, reactions |
+| Database | Add 'tester' value to app_role enum |
+| New Files | 2 (useTesterAuth hook, TesterModeBanner) |
+| Modified Files | 5 (context, hook, UserManager, filters, App) |
+| Role Management | Full CRUD via existing useManageRoles hook |
 
-This creates a full-featured messaging experience similar to modern chat apps!
-
+This implementation allows admins to designate specific users as testers, giving them full platform access for QA testing while:
+- Keeping their quiz results and progress tracked
+- Preventing access to administrative functions
+- Providing a clear visual indicator of their testing status
