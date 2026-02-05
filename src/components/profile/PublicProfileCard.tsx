@@ -20,6 +20,7 @@
  import { ProfileAvatar } from "./ProfileAvatar";
  import { ProfileInfoCard } from "./ProfileInfoCard";
  import { ProfileSocialLinks } from "./ProfileSocialLinks";
+ import { FeaturedProjectCompact } from "./FeaturedProjectCompact";
  
  interface PublicProfileCardProps {
    profile: PublicProfile;
@@ -234,6 +235,18 @@
            </div>
          </motion.div>
        )}
+ 
+     {/* Compact Featured Project - right under bio */}
+     {(profile.featured_project_url || profile.featured_project_thumbnail) && (
+       <div className="px-4 md:px-6">
+         <FeaturedProjectCompact
+           title={profile.featured_project_title || ""}
+           url={profile.featured_project_url || ""}
+           thumbnail={profile.featured_project_thumbnail}
+           accentColor={profile.profile_accent_color}
+         />
+       </div>
+     )}
  
        {/* Creative Info Cards - 3D Tilt Grid */}
        {infoCards.length > 0 && (
