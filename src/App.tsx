@@ -35,6 +35,8 @@ import ChallengeManager from "./pages/admin/ChallengeManager";
 import AdminSettings from "./pages/admin/AdminSettings";
 import SupportManager from "./pages/admin/SupportManager";
 import Checkout from "./pages/Checkout";
+ import Friends from "./pages/Friends";
+ import Messages from "./pages/Messages";
 
 const queryClient = new QueryClient();
 
@@ -109,6 +111,16 @@ const App = () => (
                 <Route path="/student/grades" element={
                   <AssessmentRequiredRoute>
                     <StudentGrades />
+                  </AssessmentRequiredRoute>
+                } />
+                <Route path="/friends" element={
+                  <AssessmentRequiredRoute>
+                    <Friends />
+                  </AssessmentRequiredRoute>
+                } />
+                <Route path="/messages" element={
+                  <AssessmentRequiredRoute>
+                    <Messages />
                   </AssessmentRequiredRoute>
                 } />
                 <Route path="/admin" element={

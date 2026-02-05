@@ -1,10 +1,13 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Menu, X, User, LogOut, Shield, Users } from "lucide-react";
+ import { Menu, X, User, LogOut, Shield, Users, MessageCircle, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfileContext } from "@/contexts/ProfileContext";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
+ import { useFriendships } from "@/hooks/useFriendships";
+ import { useConversations } from "@/hooks/useConversations";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+ import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,6 +31,8 @@ export function Navigation() {
   const { user, signOut } = useAuth();
   const { profile } = useProfileContext();
   const { isAdmin } = useAdminAuth();
+  const { pendingCount } = useFriendships();
+  const { totalUnread } = useConversations();
 
   const navigate = useNavigate();
 
@@ -100,6 +105,28 @@ export function Navigation() {
                     <Link to="/community" className="flex items-center gap-2 cursor-pointer">
                       <Users className="h-4 w-4" />
                       Community
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/friends" className="flex items-center gap-2 cursor-pointer">
+                      <UserPlus className="h-4 w-4" />
+                      Friends
+                      {pendingCount > 0 && (
+                        <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center text-xs">
+                          {pendingCount}
+                        </Badge>
+                      )}
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/messages" className="flex items-center gap-2 cursor-pointer">
+                      <MessageCircle className="h-4 w-4" />
+                      Messages
+                      {totalUnread > 0 && (
+                        <Badge variant="destructive" className="ml-auto h-5 min-w-5 flex items-center justify-center text-xs">
+                          {totalUnread}
+                        </Badge>
+                      )}
                     </Link>
                   </DropdownMenuItem>
                   {isAdmin && (
@@ -175,6 +202,30 @@ export function Navigation() {
                     className="text-lg font-bold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide py-2"
                   >
                     Community
+                  </Link>
+                  <Link 
+                    to="/friends" 
+                    onClick={() => setIsOpen(false)}
+                    className="text-lg font-bold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide py-2 flex items-center gap-2"
+                  >
+                    Friends
+                    {pendingCount > 0 && (
+                      <Badge variant="destructive" className="h-5 min-w-5 flex items-center justify-center text-xs">
+                        {pendingCount}
+                      </Badge>
+                    )}
+                  </Link>
+                  <Link 
+                    to="/messages" 
+                    onClick={() => setIsOpen(false)}
+                    className="text-lg font-bold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide py-2 flex items-center gap-2"
+                  >
+                    Messages
+                    {totalUnread > 0 && (
+                      <Badge variant="destructive" className="h-5 min-w-5 flex items-center justify-center text-xs">
+                        {totalUnread}
+                      </Badge>
+                    )}
                   </Link>
                   {isAdmin && (
                     <Link 

@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 import { CommunityPost, CommentPreview } from "@/hooks/useCommunityPosts";
 import { motion, AnimatePresence } from "framer-motion";
 import { getVideoType, getYouTubeId, getYouTubeEmbedUrl } from "@/lib/videoUtils";
+ import { AddFriendButton } from "@/components/friends";
+ import { useAuth } from "@/contexts/AuthContext";
 
 interface TimelinePostProps {
   post: CommunityPost;
@@ -80,12 +82,24 @@ export function TimelinePost({
     >
       {/* Header */}
       <div className="flex items-center gap-3 p-4">
-        <Avatar className="h-10 w-10 border-2 border-border">
+        <div className="relative group">
+          <Avatar className="h-10 w-10 border-2 border-border">
           <AvatarImage src={post.author?.avatar_url || undefined} />
           <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
             {getInitials(post.author?.display_name)}
           </AvatarFallback>
         </Avatar>
+          {/* Add friend button on hover */}
+          <div className="absolute -bottom-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <AddFriendButton 
+              userId={post.user_id} 
+              size="icon" 
+              variant="default"
+              showLabel={false}
+              className="h-6 w-6 rounded-full shadow-md"
+            />
+          </div>
+        </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <p className="font-bold text-sm text-foreground truncate">
