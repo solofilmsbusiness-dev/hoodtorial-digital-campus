@@ -299,3 +299,30 @@ Add columns to track recommendation and onboarding completion.
 - Assessment results already stored in `assessment_results` table - we just need to use them more
 - Roadmap phases from assessment can be persisted or recalculated on-the-fly
 
+ ---
+ 
+ ## Implementation Status: COMPLETED ✅
+ 
+ ### Database Changes (Done)
+ - Added `recommended_degree_path` (TEXT) column to profiles table
+ - Added `onboarding_completed` (BOOLEAN) column to profiles table
+ 
+ ### New Components Created
+ - `src/components/assessment/DegreeRecommendation.tsx` - AI-driven degree path suggestion after assessment
+ - `src/components/assessment/OnboardingProgress.tsx` - Unified step indicator component
+ 
+ ### Modified Files
+ - `src/pages/Assessment.tsx` - Added "degree-recommendation" step, integrated new components
+ - `src/hooks/useJourneyData.ts` - Added `isRecommended` flag for courses based on assessment
+ - `src/components/journey/JourneyCourseCard.tsx` - Shows "For You" badge on recommended courses
+ - `src/components/auth/AssessmentRequiredRoute.tsx` - Now checks for degree path selection
+ - `src/components/assessment/index.ts` - Exports new components
+ 
+ ### User Flow (Implemented)
+ 1. Sign up → Assessment welcome
+ 2. Select interests (2-3 departments)
+ 3. Select experience level
+ 4. Take timed quiz
+ 5. View results (scores, roadmap)
+ 6. **NEW: Choose Your Degree Path** (AI recommendation)
+ 7. Confirm path → Journey View with personalized courses marked "For You"

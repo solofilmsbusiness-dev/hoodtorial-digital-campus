@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Clock, Trophy, AlertTriangle, Shuffle, BookOpen } from "lucide-react";
+ import { useNavigate, useSearchParams } from "react-router-dom";
+ import { ArrowLeft, ArrowRight, Clock, Trophy, AlertTriangle, Shuffle, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +13,8 @@ import {
   RoadmapDisplay,
   AnswerReview,
   DifficultyBreakdown,
+ DegreeRecommendation,
+ OnboardingProgress,
 } from "@/components/assessment";
 import {
   assessmentQuestions,
@@ -23,6 +25,7 @@ import {
 import { useAssessmentResults, type LearningRoadmap } from "@/hooks/useAssessmentResults";
 import { courses } from "@/data/courses";
 import { useAuth } from "@/contexts/AuthContext";
+ import { useProfileContext } from "@/contexts/ProfileContext";
 import { cn } from "@/lib/utils";
 import { 
   shuffleArray, 
@@ -32,7 +35,9 @@ import {
   type ShuffledQuestion 
 } from "@/lib/quizUtils";
 
-type Step = "welcome" | "interests" | "experience" | "quiz" | "results" | "review" | "expired";
+ type Step = "welcome" | "interests" | "experience" | "quiz" | "results" | "degree-recommendation" | "review" | "expired";
+ 
+ import type { DegreePath } from "@/hooks/useSkillTree";
 
 // Extend ShuffledQuestion for assessment (includes department and difficulty)
 interface ShuffledAssessmentQuestion extends ShuffledQuestion {
@@ -43,10 +48,28 @@ interface ShuffledAssessmentQuestion extends ShuffledQuestion {
 
 export default function Assessment() {
   const navigate = useNavigate();
+   const [searchParams] = useSearchParams();
   const { user } = useAuth();
+   const { profile, updateProfile } = useProfileContext();
   const { saveAssessmentResult, latestResult, latestRoadmap, hasCompletedAssessment, calculateRoadmap, loading: resultsLoading } = useAssessmentResults();
 
   const [step, setStep] = useState<Step>("welcome");
+   
+   // Check for query param to jump to degree recommendation
+   useEffect(() => {
+     const stepParam = searchParams.get("step");
+     if (stepParam === "degree-recommendation" && hasCompletedAssessment && latestResult && latestRoadmap) {
+       setFinalResults({
+         departmentScores: latestResult.department_scores as Record<string, number>,
+         totalScore: latestResult.total_score,
+         recommendedCourses: latestResult.recommended_courses,
+         roadmap: latestRoadmap,
+       });
+       setInterests(latestResult.interests);
+       setExperienceLevel(latestResult.experience_level);
+       setStep("degree-recommendation");
+     }
+   }, [searchParams, hasCompletedAssessment, latestResult, latestRoadmap]);
   const [interests, setInterests] = useState<string[]>([]);
   const [experienceLevel, setExperienceLevel] = useState<string>("");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -66,6 +89,9 @@ export default function Assessment() {
   const [completedAnswers, setCompletedAnswers] = useState<Record<string, number>>({});
   const [reviewIndex, setReviewIndex] = useState(0);
   const [showOnlyIncorrect, setShowOnlyIncorrect] = useState(false);
+   
+   // Saving degree path state
+   const [savingDegreePath, setSavingDegreePath] = useState(false);
   
   const [finalResults, setFinalResults] = useState<{
     departmentScores: Record<string, number>;
@@ -262,7 +288,45 @@ export default function Assessment() {
     setShowOnlyIncorrect(false);
     setStep("review");
   };
-
+ 
+   // Handle degree path selection
+   const handleSelectDegreePath = async (path: DegreePath, department?: string) => {
+     setSavingDegreePath(true);
+     
+     try {
+       // Get the primary strength from results
+       const primaryStrength = finalResults?.roadmap?.primaryStrength || interests[0];
+       
+       await updateProfile({
+         degree_path: path,
+         certificate_department: path === "certificate" ? (department || primaryStrength) : null,
+         recommended_degree_path: path,
+         onboarding_completed: true,
+       });
+       
+       // Navigate to journey view
+       navigate(`/journey/${path}`);
+     } catch (error) {
+       console.error("Failed to save degree path:", error);
+     } finally {
+       setSavingDegreePath(false);
+     }
+   };
+ 
+   const handleSkipDegreeSelection = async () => {
+     // Mark onboarding as completed even if they skip
+     await updateProfile({
+       onboarding_completed: true,
+     });
+     navigate("/academics");
+   };
+ 
+   // Calculate current onboarding step index
+   const getOnboardingStepIndex = () => {
+     if (step === "degree-recommendation") return 1;
+     return 0; // Assessment step
+   };
+ 
   const isTimeWarning = questionTimeRemaining > 0 && questionTimeRemaining <= 10; // 10 seconds warning
 
   const recommendedCourseDetails = useMemo(() => {
@@ -289,50 +353,22 @@ export default function Assessment() {
     );
   }
 
-  const onboardingSteps = [
-    { label: "Assessment", active: true },
-    { label: "Explore Courses", active: false },
-  ];
+   // Onboarding step configuration
+   const currentOnboardingStepIndex = step === "degree-recommendation" ? 1 : 0;
+   const onboardingStepsConfig = [
+     { id: "assessment", label: "Assessment", completed: step === "results" || step === "degree-recommendation" },
+     { id: "degree", label: "Choose Your Path", completed: !!profile?.onboarding_completed },
+   ];
 
   return (
     <PageLayout>
       <div className="container max-w-4xl py-8 md:py-12">
         {/* Onboarding Progress Indicator */}
-        <div className="mb-8 p-4 rounded-lg bg-primary/5 border border-primary/20">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-medium text-muted-foreground">Getting Started</span>
-            <span className="text-xs text-muted-foreground">Step 1 of 2</span>
-          </div>
-          <div className="flex items-center gap-2">
-            {onboardingSteps.map((s, i) => (
-              <div key={s.label} className="flex items-center gap-2 flex-1">
-                <div className="flex items-center gap-2 flex-1">
-                  <div
-                    className={cn(
-                      "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
-                      s.active
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground"
-                    )}
-                  >
-                    {i + 1}
-                  </div>
-                  <span
-                    className={cn(
-                      "text-sm font-medium",
-                      s.active ? "text-foreground" : "text-muted-foreground"
-                    )}
-                  >
-                    {s.label}
-                  </span>
-                </div>
-                {i < onboardingSteps.length - 1 && (
-                  <div className="h-0.5 flex-1 bg-muted" />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+         <OnboardingProgress
+           steps={onboardingStepsConfig}
+           currentStepIndex={currentOnboardingStepIndex}
+           className="mb-8"
+         />
 
         {/* Welcome Step */}
         {step === "welcome" && (
@@ -790,9 +826,9 @@ export default function Assessment() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
                 size="lg"
-                onClick={() => navigate(recommendedCourseDetails[0] ? `/course/${recommendedCourseDetails[0].code}` : "/academics")}
+                 onClick={() => setStep("degree-recommendation")}
               >
-                Start Your Journey
+                 Choose Your Degree Path
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
               {completedQuestions.length > 0 && (
@@ -828,6 +864,19 @@ export default function Assessment() {
             onBackToResults={() => setStep("results")}
           />
         )}
+ 
+         {/* Degree Recommendation Step */}
+         {step === "degree-recommendation" && finalResults && finalResults.roadmap && (
+           <DegreeRecommendation
+             totalScore={finalResults.totalScore}
+             experienceLevel={experienceLevel || latestResult?.experience_level || "beginner"}
+             primaryStrength={finalResults.roadmap.primaryStrength}
+             strengthScore={finalResults.departmentScores[finalResults.roadmap.primaryStrength] || 0}
+             interests={interests.length > 0 ? interests : (latestResult?.interests || [])}
+             onSelectPath={handleSelectDegreePath}
+             onSkip={handleSkipDegreeSelection}
+           />
+         )}
       </div>
     </PageLayout>
   );
