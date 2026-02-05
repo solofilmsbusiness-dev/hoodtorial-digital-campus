@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+ import { useNavigate, Link } from "react-router-dom";
 import { PageLayout } from "@/components/layout";
 import { useProfileContext } from "@/contexts/ProfileContext";
+ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +20,7 @@ import {
   FeaturedProjectEditor,
   SectionLayoutEditor
 } from "@/components/profile";
+ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { useProfileGallery } from "@/hooks/useProfileGallery";
 import { 
   User, 
@@ -72,6 +74,7 @@ const FILMMAKING_STYLES = [
 
 export default function StudentProfile() {
   const { profile, loading, updateProfile, refetch } = useProfileContext();
+  const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
@@ -294,6 +297,21 @@ export default function StudentProfile() {
 
         {/* Header */}
         <div className="container-wide max-w-6xl mx-auto px-4 py-6">
+          {/* Breadcrumb */}
+          <Breadcrumb className="mb-4">
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link to="/student" className="hover:text-primary transition-colors">Student Hub</Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>Edit Profile</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+ 
           <div className="flex items-center gap-4 mb-6">
             <button
               onClick={() => handleNavigateAway("/student")}
@@ -308,11 +326,22 @@ export default function StudentProfile() {
               </h1>
               <p className="text-muted-foreground text-sm">Make it uniquely you</p>
             </div>
-            {hasUnsavedChanges && (
-              <span className="text-xs text-accent font-medium px-2 py-1 bg-accent/10 rounded-full">
-                Unsaved changes
-              </span>
-            )}
+            <div className="flex items-center gap-3">
+              {hasUnsavedChanges && (
+                <span className="text-xs text-accent font-medium px-2 py-1 bg-accent/10 rounded-full">
+                  Unsaved changes
+                </span>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleNavigateAway(`/profile/${user?.id}`)}
+                className="gap-2"
+              >
+                <Eye className="h-4 w-4" />
+                View Profile
+              </Button>
+            </div>
           </div>
         </div>
 

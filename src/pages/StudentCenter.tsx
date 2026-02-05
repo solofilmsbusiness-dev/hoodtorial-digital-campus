@@ -32,7 +32,8 @@ import {
   CheckCircle2,
   Play,
   Users,
-  HelpCircle
+  HelpCircle,
+  Eye
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -232,6 +233,13 @@ export default function StudentCenter() {
             >
               <Settings className="h-4 w-4" />
               Edit Profile
+            </Link>
+            <Link 
+              to={`/profile/${user?.id}`} 
+              className="btn-brutal text-sm flex items-center gap-2 bg-charcoal hover:bg-charcoal-light"
+            >
+              <Eye className="h-4 w-4" />
+              View Profile
             </Link>
           </div>
 
