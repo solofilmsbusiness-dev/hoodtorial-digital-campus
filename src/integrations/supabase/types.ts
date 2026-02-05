@@ -632,8 +632,10 @@ export type Database = {
           banned_by: string | null
           bio: string | null
           camera_gear: string | null
+          certificate_department: string | null
           cover_banner_url: string | null
           current_project: string | null
+          degree_path: string | null
           display_name: string | null
           enrolled_at: string
           favorite_films: string[] | null
@@ -669,8 +671,10 @@ export type Database = {
           banned_by?: string | null
           bio?: string | null
           camera_gear?: string | null
+          certificate_department?: string | null
           cover_banner_url?: string | null
           current_project?: string | null
+          degree_path?: string | null
           display_name?: string | null
           enrolled_at?: string
           favorite_films?: string[] | null
@@ -706,8 +710,10 @@ export type Database = {
           banned_by?: string | null
           bio?: string | null
           camera_gear?: string | null
+          certificate_department?: string | null
           cover_banner_url?: string | null
           current_project?: string | null
+          degree_path?: string | null
           display_name?: string | null
           enrolled_at?: string
           favorite_films?: string[] | null
