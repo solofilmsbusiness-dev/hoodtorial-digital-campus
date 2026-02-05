@@ -1,328 +1,166 @@
 
 
-# Unified Onboarding Journey: Assessment + Degree Path Integration
+# Admin Option to Disable Sign-Up
 
-## Current State Analysis
+## Overview
 
-Right now, there are **three disconnected systems**:
-
-1. **Assessment** - Users take an entry quiz that evaluates their skills across departments and generates a "Learning Roadmap" with Foundation, Core Skills, and Specialization phases
-2. **Degree Selection** - A completely separate page where users pick Associate, Bachelor, or Certificate paths
-3. **Journey/Skill Tree** - Shows courses based on the degree path, but ignores assessment results entirely
-
-**The disconnect:**
-- Assessment recommends courses like HU-101, HU-102 based on skill gaps
-- User picks Bachelor degree, which has its own fixed course list
-- These two lists may conflict - assessment might say "start with Directing" but Bachelor starts everyone the same way
-- Users feel like they did the assessment for nothing
+Add an admin toggle in the Settings page that allows disabling the sign-up functionality on the login page. This is useful for running tests or limiting access to existing users only.
 
 ---
 
-## Solution: Unified Onboarding Flow
+## How It Will Work
 
-### New User Journey (Step-by-Step)
-
-```text
-Sign Up → Welcome → Assessment → Degree Path Recommendation → Journey View
-                         ↓                    ↓
-               (Evaluates skills)    (AI suggests best path)
-                         ↓                    ↓
-              Stores interests +    User confirms or changes
-              department scores            path
-                         ↓                    ↓
-                   Personalized roadmap courses merge with
-                   degree requirements for unified journey
-```
-
-### Key Integration Points
-
-1. **Assessment results inform degree recommendation**
-   - Experience level + total score suggests path:
-     - Beginner + low score → Associate (foundations focus)
-     - Intermediate + moderate score → Bachelor (full curriculum)
-     - Professional + high in one area → Certificate (quick specialization)
-
-2. **Primary interest becomes certificate department**
-   - If user chooses Certificate, auto-suggest department based on their strongest assessment area
-
-3. **Roadmap phases map to journey levels**
-   - Foundation phase → Level 1 courses (prioritized)
-   - Core Skills phase → Level 2 courses
-   - Specialization phase → Level 3 courses
-
-4. **Recommended course order influences journey**
-   - Courses from assessment roadmap appear first within each level
-   - Other courses still available but de-emphasized
-
----
-
-## Database Changes
-
-### Add to profiles table
-
-```sql
-ALTER TABLE public.profiles
-ADD COLUMN recommended_degree_path TEXT DEFAULT NULL,
-ADD COLUMN onboarding_completed BOOLEAN DEFAULT FALSE;
-```
-
-| Column | Purpose |
-|--------|---------|
-| recommended_degree_path | AI-suggested path based on assessment |
-| onboarding_completed | Flag to track if user finished full onboarding |
-
----
-
-## Component Changes
-
-### 1. Assessment Results Page Redesign
-
-After completing assessment, instead of showing generic "Start Your Journey" button, show:
+### Admin Settings Page
+A new toggle in the existing Site Customization card (or a new Access Control section):
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│  YOUR PERSONALIZED DEGREE RECOMMENDATION                    │
+│ ACCESS CONTROL                                              │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  Based on your assessment:                                  │
-│  • Experience: Beginner                                     │
-│  • Strongest Area: Cinematography (78%)                     │
-│  • Overall Score: 62%                                       │
+│ Disable Sign Up                                 [TOGGLE]    │
+│ Prevent new users from creating accounts.                   │
+│ Only existing users can sign in.                            │
 │                                                             │
-│  We recommend:                                              │
-│                                                             │
-│  ┌───────────────────────────────────────────────────────┐  │
-│  │ ★ ASSOCIATE OF FILM                                   │  │
-│  │                                                       │  │
-│  │ Perfect for building strong foundations before        │  │
-│  │ advancing to specialized courses.                     │  │
-│  │                                                       │  │
-│  │ • 6 courses tailored to your skill gaps               │  │
-│  │ • 3-6 months to complete                              │  │
-│  │ • Start with: Cinematography (your strength!)         │  │
-│  │                                                       │  │
-│  │ [Choose This Path]                                    │  │
-│  └───────────────────────────────────────────────────────┘  │
-│                                                             │
-│  Or explore other options:                                  │
-│  [Bachelor of Film]  [Certificate in Cinematography]        │
+│ ⚠️ Currently: Sign up is DISABLED                          │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 2. Assessment Page Flow Update
-
-Add a new step after "results":
-- `step: "welcome" | "interests" | "experience" | "quiz" | "results" | "degree-recommendation" | "review"`
-
-The "degree-recommendation" step:
-- Shows assessment summary
-- Displays AI-recommended degree path
-- Explains why this path fits their profile
-- Lets user confirm or choose different path
-- On confirm: saves to profile and redirects to Journey View
-
-### 3. New Component: DegreeRecommendation
-
-`src/components/assessment/DegreeRecommendation.tsx`
-
-Props:
-- `assessmentResult` - scores, interests, experience level
-- `onSelectPath` - callback when user picks a path
-- `onSkip` - callback to skip and explore manually
-
-Logic to determine recommendation:
-```typescript
-function getRecommendedPath(
-  totalScore: number,
-  experienceLevel: string,
-  primaryStrength: string,
-  strengthScore: number
-): { path: DegreePath; reason: string; department?: CertificateDepartment } {
-  // Professional with 70%+ in one area → Certificate
-  if (experienceLevel === "professional" && strengthScore >= 70) {
-    return {
-      path: "certificate",
-      department: primaryStrength as CertificateDepartment,
-      reason: "You already have strong skills. A focused certificate will add credentials quickly.",
-    };
-  }
-  
-  // Semi-pro or intermediate with 50%+ overall → Bachelor
-  if (
-    (experienceLevel === "semi-professional" || experienceLevel === "intermediate") &&
-    totalScore >= 50
-  ) {
-    return {
-      path: "bachelor",
-      reason: "You have a solid foundation. The full Bachelor program will take you to mastery.",
-    };
-  }
-  
-  // Default: Associate for everyone else
-  return {
-    path: "associate",
-    reason: "Build a strong foundation first. You can always upgrade to Bachelor later.",
-  };
-}
-```
-
-### 4. Journey View Enhancement
-
-Update `useJourneyData.ts` to:
-- Accept optional `recommendedCourses` from assessment
-- Prioritize those courses within each level
-- Add visual indicator for "AI Recommended" courses
-
-```text
-Level 1: Foundations
-┌──────────────────────┐  ┌──────────────────────┐
-│ ★ HU-101            │  │ HU-102               │
-│ Cinematography      │  │ Lighting             │
-│ ✨ Recommended      │  │                      │
-│ for you             │  │                      │
-└──────────────────────┘  └──────────────────────┘
-```
-
-### 5. Student Center Integration
-
-Add unified progress card showing:
-- Degree path name
-- Assessment-based starting point
-- Current progress
-- Next recommended course
-
-```text
-┌─────────────────────────────────────────────────────────┐
-│ YOUR LEARNING JOURNEY                                   │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│ Bachelor of Film                    Level 2 / 3        │
-│ ████████████████░░░░░░░░░░░░░░░░░░  45%               │
-│                                                         │
-│ Primary Focus: Cinematography                           │
-│ Areas to Improve: Post-Production                       │
-│                                                         │
-│ Next Recommended: HU-202 Advanced Editing               │
-│                                                         │
-│ [Continue Journey →]                                    │
-└─────────────────────────────────────────────────────────┘
-```
+### Login Page Behavior
+When sign-up is disabled:
+- The "Sign Up" button/link is hidden
+- If someone tries to toggle to sign-up mode, they see a message: "Sign up is currently disabled"
+- Only the sign-in form is available
+- Display name field never appears
 
 ---
 
-## Updated Onboarding Flow
+## Implementation
 
-### Route Guard Update
+### Database Change
+Add a new row to the `site_settings` table:
 
-Modify `AssessmentRequiredRoute` to also check for degree path:
+| id | value |
+|----|-------|
+| signup_disabled | "true" or "false" |
 
-```typescript
-// Current: Only checks hasCompletedAssessment
-// New: Check both assessment AND degree selection
-if (!hasCompletedAssessment) {
-  return <Navigate to="/assessment" />;
-}
-if (!profile?.degree_path && !profile?.onboarding_completed) {
-  // They finished assessment but skipped degree selection
-  // Assessment page will show degree recommendation step
-  return <Navigate to="/assessment?step=degree-recommendation" />;
-}
-```
-
-### Assessment Page Query Params
-
-Support `?step=degree-recommendation` to jump directly to that step for users who completed assessment but not degree selection.
-
----
-
-## Files to Create
-
-| File | Purpose |
-|------|---------|
-| `src/components/assessment/DegreeRecommendation.tsx` | AI degree suggestion component |
-| `src/components/assessment/OnboardingProgress.tsx` | Unified step indicator |
-
-## Files to Modify
+### Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/pages/Assessment.tsx` | Add degree-recommendation step, update flow |
-| `src/hooks/useAssessmentResults.ts` | Add `getRecommendedDegreePath()` function |
-| `src/hooks/useJourneyData.ts` | Accept/prioritize recommended courses |
-| `src/components/auth/AssessmentRequiredRoute.tsx` | Check degree path selection |
-| `src/pages/StudentCenter.tsx` | Add unified journey progress card |
-| `src/pages/Degrees.tsx` | Show assessment-based recommendation if available |
-| `src/components/assessment/index.ts` | Export new components |
-
-## Database Migration
-
-Add columns to track recommendation and onboarding completion.
+| `src/hooks/useSiteSettings.ts` | Add `signup_disabled` to the settings interface |
+| `src/pages/Auth.tsx` | Fetch the setting and conditionally hide sign-up UI |
+| `src/components/admin/SiteCustomization.tsx` | Add toggle for disabling sign-up |
 
 ---
 
-## User Experience Flow Summary
+## Technical Details
 
-### New User (Complete Flow)
+### 1. Update useSiteSettings Hook
 
-1. **Sign up** → Auth page
-2. **Redirected to Assessment** → "Welcome to Your Assessment"
-3. **Select interests** → Pick 2-3 departments
-4. **Select experience** → Beginner/Intermediate/etc
-5. **Take quiz** → 60 sec/question, adaptive difficulty
-6. **View results** → Scores, strengths, weaknesses
-7. **NEW: Degree Recommendation** → AI suggests path based on results
-8. **Confirm or change** → User picks their path
-9. **Redirected to Journey** → See personalized roadmap with their courses
+Add `signup_disabled` to the `SiteSettings` interface:
 
-### Returning User (Already Has Assessment)
+```typescript
+interface SiteSettings {
+  login_video_url: string | null;
+  login_logo_url: string | null;
+  login_music_url: string | null;
+  signup_disabled: string | null; // "true" or "false"
+}
+```
 
-1. **Login** → Redirected to Student Center
-2. **See unified journey card** → Shows degree + assessment insights together
-3. **Click "Continue Journey"** → Goes to Journey View with recommended courses highlighted
+### 2. Update Auth Page
+
+Fetch the `signup_disabled` setting and conditionally render:
+
+```typescript
+// In Auth.tsx useEffect for fetching settings
+const [signupDisabled, setSignupDisabled] = useState(false);
+
+// Fetch from site_settings
+const signupSetting = data?.find(s => s.id === "signup_disabled");
+setSignupDisabled(signupSetting?.value === "true");
+
+// In JSX - hide the toggle link if disabled
+{!signupDisabled && (
+  <div className="mt-6 text-center">
+    <p className="text-sm text-muted-foreground">
+      Don't have an account?
+      <button onClick={() => setIsSignUp(true)}>Sign Up</button>
+    </p>
+  </div>
+)}
+
+// Force sign-in mode if disabled
+useEffect(() => {
+  if (signupDisabled && isSignUp) {
+    setIsSignUp(false);
+  }
+}, [signupDisabled, isSignUp]);
+```
+
+### 3. Add Toggle to Admin Settings
+
+In `SiteCustomization.tsx`, add a new section:
+
+```typescript
+<div className="space-y-4">
+  <div className="flex items-center justify-between">
+    <div className="space-y-0.5">
+      <Label className="text-base font-medium flex items-center gap-2">
+        <UserX className="h-4 w-4" />
+        Disable Sign Up
+      </Label>
+      <p className="text-sm text-muted-foreground">
+        Prevent new users from creating accounts
+      </p>
+    </div>
+    <Switch
+      checked={settings.signup_disabled === "true"}
+      onCheckedChange={(checked) => 
+        updateSetting("signup_disabled", checked ? "true" : "false")
+      }
+    />
+  </div>
+  
+  {settings.signup_disabled === "true" && (
+    <div className="flex items-start gap-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+      <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5" />
+      <p className="text-sm text-amber-600 dark:text-amber-400">
+        Sign up is currently disabled. Only existing users can access the platform.
+      </p>
+    </div>
+  )}
+</div>
+```
 
 ---
 
-## Visual Design Notes
+## User Experience
 
-- Assessment-recommended courses get a subtle sparkle icon
-- Degree recommendation card uses primary gold gradient
-- Onboarding progress bar persists across Assessment and Degree pages
-- Journey header shows both degree info AND primary strength from assessment
+### For Admins
+1. Go to Admin > Settings
+2. Find "Access Control" or "Site Customization" section
+3. Toggle "Disable Sign Up" on/off
+4. See confirmation message
+5. Changes take effect immediately
+
+### For Visitors (when disabled)
+1. Visit /auth page
+2. Only see sign-in form
+3. No "Sign Up" link visible
+4. Cannot create new accounts
 
 ---
 
-## Technical Notes
+## Files Summary
 
-- Store `recommended_degree_path` separate from `degree_path` so we can track if user took our suggestion
-- `onboarding_completed` flag prevents redirect loops
-- Assessment results already stored in `assessment_results` table - we just need to use them more
-- Roadmap phases from assessment can be persisted or recalculated on-the-fly
+| File | Action |
+|------|--------|
+| `src/hooks/useSiteSettings.ts` | Add `signup_disabled` field |
+| `src/pages/Auth.tsx` | Fetch setting, hide sign-up when disabled |
+| `src/components/admin/SiteCustomization.tsx` | Add toggle with warning indicator |
 
- ---
- 
- ## Implementation Status: COMPLETED ✅
- 
- ### Database Changes (Done)
- - Added `recommended_degree_path` (TEXT) column to profiles table
- - Added `onboarding_completed` (BOOLEAN) column to profiles table
- 
- ### New Components Created
- - `src/components/assessment/DegreeRecommendation.tsx` - AI-driven degree path suggestion after assessment
- - `src/components/assessment/OnboardingProgress.tsx` - Unified step indicator component
- 
- ### Modified Files
- - `src/pages/Assessment.tsx` - Added "degree-recommendation" step, integrated new components
- - `src/hooks/useJourneyData.ts` - Added `isRecommended` flag for courses based on assessment
- - `src/components/journey/JourneyCourseCard.tsx` - Shows "For You" badge on recommended courses
- - `src/components/auth/AssessmentRequiredRoute.tsx` - Now checks for degree path selection
- - `src/components/assessment/index.ts` - Exports new components
- 
- ### User Flow (Implemented)
- 1. Sign up → Assessment welcome
- 2. Select interests (2-3 departments)
- 3. Select experience level
- 4. Take timed quiz
- 5. View results (scores, roadmap)
- 6. **NEW: Choose Your Degree Path** (AI recommendation)
- 7. Confirm path → Journey View with personalized courses marked "For You"
+No database migration needed - the `site_settings` table already supports arbitrary key-value pairs.
+
