@@ -227,6 +227,7 @@ export default function StudentCenter() {
                 </div>
               </div>
             </div>
+          <div className="flex items-center gap-3">
             <Link 
               to="/student/profile" 
               className="btn-brutal text-sm flex items-center gap-2"
@@ -241,6 +242,7 @@ export default function StudentCenter() {
               <Eye className="h-4 w-4" />
               View Profile
             </Link>
+          </div>
           </div>
 
           {/* Active Courses Section - Now with management */}

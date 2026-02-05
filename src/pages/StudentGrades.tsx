@@ -4,6 +4,7 @@ import { PageLayout } from "@/components/layout";
 import { useQuizResults } from "@/hooks/useQuizResults";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { 
   Trophy, 
   ArrowLeft, 
@@ -54,6 +55,21 @@ export default function StudentGrades() {
     <PageLayout>
       <div className="py-12 px-4">
         <div className="container-wide">
+          {/* Breadcrumb */}
+          <Breadcrumb className="mb-4">
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link to="/student" className="hover:text-primary transition-colors">Student Hub</Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>Grades</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+
           {/* Header */}
           <div className="flex items-center gap-4 mb-8">
             <Link

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { PageLayout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +17,8 @@ import {
   MessageSquare,
   Plus,
   Filter,
-  X
+  X,
+  ArrowLeft
 } from "lucide-react";
 import { 
   PostCard, 
@@ -38,6 +40,7 @@ import { useEnrollments } from "@/hooks/useEnrollments";
 import { courses } from "@/data/courses";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 
 export default function Community() {
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -185,6 +188,21 @@ export default function Community() {
     <PageLayout>
       <div className="py-6 px-4">
         <div className="container-wide">
+          {/* Breadcrumb */}
+          <Breadcrumb className="mb-4">
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link to="/student" className="hover:text-primary transition-colors">Student Hub</Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>Community</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+
           {/* Daily Challenge Card */}
           <div className="mb-6">
             <DailyChallengeCard

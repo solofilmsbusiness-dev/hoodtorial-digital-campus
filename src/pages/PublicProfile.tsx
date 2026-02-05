@@ -1,7 +1,7 @@
  import { useParams, useNavigate } from "react-router-dom";
  import { Link } from "react-router-dom";
  import { motion } from "framer-motion";
- import { ArrowLeft, Eye, Pencil } from "lucide-react";
+  import { ArrowLeft, Eye, Pencil, Home } from "lucide-react";
  import { Button } from "@/components/ui/button";
  import { Alert, AlertDescription } from "@/components/ui/alert";
  import { PageLayout } from "@/components/layout";
@@ -185,11 +185,11 @@ import { useMemo } from "react";
          <div className="container max-w-5xl py-8">
            <Button
              variant="ghost"
-             onClick={() => navigate(-1)}
+             onClick={() => navigate("/student")}
              className="mb-6"
            >
              <ArrowLeft className="h-4 w-4 mr-2" />
-             Back
+             Back to Student Hub
            </Button>
            <div className="text-center py-12">
              <p className="text-muted-foreground">Profile not found or you don't have permission to view it.</p>
