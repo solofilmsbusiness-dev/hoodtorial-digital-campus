@@ -1,5 +1,5 @@
 import { useParams, Navigate } from "react-router-dom";
-import { SkillTreeView } from "@/components/skill-tree";
+import { JourneyView } from "@/components/journey";
 import type { DegreePath } from "@/hooks/useSkillTree";
 
 const validPaths = ["associate", "bachelor", "certificate"];
@@ -14,5 +14,5 @@ export default function SkillTree() {
 
   const degreePath = path as DegreePath;
 
-  return <SkillTreeView path={degreePath} />;
+  return <JourneyView path={degreePath} />;
 }
