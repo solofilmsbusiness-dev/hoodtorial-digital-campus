@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { useAdminAuth } from "@/hooks/useAdminAuth";
+ import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+ import { useAdminAuth } from "@/hooks/useAdminAuth";
+ import { useTesterAuth } from "@/hooks/useTesterAuth";
 
 const TEST_MODE_KEY = "hu-admin-test-mode-v2";
 
@@ -24,6 +25,7 @@ interface TestModeContextType {
   setSkipProgressionLocks: (value: boolean) => void;
   canUseTestMode: boolean;
   activeBypassCount: number;
+   isTesterRole: boolean;
 }
 
 const defaultState: TestModeState = {
@@ -38,6 +40,7 @@ const TestModeContext = createContext<TestModeContextType | undefined>(undefined
 
 export function TestModeProvider({ children }: { children: React.ReactNode }) {
   const { isAdmin, isLoading } = useAdminAuth();
+   const { isTester, isLoading: testerLoading } = useTesterAuth();
   const [state, setState] = useState<TestModeState>(defaultState);
 
   // Load state from localStorage on mount
@@ -64,15 +67,15 @@ export function TestModeProvider({ children }: { children: React.ReactNode }) {
 
   // Disable test mode if user loses admin status
   useEffect(() => {
-    if (!isLoading && !isAdmin && state.enabled) {
+     if (!isLoading && !testerLoading && !isAdmin && !isTester && state.enabled) {
       setState((prev) => ({ ...prev, enabled: false }));
     }
-  }, [isAdmin, isLoading, state.enabled]);
+   }, [isAdmin, isTester, isLoading, testerLoading, state.enabled]);
 
   const toggleTestMode = useCallback(() => {
-    if (!isAdmin) return;
+     if (!isAdmin && !isTester) return;
     setState((prev) => ({ ...prev, enabled: !prev.enabled }));
-  }, [isAdmin]);
+   }, [isAdmin, isTester]);
 
   const setAutoPassQuizzes = useCallback((value: boolean) => {
     setState((prev) => ({ ...prev, autoPassQuizzes: value }));
@@ -90,16 +93,34 @@ export function TestModeProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => ({ ...prev, skipProgressionLocks: value }));
   }, []);
 
-  // Only enable test mode if user is verified admin
-  const effectiveEnabled = isAdmin && state.enabled;
+   // Testers get automatic test mode, admins need to toggle it manually
+   const effectiveEnabled = isTester || (isAdmin && state.enabled);
 
-  // Count active bypasses
-  const activeBypassCount = effectiveEnabled
+   // Testers get all bypasses enabled automatically (except autoPassQuizzes - results tracked)
+   const effectiveBypassFlags = useMemo(() => {
+     if (isTester) {
+       return {
+         bypassVideoProgress: true,
+         bypassEnrollmentCheck: true,
+         skipProgressionLocks: true,
+         autoPassQuizzes: false, // Testers have quizzes tracked normally
+       };
+     }
+     return {
+       bypassVideoProgress: state.bypassVideoProgress,
+       bypassEnrollmentCheck: state.bypassEnrollmentCheck,
+       skipProgressionLocks: state.skipProgressionLocks,
+       autoPassQuizzes: state.autoPassQuizzes,
+     };
+   }, [isTester, state.bypassVideoProgress, state.bypassEnrollmentCheck, state.skipProgressionLocks, state.autoPassQuizzes]);
+ 
+   // Count active bypasses
+   const activeBypassCount = effectiveEnabled
     ? [
-        state.autoPassQuizzes,
-        state.bypassVideoProgress,
-        state.bypassEnrollmentCheck,
-        state.skipProgressionLocks,
+         effectiveBypassFlags.autoPassQuizzes,
+         effectiveBypassFlags.bypassVideoProgress,
+         effectiveBypassFlags.bypassEnrollmentCheck,
+         effectiveBypassFlags.skipProgressionLocks,
       ].filter(Boolean).length
     : 0;
 
@@ -107,17 +128,18 @@ export function TestModeProvider({ children }: { children: React.ReactNode }) {
     <TestModeContext.Provider
       value={{
         isTestModeEnabled: effectiveEnabled,
-        autoPassQuizzes: state.autoPassQuizzes,
-        bypassVideoProgress: state.bypassVideoProgress,
-        bypassEnrollmentCheck: state.bypassEnrollmentCheck,
-        skipProgressionLocks: state.skipProgressionLocks,
+         autoPassQuizzes: effectiveBypassFlags.autoPassQuizzes,
+         bypassVideoProgress: effectiveBypassFlags.bypassVideoProgress,
+         bypassEnrollmentCheck: effectiveBypassFlags.bypassEnrollmentCheck,
+         skipProgressionLocks: effectiveBypassFlags.skipProgressionLocks,
         toggleTestMode,
         setAutoPassQuizzes,
         setBypassVideoProgress,
         setBypassEnrollmentCheck,
         setSkipProgressionLocks,
-        canUseTestMode: isAdmin,
+         canUseTestMode: isAdmin || isTester,
         activeBypassCount,
+         isTesterRole: isTester,
       }}
     >
       {children}

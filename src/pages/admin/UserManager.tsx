@@ -47,6 +47,7 @@ import {
   Download,
   Ban,
   ShieldOff,
+   FlaskConical,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Database } from "@/integrations/supabase/types";
@@ -184,6 +185,8 @@ export default function UserManager() {
         return "default";
       case "moderator":
         return "secondary";
+       case "tester":
+         return "outline";
       default:
         return "outline";
     }
@@ -447,6 +450,22 @@ export default function UserManager() {
                               Remove Moderator
                             </DropdownMenuItem>
                           )}
+                           {!student.roles.includes("tester") && (
+                             <DropdownMenuItem
+                               onClick={() => handleRoleAction("add", student.id, "tester", student.displayName || "User")}
+                             >
+                               <FlaskConical className="h-4 w-4 mr-2" />
+                               Make Tester
+                             </DropdownMenuItem>
+                           )}
+                           {student.roles.includes("tester") && (
+                             <DropdownMenuItem
+                               onClick={() => handleRoleAction("remove", student.id, "tester", student.displayName || "User")}
+                             >
+                               <ShieldX className="h-4 w-4 mr-2" />
+                               Remove Tester
+                             </DropdownMenuItem>
+                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -488,6 +507,11 @@ export default function UserManager() {
                   Admin users have full access to manage the platform.
                 </span>
               )}
+               {confirmDialog?.role === "tester" && (
+                 <span className="block mt-2 text-violet-500">
+                   Testers have full platform access for testing but cannot access admin features.
+                 </span>
+               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

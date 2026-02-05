@@ -23,6 +23,7 @@ export function useTestMode() {
     // Computed
     canUseTestMode: isAdmin,
     activeBypassCount: context.activeBypassCount,
+     isTesterRole: context.isTesterRole,
     
     // Bypass helpers - only active when test mode is enabled AND the specific bypass is on
     shouldBypassVideoProgress: context.isTestModeEnabled && context.bypassVideoProgress,

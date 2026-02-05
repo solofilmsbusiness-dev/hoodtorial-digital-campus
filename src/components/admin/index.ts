@@ -21,3 +21,4 @@ export { PendingItemsCard } from "./PendingItemsCard";
 export { SupportTicketList } from "./SupportTicketList";
 export { SupportConversation } from "./SupportConversation";
 export { TestMessagesCard } from "./TestMessagesCard";
+ export { TesterModeBanner } from "./TesterModeBanner";
