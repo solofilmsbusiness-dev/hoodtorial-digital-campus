@@ -7,3 +7,4 @@ export { ProfilePreviewCard } from "./ProfilePreviewCard";
 export { ProfileCompleteness } from "./ProfileCompleteness";
  export { PublicProfileCard } from "./PublicProfileCard";
  export { UserProfileLink } from "./UserProfileLink";
+export { ProfileWall } from "./ProfileWall";

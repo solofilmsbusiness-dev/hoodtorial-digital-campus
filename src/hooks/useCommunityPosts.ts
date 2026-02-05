@@ -55,6 +55,7 @@ interface CreatePostData {
   video_url?: string;
   mentioned_user_ids?: string[];
   challenge_id?: string;
+  target_profile_id?: string;
 }
 
 export function useCommunityPosts(filters?: {
@@ -258,6 +259,7 @@ export function useCommunityPosts(filters?: {
           media_urls: data.media_urls || [],
           video_url: data.video_url || null,
           challenge_id: data.challenge_id || null,
+        target_profile_id: data.target_profile_id || null,
         })
         .select()
         .single();

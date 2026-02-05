@@ -10,9 +10,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import { getVideoType, getYouTubeId, getYouTubeEmbedUrl } from "@/lib/videoUtils";
  import { AddFriendButton } from "@/components/friends";
  import { UserProfileLink } from "@/components/profile/UserProfileLink";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+
+interface ExtendedCommunityPost extends CommunityPost {
+  target_profile_id?: string | null;
+}
 
 interface TimelinePostProps {
-  post: CommunityPost;
+  post: ExtendedCommunityPost;
   onLike: () => void;
   onSave: () => void;
   onClick: () => void;
@@ -36,6 +42,24 @@ export function TimelinePost({
   const [isLiking, setIsLiking] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // Fetch target profile info if this is a wall post
+  const { data: targetProfile } = useQuery({
+    queryKey: ['target-profile', post.target_profile_id],
+    queryFn: async () => {
+      if (!post.target_profile_id) return null;
+      const { data } = await supabase
+        .from('profiles_public')
+        .select('user_id, display_name')
+        .eq('user_id', post.target_profile_id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!post.target_profile_id,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const isWallPost = !!post.target_profile_id;
 
   const getInitials = (name?: string | null) => {
     if (!name) return "S";
@@ -110,6 +134,18 @@ export function TimelinePost({
               showAvatar={false}
               nameClassName="text-sm truncate"
             />
+            {isWallPost && targetProfile && (
+              <>
+                <span className="text-muted-foreground text-sm">→</span>
+                <UserProfileLink
+                  userId={targetProfile.user_id}
+                  displayName={targetProfile.display_name}
+                  avatarUrl={null}
+                  showAvatar={false}
+                  nameClassName="text-sm truncate text-muted-foreground"
+                />
+              </>
+            )}
             {post.author?.role === 'admin' && (
               <Badge className="bg-destructive/20 text-destructive text-xs">
                 <GraduationCap className="h-3 w-3 mr-1" />
