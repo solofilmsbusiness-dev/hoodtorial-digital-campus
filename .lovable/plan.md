@@ -1,238 +1,307 @@
 
-# Redesign: Functional Degree Programs Page
+# Complete Redesign: Learning Journey / Curriculum Roadmap
 
-## Problem Analysis
+## Problem Summary
 
-The current Degrees page has several issues:
-
-1. **All three paths lead to nearly identical skill trees** - The associate, bachelor, and certificate paths share most of the same courses, just with different totals
-2. **Certificate program is generic** - It doesn't offer department specializations despite claiming to be "focused specialization in one department"
-3. **No persistence** - User's degree choice isn't saved anywhere in their profile
-4. **Disconnected from Student Center** - Progress shown on degrees page doesn't reflect actual user data
-5. **Static content** - The "Sample Progress" section shows hardcoded fake data instead of real user progress
-6. **Requirements section only covers Bachelor's** - Doesn't dynamically update based on user's chosen path
-
----
-
-## Solution Overview
-
-Transform the Degrees page into a functional degree program selector that:
-
-1. **Connects to user's profile** - Stores their selected degree path in the database
-2. **Shows real progress** - Displays actual credits, courses, quizzes completed
-3. **Makes Certificate meaningful** - Allows users to choose a department specialization
-4. **Creates truly distinct paths** - Each degree has unique course requirements mapped to real courses
-5. **Integrates with Student Center** - Shows degree progress on dashboard
+The current skill tree has usability issues:
+- Complex pan/zoom SVG canvas is awkward to navigate
+- Hexagonal nodes with department lanes feel abstract
+- Minimap adds complexity without clarity
+- Poor mobile experience
+- Nodes don't show actual course content or lesson progress
+- Disconnect between degree path selection and visualization
 
 ---
 
-## Database Changes
+## New Design: "Your Learning Journey"
 
-### Add to profiles table
+Replace the skill tree with a **scrollable, card-based curriculum roadmap** that feels more like a structured learning path and less like a video game skill tree.
 
-```sql
-ALTER TABLE public.profiles 
-ADD COLUMN degree_path TEXT DEFAULT NULL,
-ADD COLUMN certificate_department TEXT DEFAULT NULL;
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│  HEADER: Progress stats + Level indicator + XP bar             │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ LEVEL 1: FOUNDATIONS                          ▼ Expand  │   │
+│  │ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 2/4 courses │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│    ┌──────────────┐  ┌──────────────┐  ┌──────────────┐        │
+│    │ ★ HU-101    │  │ ★ HU-102    │  │ 🔒 HU-103   │        │
+│    │ iPhone Cine │  │ Lighting    │  │ Editing     │        │
+│    │             │  │             │  │             │        │
+│    │ ██████████  │  │ ████░░░░░░  │  │ Locked      │        │
+│    │ COMPLETE    │  │ 45% done    │  │ Prereq: 102 │        │
+│    │ +30 SP ✓    │  │ 40 SP       │  │             │        │
+│    └──────────────┘  └──────────────┘  └──────────────┘        │
+│                              │                                  │
+│                              ▼ (visual connector)               │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ LEVEL 2: INTERMEDIATE                        ▼ Expand   │   │
+│  │ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0/4 courses │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ LEVEL 3: ADVANCED                            ▼ Expand   │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ ★ CAPSTONE: Your Final Film                  🔒 Locked  │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
 ```
-
-| Column | Type | Purpose |
-|--------|------|---------|
-| degree_path | TEXT | 'associate', 'bachelor', or 'certificate' |
-| certificate_department | TEXT | Department ID for certificate specialization (e.g., 'cinematography') |
 
 ---
 
-## New Degree Structure
+## Key Design Principles
 
-### Associate of Film (30 credits, 3-6 months)
-- **6 courses**: Foundation courses from any 2 departments
-- **6 quizzes**: One per course module
-- **1 scenario exam**: Practical test
-- **2 projects**: Hands-on assignments
+### 1. Vertical Scroll Instead of Pan/Zoom
+- Natural scrolling behavior everyone understands
+- No learning curve for navigation
+- Works perfectly on mobile
 
-### Bachelor of Film (60 credits, 6-12 months)  
-- **14 courses**: All courses across all 4 departments
-- **12+ quizzes**: All course quizzes
-- **3 scenario exams**: One per skill level (100/200/300)
-- **6 projects**: Major practical assignments
-- **1 capstone**: Final short film
+### 2. Collapsible Level Sections
+- Group courses by level (100/200/300 series)
+- Each level can expand/collapse to show courses
+- Shows level completion status at a glance
 
-### Certificate (15 credits, 1-3 months)
-- **User chooses ONE department** to specialize in
-- **3-4 courses**: All courses within that department
-- **3-4 quizzes**: Department-specific
-- **1 project**: Department-focused practical
+### 3. Rich Course Cards
+- Show course title, code, and department color
+- Display real progress (% of lessons watched, quizzes passed)
+- Clear locked/available/in-progress/complete states
+- Skill points earned or available
 
----
+### 4. Visual Level Connectors
+- Simple vertical line or chevron connectors between levels
+- Shows progression flow without complex bezier curves
+- Animated "energy" flowing down as levels complete
 
-## Page Redesign
-
-### Section 1: Hero with User Context (if logged in)
-
-```text
-+------------------------------------------+
-|  EARN YOUR DEGREE                        |
-|                                          |
-|  [Current Path Badge if selected]        |
-|  Your current progress: 45% complete     |
-|  15/30 credits earned                    |
-+------------------------------------------+
-```
-
-### Section 2: Degree Path Cards (Interactive)
-
-```text
-+-------------+  +-------------+  +-------------+
-| ASSOCIATE   |  | BACHELOR    |  | CERTIFICATE |
-|             |  | * Popular * |  |             |
-| 30 credits  |  | 60 credits  |  | 15 credits  |
-| 6 courses   |  | 14 courses  |  | Pick a Dept |
-|             |  |             |  |             |
-| [Details ▼] |  | [Details ▼] |  | [Details ▼] |
-| [Start]     |  | [Start]     |  | [Choose]    |
-+-------------+  +-------------+  +-------------+
-```
-
-### Section 3: Certificate Department Picker (Conditional)
-
-When "Certificate" is selected, show department options:
-
-```text
-Choose Your Specialization:
-
-[Cinematography]  [Post-Production]  [Directing]  [Production]
-     Gold              Purple           Cyan         Pink
-   4 courses          4 courses       3 courses    3 courses
-```
-
-### Section 4: Dynamic Requirements Breakdown
-
-Shows requirements for the **selected** degree path (not just Bachelor's):
-
-```text
-WHAT IT TAKES TO GRADUATE (Associate of Film)
-
-[6 Courses]  [6 Quizzes]  [1 Exam]  [2 Projects]  [Certificate]
-```
-
-### Section 5: Real User Progress (if logged in & path selected)
-
-Replace hardcoded progress with actual data:
-
-```text
-YOUR PROGRESS
-
-[=============>      ] 45%
-
-Courses:  4/6   ████████░░░░
-Quizzes:  3/6   ██████░░░░░░
-Exams:    0/1   ░░░░░░░░░░░░
-Projects: 1/2   █████░░░░░░░
-
-Credits: 15/30
-```
-
-### Section 6: Graduation Benefits (keep existing)
+### 5. Gamification Preserved
+- XP/Skill Points system kept in header
+- Level badges (Level 1, 2, 3...)
+- Rank titles based on progress
+- Celebration animations on completion
 
 ---
 
 ## Component Architecture
 
-### New/Modified Files
+### New Components
 
-| File | Action | Purpose |
-|------|--------|---------|
-| `src/pages/Degrees.tsx` | Major rewrite | Interactive degree selection |
-| `src/hooks/useDegreeProgress.ts` | Create | Fetch/calculate progress for selected path |
-| `src/hooks/useDegreeSelection.ts` | Create | Manage degree path selection in profile |
-| `src/components/degrees/DegreePathCard.tsx` | Create | Interactive degree card with expand/select |
-| `src/components/degrees/DepartmentPicker.tsx` | Create | Certificate specialization selector |
-| `src/components/degrees/DegreeProgressSection.tsx` | Create | Real-time progress display |
-| `src/components/degrees/index.ts` | Create | Barrel exports |
+| Component | Purpose |
+|-----------|---------|
+| `JourneyView.tsx` | Main container replacing SkillTreeView |
+| `JourneyHeader.tsx` | Stats bar with XP, credits, level, rank |
+| `JourneyLevelSection.tsx` | Collapsible section for each level |
+| `JourneyCourseCard.tsx` | Individual course card with progress |
+| `JourneyConnector.tsx` | Visual connectors between levels |
+| `JourneyMilestone.tsx` | Special milestone/capstone cards |
 
-### Database Migration
+### Updated Hook
 
-Add columns to profiles table for persisting degree selection.
-
----
-
-## User Flow
-
-### New User (Not Logged In)
-1. View degree options
-2. Click "Start This Path" redirects to enrollment/auth
-3. After signup, redirected back to select degree
-
-### Logged In User (No Path Selected)
-1. View degree options with interactive cards
-2. Expand cards to see course requirements
-3. Click "Choose This Path" to select
-4. For Certificate: pick department first
-5. Selection saved to profile
-6. Redirected to skill tree for their path
-
-### Logged In User (Path Selected)
-1. See current path highlighted
-2. View real progress data
-3. "Continue Journey" button goes to skill tree
-4. Option to "Change Path" (with confirmation if progress exists)
+| Hook | Changes |
+|------|---------|
+| `useJourneyData.ts` | New hook replacing useSkillTree, organized by levels instead of node positions |
 
 ---
 
-## Integration with Student Center
-
-Add degree progress card to Student Center dashboard:
+## JourneyHeader Component
 
 ```text
-+-----------------------------------+
-| YOUR DEGREE TRACK                 |
-|                                   |
-| Bachelor of Film                  |
-| [===========               ] 45%  |
-|                                   |
-| 28/60 credits                     |
-| [View Skill Tree →]               |
-+-----------------------------------+
+┌─────────────────────────────────────────────────────────────┐
+│ ← Back to Degrees           Bachelor of Film                │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
+│  │ LEVEL 3      │  │ 450 / 600 SP │  │ 28 / 60      │      │
+│  │ Intermediate │  │ Skill Points │  │ Credits      │      │
+│  └──────────────┘  └──────────────┘  └──────────────┘      │
+│                                                             │
+│  ████████████████████░░░░░░░░  75% Complete                │
+│                                                             │
+│  Current Rank: SENIOR DIRECTOR                             │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Technical Implementation Details
+## JourneyLevelSection Component
 
-### useDegreeProgress Hook
-
-```typescript
-// Calculates progress based on:
-// - enrollments (completed courses)
-// - quiz_results (passed quizzes)
-// - user_progress (for credits)
-// Returns: { courses, quizzes, exams, projects, credits, percentage }
-```
-
-### useDegreeSelection Hook
-
-```typescript
-// - getDegreeSelection(): { path, department }
-// - setDegreeSelection(path, department?): Promise
-// - Uses profile context
-```
-
-### Certificate Courses by Department
+Each level section:
+- Has a header showing level name and completion count
+- Collapses/expands with smooth animation
+- Shows department-colored courses in a responsive grid
+- Displays a "Level Complete!" badge when all courses done
+- Has a subtle glow/animation when level is active (in progress)
 
 ```text
-Cinematography: HU-101, HU-102, HU-201, HU-301 (17 credits)
-Post-Production: HU-103, HU-104, HU-202, HU-302 (16 credits)
-Directing: HU-105, HU-203, HU-303 (13 credits)
-Production: HU-106, HU-204, HU-304 (12 credits)
+Level States:
+- LOCKED: Grey, collapsed, shows prerequisite
+- AVAILABLE: Colored, expanded by default, pulsing border
+- IN_PROGRESS: Colored, expanded, shows active courses
+- COMPLETE: Gold border, completion badge, can collapse
 ```
 
 ---
 
-## Visual Design
+## JourneyCourseCard Component
 
-- Maintain brutalist aesthetic with gold/neon accents
-- Selected degree card has gold border glow
-- Certificate departments use their department colors
-- Progress bars match course completion style in Student Center
-- Animations for card expansion and selection
+Replaces SkillNodeHex with a full card design:
+
+```text
+┌────────────────────────────────────────┐
+│ [Dept Color Bar]                       │
+│                                        │
+│ HU-201                    ⚡ 50 SP     │
+│ Advanced Camera Movement               │
+│ Cinematography                         │
+│                                        │
+│ ██████████░░░░░░░░░░░░░ 45%           │
+│ 5/12 lessons • 2/4 quizzes             │
+│                                        │
+│ [Continue Course →]                    │
+└────────────────────────────────────────┘
+```
+
+States:
+- **Locked**: Greyed out, shows "Complete X to unlock"
+- **Available**: Pulsing border, "Start Course" button
+- **In Progress**: Shows progress bar, "Continue" button
+- **Complete**: Checkmark, gold accent, "Review" button
+
+---
+
+## JourneyMilestone Component
+
+For exams, projects, and capstone:
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ ⭐ SCENARIO EXAM 1                                         │
+│ Test your skills with a real-world filmmaking challenge    │
+│                                                             │
+│ Requires: Complete Level 1 courses                         │
+│                                                             │
+│ [🔒 Locked]                                                 │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Data Organization
+
+### useJourneyData Hook
+
+Returns data organized for the new UI:
+
+```typescript
+interface JourneyLevel {
+  id: string;
+  name: string;
+  number: number;
+  status: 'locked' | 'available' | 'in_progress' | 'complete';
+  courses: JourneyCourse[];
+  requiredToUnlock: string[];
+  milestone?: JourneyMilestone;
+}
+
+interface JourneyCourse {
+  code: string;
+  title: string;
+  department: DepartmentId;
+  departmentColor: string;
+  credits: number;
+  skillPoints: number;
+  status: 'locked' | 'available' | 'in_progress' | 'complete';
+  progress: {
+    lessonsCompleted: number;
+    lessonsTotal: number;
+    quizzesPassed: number;
+    quizzesTotal: number;
+    percentage: number;
+  };
+  prerequisites: string[];
+}
+```
+
+---
+
+## Mobile Experience
+
+The card-based design is mobile-first:
+- Single column layout on mobile
+- Full-width course cards
+- Touch-friendly tap targets
+- Collapsible sections reduce scroll length
+- No complex gestures required
+
+---
+
+## Visual Styling
+
+Maintain the brutalist/urban aesthetic:
+- Dark backgrounds with department-colored accents
+- Bold typography for level headers
+- Card borders with subtle glow effects
+- Gold primary color for progress/completion
+- Department colors: Gold (cine), Purple (post), Cyan (directing), Pink (production)
+
+---
+
+## Files to Create
+
+| File | Purpose |
+|------|---------|
+| `src/components/journey/JourneyView.tsx` | Main view container |
+| `src/components/journey/JourneyHeader.tsx` | Stats and progress header |
+| `src/components/journey/JourneyLevelSection.tsx` | Collapsible level group |
+| `src/components/journey/JourneyCourseCard.tsx` | Course card with progress |
+| `src/components/journey/JourneyConnector.tsx` | Visual level connectors |
+| `src/components/journey/JourneyMilestone.tsx` | Exam/project/capstone cards |
+| `src/components/journey/index.ts` | Barrel exports |
+| `src/hooks/useJourneyData.ts` | Data hook for journey view |
+
+## Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/pages/SkillTree.tsx` | Use new JourneyView instead of SkillTreeView |
+| `src/pages/Degrees.tsx` | Update links to use new journey page |
+
+---
+
+## Animation Details
+
+- **Level unlock**: Cascade reveal animation when prerequisites met
+- **Course completion**: Confetti burst, skill points fly to header
+- **Progress update**: Smooth bar fill animation
+- **Level complete**: Gold shimmer effect on section header
+- **Rank up**: Full-screen celebration moment
+
+---
+
+## Comparison: Before vs After
+
+| Aspect | Current Skill Tree | New Journey View |
+|--------|-------------------|------------------|
+| Navigation | Pan/zoom canvas | Natural scroll |
+| Mobile | Awkward | Native feel |
+| Progress visibility | Abstract nodes | Clear percentages |
+| Course info | Hidden in sheet | Visible on cards |
+| Learning curve | High | None |
+| Accessibility | Poor | Good |
+| Performance | Heavy SVG | Light cards |
+| Gamification | Preserved | Enhanced |
+
+---
+
+## Optional: Keep Skill Tree as Alternative View
+
+Could add a toggle to switch between:
+- "Journey View" (default, card-based)
+- "Classic View" (original skill tree)
+
+This preserves the work done while making the default more accessible.
