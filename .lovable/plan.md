@@ -1,253 +1,238 @@
 
-# Complete Redesign: Learning Journey / Curriculum Roadmap
 
-## Problem Summary
+# Unified Onboarding Journey: Assessment + Degree Path Integration
 
-The current skill tree has usability issues:
-- Complex pan/zoom SVG canvas is awkward to navigate
-- Hexagonal nodes with department lanes feel abstract
-- Minimap adds complexity without clarity
-- Poor mobile experience
-- Nodes don't show actual course content or lesson progress
-- Disconnect between degree path selection and visualization
+## Current State Analysis
+
+Right now, there are **three disconnected systems**:
+
+1. **Assessment** - Users take an entry quiz that evaluates their skills across departments and generates a "Learning Roadmap" with Foundation, Core Skills, and Specialization phases
+2. **Degree Selection** - A completely separate page where users pick Associate, Bachelor, or Certificate paths
+3. **Journey/Skill Tree** - Shows courses based on the degree path, but ignores assessment results entirely
+
+**The disconnect:**
+- Assessment recommends courses like HU-101, HU-102 based on skill gaps
+- User picks Bachelor degree, which has its own fixed course list
+- These two lists may conflict - assessment might say "start with Directing" but Bachelor starts everyone the same way
+- Users feel like they did the assessment for nothing
 
 ---
 
-## New Design: "Your Learning Journey"
+## Solution: Unified Onboarding Flow
 
-Replace the skill tree with a **scrollable, card-based curriculum roadmap** that feels more like a structured learning path and less like a video game skill tree.
+### New User Journey (Step-by-Step)
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│  HEADER: Progress stats + Level indicator + XP bar             │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │ LEVEL 1: FOUNDATIONS                          ▼ Expand  │   │
-│  │ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 2/4 courses │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│    ┌──────────────┐  ┌──────────────┐  ┌──────────────┐        │
-│    │ ★ HU-101    │  │ ★ HU-102    │  │ 🔒 HU-103   │        │
-│    │ iPhone Cine │  │ Lighting    │  │ Editing     │        │
-│    │             │  │             │  │             │        │
-│    │ ██████████  │  │ ████░░░░░░  │  │ Locked      │        │
-│    │ COMPLETE    │  │ 45% done    │  │ Prereq: 102 │        │
-│    │ +30 SP ✓    │  │ 40 SP       │  │             │        │
-│    └──────────────┘  └──────────────┘  └──────────────┘        │
-│                              │                                  │
-│                              ▼ (visual connector)               │
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │ LEVEL 2: INTERMEDIATE                        ▼ Expand   │   │
-│  │ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0/4 courses │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │ LEVEL 3: ADVANCED                            ▼ Expand   │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │ ★ CAPSTONE: Your Final Film                  🔒 Locked  │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+Sign Up → Welcome → Assessment → Degree Path Recommendation → Journey View
+                         ↓                    ↓
+               (Evaluates skills)    (AI suggests best path)
+                         ↓                    ↓
+              Stores interests +    User confirms or changes
+              department scores            path
+                         ↓                    ↓
+                   Personalized roadmap courses merge with
+                   degree requirements for unified journey
 ```
 
----
+### Key Integration Points
 
-## Key Design Principles
+1. **Assessment results inform degree recommendation**
+   - Experience level + total score suggests path:
+     - Beginner + low score → Associate (foundations focus)
+     - Intermediate + moderate score → Bachelor (full curriculum)
+     - Professional + high in one area → Certificate (quick specialization)
 
-### 1. Vertical Scroll Instead of Pan/Zoom
-- Natural scrolling behavior everyone understands
-- No learning curve for navigation
-- Works perfectly on mobile
+2. **Primary interest becomes certificate department**
+   - If user chooses Certificate, auto-suggest department based on their strongest assessment area
 
-### 2. Collapsible Level Sections
-- Group courses by level (100/200/300 series)
-- Each level can expand/collapse to show courses
-- Shows level completion status at a glance
+3. **Roadmap phases map to journey levels**
+   - Foundation phase → Level 1 courses (prioritized)
+   - Core Skills phase → Level 2 courses
+   - Specialization phase → Level 3 courses
 
-### 3. Rich Course Cards
-- Show course title, code, and department color
-- Display real progress (% of lessons watched, quizzes passed)
-- Clear locked/available/in-progress/complete states
-- Skill points earned or available
-
-### 4. Visual Level Connectors
-- Simple vertical line or chevron connectors between levels
-- Shows progression flow without complex bezier curves
-- Animated "energy" flowing down as levels complete
-
-### 5. Gamification Preserved
-- XP/Skill Points system kept in header
-- Level badges (Level 1, 2, 3...)
-- Rank titles based on progress
-- Celebration animations on completion
+4. **Recommended course order influences journey**
+   - Courses from assessment roadmap appear first within each level
+   - Other courses still available but de-emphasized
 
 ---
 
-## Component Architecture
+## Database Changes
 
-### New Components
+### Add to profiles table
 
-| Component | Purpose |
-|-----------|---------|
-| `JourneyView.tsx` | Main container replacing SkillTreeView |
-| `JourneyHeader.tsx` | Stats bar with XP, credits, level, rank |
-| `JourneyLevelSection.tsx` | Collapsible section for each level |
-| `JourneyCourseCard.tsx` | Individual course card with progress |
-| `JourneyConnector.tsx` | Visual connectors between levels |
-| `JourneyMilestone.tsx` | Special milestone/capstone cards |
+```sql
+ALTER TABLE public.profiles
+ADD COLUMN recommended_degree_path TEXT DEFAULT NULL,
+ADD COLUMN onboarding_completed BOOLEAN DEFAULT FALSE;
+```
 
-### Updated Hook
-
-| Hook | Changes |
-|------|---------|
-| `useJourneyData.ts` | New hook replacing useSkillTree, organized by levels instead of node positions |
+| Column | Purpose |
+|--------|---------|
+| recommended_degree_path | AI-suggested path based on assessment |
+| onboarding_completed | Flag to track if user finished full onboarding |
 
 ---
 
-## JourneyHeader Component
+## Component Changes
+
+### 1. Assessment Results Page Redesign
+
+After completing assessment, instead of showing generic "Start Your Journey" button, show:
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│ ← Back to Degrees           Bachelor of Film                │
+│  YOUR PERSONALIZED DEGREE RECOMMENDATION                    │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │ LEVEL 3      │  │ 450 / 600 SP │  │ 28 / 60      │      │
-│  │ Intermediate │  │ Skill Points │  │ Credits      │      │
-│  └──────────────┘  └──────────────┘  └──────────────┘      │
+│  Based on your assessment:                                  │
+│  • Experience: Beginner                                     │
+│  • Strongest Area: Cinematography (78%)                     │
+│  • Overall Score: 62%                                       │
 │                                                             │
-│  ████████████████████░░░░░░░░  75% Complete                │
+│  We recommend:                                              │
 │                                                             │
-│  Current Rank: SENIOR DIRECTOR                             │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │ ★ ASSOCIATE OF FILM                                   │  │
+│  │                                                       │  │
+│  │ Perfect for building strong foundations before        │  │
+│  │ advancing to specialized courses.                     │  │
+│  │                                                       │  │
+│  │ • 6 courses tailored to your skill gaps               │  │
+│  │ • 3-6 months to complete                              │  │
+│  │ • Start with: Cinematography (your strength!)         │  │
+│  │                                                       │  │
+│  │ [Choose This Path]                                    │  │
+│  └───────────────────────────────────────────────────────┘  │
+│                                                             │
+│  Or explore other options:                                  │
+│  [Bachelor of Film]  [Certificate in Cinematography]        │
+│                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
----
+### 2. Assessment Page Flow Update
 
-## JourneyLevelSection Component
+Add a new step after "results":
+- `step: "welcome" | "interests" | "experience" | "quiz" | "results" | "degree-recommendation" | "review"`
 
-Each level section:
-- Has a header showing level name and completion count
-- Collapses/expands with smooth animation
-- Shows department-colored courses in a responsive grid
-- Displays a "Level Complete!" badge when all courses done
-- Has a subtle glow/animation when level is active (in progress)
+The "degree-recommendation" step:
+- Shows assessment summary
+- Displays AI-recommended degree path
+- Explains why this path fits their profile
+- Lets user confirm or choose different path
+- On confirm: saves to profile and redirects to Journey View
+
+### 3. New Component: DegreeRecommendation
+
+`src/components/assessment/DegreeRecommendation.tsx`
+
+Props:
+- `assessmentResult` - scores, interests, experience level
+- `onSelectPath` - callback when user picks a path
+- `onSkip` - callback to skip and explore manually
+
+Logic to determine recommendation:
+```typescript
+function getRecommendedPath(
+  totalScore: number,
+  experienceLevel: string,
+  primaryStrength: string,
+  strengthScore: number
+): { path: DegreePath; reason: string; department?: CertificateDepartment } {
+  // Professional with 70%+ in one area → Certificate
+  if (experienceLevel === "professional" && strengthScore >= 70) {
+    return {
+      path: "certificate",
+      department: primaryStrength as CertificateDepartment,
+      reason: "You already have strong skills. A focused certificate will add credentials quickly.",
+    };
+  }
+  
+  // Semi-pro or intermediate with 50%+ overall → Bachelor
+  if (
+    (experienceLevel === "semi-professional" || experienceLevel === "intermediate") &&
+    totalScore >= 50
+  ) {
+    return {
+      path: "bachelor",
+      reason: "You have a solid foundation. The full Bachelor program will take you to mastery.",
+    };
+  }
+  
+  // Default: Associate for everyone else
+  return {
+    path: "associate",
+    reason: "Build a strong foundation first. You can always upgrade to Bachelor later.",
+  };
+}
+```
+
+### 4. Journey View Enhancement
+
+Update `useJourneyData.ts` to:
+- Accept optional `recommendedCourses` from assessment
+- Prioritize those courses within each level
+- Add visual indicator for "AI Recommended" courses
 
 ```text
-Level States:
-- LOCKED: Grey, collapsed, shows prerequisite
-- AVAILABLE: Colored, expanded by default, pulsing border
-- IN_PROGRESS: Colored, expanded, shows active courses
-- COMPLETE: Gold border, completion badge, can collapse
+Level 1: Foundations
+┌──────────────────────┐  ┌──────────────────────┐
+│ ★ HU-101            │  │ HU-102               │
+│ Cinematography      │  │ Lighting             │
+│ ✨ Recommended      │  │                      │
+│ for you             │  │                      │
+└──────────────────────┘  └──────────────────────┘
+```
+
+### 5. Student Center Integration
+
+Add unified progress card showing:
+- Degree path name
+- Assessment-based starting point
+- Current progress
+- Next recommended course
+
+```text
+┌─────────────────────────────────────────────────────────┐
+│ YOUR LEARNING JOURNEY                                   │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│ Bachelor of Film                    Level 2 / 3        │
+│ ████████████████░░░░░░░░░░░░░░░░░░  45%               │
+│                                                         │
+│ Primary Focus: Cinematography                           │
+│ Areas to Improve: Post-Production                       │
+│                                                         │
+│ Next Recommended: HU-202 Advanced Editing               │
+│                                                         │
+│ [Continue Journey →]                                    │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## JourneyCourseCard Component
+## Updated Onboarding Flow
 
-Replaces SkillNodeHex with a full card design:
+### Route Guard Update
 
-```text
-┌────────────────────────────────────────┐
-│ [Dept Color Bar]                       │
-│                                        │
-│ HU-201                    ⚡ 50 SP     │
-│ Advanced Camera Movement               │
-│ Cinematography                         │
-│                                        │
-│ ██████████░░░░░░░░░░░░░ 45%           │
-│ 5/12 lessons • 2/4 quizzes             │
-│                                        │
-│ [Continue Course →]                    │
-└────────────────────────────────────────┘
-```
-
-States:
-- **Locked**: Greyed out, shows "Complete X to unlock"
-- **Available**: Pulsing border, "Start Course" button
-- **In Progress**: Shows progress bar, "Continue" button
-- **Complete**: Checkmark, gold accent, "Review" button
-
----
-
-## JourneyMilestone Component
-
-For exams, projects, and capstone:
-
-```text
-┌─────────────────────────────────────────────────────────────┐
-│ ⭐ SCENARIO EXAM 1                                         │
-│ Test your skills with a real-world filmmaking challenge    │
-│                                                             │
-│ Requires: Complete Level 1 courses                         │
-│                                                             │
-│ [🔒 Locked]                                                 │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Data Organization
-
-### useJourneyData Hook
-
-Returns data organized for the new UI:
+Modify `AssessmentRequiredRoute` to also check for degree path:
 
 ```typescript
-interface JourneyLevel {
-  id: string;
-  name: string;
-  number: number;
-  status: 'locked' | 'available' | 'in_progress' | 'complete';
-  courses: JourneyCourse[];
-  requiredToUnlock: string[];
-  milestone?: JourneyMilestone;
+// Current: Only checks hasCompletedAssessment
+// New: Check both assessment AND degree selection
+if (!hasCompletedAssessment) {
+  return <Navigate to="/assessment" />;
 }
-
-interface JourneyCourse {
-  code: string;
-  title: string;
-  department: DepartmentId;
-  departmentColor: string;
-  credits: number;
-  skillPoints: number;
-  status: 'locked' | 'available' | 'in_progress' | 'complete';
-  progress: {
-    lessonsCompleted: number;
-    lessonsTotal: number;
-    quizzesPassed: number;
-    quizzesTotal: number;
-    percentage: number;
-  };
-  prerequisites: string[];
+if (!profile?.degree_path && !profile?.onboarding_completed) {
+  // They finished assessment but skipped degree selection
+  // Assessment page will show degree recommendation step
+  return <Navigate to="/assessment?step=degree-recommendation" />;
 }
 ```
 
----
+### Assessment Page Query Params
 
-## Mobile Experience
-
-The card-based design is mobile-first:
-- Single column layout on mobile
-- Full-width course cards
-- Touch-friendly tap targets
-- Collapsible sections reduce scroll length
-- No complex gestures required
-
----
-
-## Visual Styling
-
-Maintain the brutalist/urban aesthetic:
-- Dark backgrounds with department-colored accents
-- Bold typography for level headers
-- Card borders with subtle glow effects
-- Gold primary color for progress/completion
-- Department colors: Gold (cine), Purple (post), Cyan (directing), Pink (production)
+Support `?step=degree-recommendation` to jump directly to that step for users who completed assessment but not degree selection.
 
 ---
 
@@ -255,53 +240,62 @@ Maintain the brutalist/urban aesthetic:
 
 | File | Purpose |
 |------|---------|
-| `src/components/journey/JourneyView.tsx` | Main view container |
-| `src/components/journey/JourneyHeader.tsx` | Stats and progress header |
-| `src/components/journey/JourneyLevelSection.tsx` | Collapsible level group |
-| `src/components/journey/JourneyCourseCard.tsx` | Course card with progress |
-| `src/components/journey/JourneyConnector.tsx` | Visual level connectors |
-| `src/components/journey/JourneyMilestone.tsx` | Exam/project/capstone cards |
-| `src/components/journey/index.ts` | Barrel exports |
-| `src/hooks/useJourneyData.ts` | Data hook for journey view |
+| `src/components/assessment/DegreeRecommendation.tsx` | AI degree suggestion component |
+| `src/components/assessment/OnboardingProgress.tsx` | Unified step indicator |
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/pages/SkillTree.tsx` | Use new JourneyView instead of SkillTreeView |
-| `src/pages/Degrees.tsx` | Update links to use new journey page |
+| `src/pages/Assessment.tsx` | Add degree-recommendation step, update flow |
+| `src/hooks/useAssessmentResults.ts` | Add `getRecommendedDegreePath()` function |
+| `src/hooks/useJourneyData.ts` | Accept/prioritize recommended courses |
+| `src/components/auth/AssessmentRequiredRoute.tsx` | Check degree path selection |
+| `src/pages/StudentCenter.tsx` | Add unified journey progress card |
+| `src/pages/Degrees.tsx` | Show assessment-based recommendation if available |
+| `src/components/assessment/index.ts` | Export new components |
+
+## Database Migration
+
+Add columns to track recommendation and onboarding completion.
 
 ---
 
-## Animation Details
+## User Experience Flow Summary
 
-- **Level unlock**: Cascade reveal animation when prerequisites met
-- **Course completion**: Confetti burst, skill points fly to header
-- **Progress update**: Smooth bar fill animation
-- **Level complete**: Gold shimmer effect on section header
-- **Rank up**: Full-screen celebration moment
+### New User (Complete Flow)
 
----
+1. **Sign up** → Auth page
+2. **Redirected to Assessment** → "Welcome to Your Assessment"
+3. **Select interests** → Pick 2-3 departments
+4. **Select experience** → Beginner/Intermediate/etc
+5. **Take quiz** → 60 sec/question, adaptive difficulty
+6. **View results** → Scores, strengths, weaknesses
+7. **NEW: Degree Recommendation** → AI suggests path based on results
+8. **Confirm or change** → User picks their path
+9. **Redirected to Journey** → See personalized roadmap with their courses
 
-## Comparison: Before vs After
+### Returning User (Already Has Assessment)
 
-| Aspect | Current Skill Tree | New Journey View |
-|--------|-------------------|------------------|
-| Navigation | Pan/zoom canvas | Natural scroll |
-| Mobile | Awkward | Native feel |
-| Progress visibility | Abstract nodes | Clear percentages |
-| Course info | Hidden in sheet | Visible on cards |
-| Learning curve | High | None |
-| Accessibility | Poor | Good |
-| Performance | Heavy SVG | Light cards |
-| Gamification | Preserved | Enhanced |
+1. **Login** → Redirected to Student Center
+2. **See unified journey card** → Shows degree + assessment insights together
+3. **Click "Continue Journey"** → Goes to Journey View with recommended courses highlighted
 
 ---
 
-## Optional: Keep Skill Tree as Alternative View
+## Visual Design Notes
 
-Could add a toggle to switch between:
-- "Journey View" (default, card-based)
-- "Classic View" (original skill tree)
+- Assessment-recommended courses get a subtle sparkle icon
+- Degree recommendation card uses primary gold gradient
+- Onboarding progress bar persists across Assessment and Degree pages
+- Journey header shows both degree info AND primary strength from assessment
 
-This preserves the work done while making the default more accessible.
+---
+
+## Technical Notes
+
+- Store `recommended_degree_path` separate from `degree_path` so we can track if user took our suggestion
+- `onboarding_completed` flag prevents redirect loops
+- Assessment results already stored in `assessment_results` table - we just need to use them more
+- Roadmap phases from assessment can be persisted or recalculated on-the-fly
+
