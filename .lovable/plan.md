@@ -1,43 +1,59 @@
 
-# Add "Tester" Role for Full Platform Testing Access
+# Public Profile System Implementation
 
 ## Overview
 
-Create a new "tester" role that grants designated users full access to test the platform without needing admin privileges. Testers get:
-- All courses unlocked (bypass enrollment requirements)
-- All modules accessible (skip progression locks)
-- Ability to take quizzes normally (results tracked for testing purposes)
-- Full video access (bypass video watch requirements)
-- No subscription/trial restrictions
+Create a comprehensive public profile viewing system where enrolled students can view other users' profiles. This integrates with the existing social ecosystem (community, friends, messaging) to provide a cohesive networking experience.
 
-Unlike admin test mode, testers:
-- Do NOT have admin panel access
-- Do NOT have the ability to toggle bypasses on/off
-- Have a distinct visual indicator (purple "Tester Mode" banner vs red "Admin Test Mode")
-- Their quiz results and progress ARE tracked normally for testing validation
+---
+
+## Current State Analysis
+
+### Existing Infrastructure
+- **profiles_public view** - Currently only exposes: `user_id`, `display_name`, `avatar_url`
+- **ProfilePreviewCard** - Shows a preview of profile data (used in edit page)
+- **ContactCardMessage** - Rich profile card for messaging (shows bio, gear, social links)
+- **FriendCard** - Minimal friend display with avatar and name
+- **Community PostCard** - Shows author avatar/name with role badges
+
+### What's Missing
+- No dedicated page to view other users' full profiles
+- profiles_public view is too limited for networking purposes
+- No way to navigate to a user's profile from community/friends
+- No profile URL routing (`/profile/:userId`)
 
 ---
 
 ## System Architecture
 
 ```text
-                    ROLE-BASED TEST ACCESS
+                    PUBLIC PROFILE ECOSYSTEM
 ┌─────────────────────────────────────────────────────────────────┐
 │                                                                 │
-│   ┌────────────┐    ┌────────────┐    ┌────────────┐           │
-│   │   Admin    │    │   Tester   │    │  Student   │           │
-│   │            │    │            │    │            │           │
-│   │ Full admin │    │ Full test  │    │ Normal     │           │
-│   │ + test mode│    │ access     │    │ access     │           │
-│   └────────────┘    └────────────┘    └────────────┘           │
-│         │                 │                 │                   │
-│         ▼                 ▼                 ▼                   │
-│   ┌────────────────────────────────────────────────────────┐   │
-│   │              TestModeContext (enhanced)                 │   │
-│   │   - Checks for 'admin' OR 'tester' role                │   │
-│   │   - Testers get automatic full access                   │   │
-│   │   - Admins toggle test mode manually                    │   │
-│   └────────────────────────────────────────────────────────┘   │
+│  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐        │
+│  │   Community  │   │   Friends    │   │   Messages   │        │
+│  │   Posts      │   │   List       │   │   Chat       │        │
+│  └──────────────┘   └──────────────┘   └──────────────┘        │
+│         │                 │                  │                  │
+│         └─────────────────┼──────────────────┘                  │
+│                           ▼                                     │
+│                   ┌──────────────────┐                          │
+│                   │  Click Username  │                          │
+│                   │  or Avatar       │                          │
+│                   └────────┬─────────┘                          │
+│                            ▼                                    │
+│                   ┌──────────────────┐                          │
+│                   │  /profile/:id    │                          │
+│                   │  Public Profile  │                          │
+│                   │  Page            │                          │
+│                   └────────┬─────────┘                          │
+│                            ▼                                    │
+│         ┌─────────────────────────────────────┐                 │
+│         │   usePublicProfile hook             │                 │
+│         │   - Fetches from profiles_public    │                 │
+│         │   - Gets user's roles               │                 │
+│         │   - Checks friendship status        │                 │
+│         └─────────────────────────────────────┘                 │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -46,87 +62,44 @@ Unlike admin test mode, testers:
 
 ## Database Changes
 
-### Add 'tester' to app_role enum
+### Update profiles_public View
+
+Expand the view to include public-safe profile fields while keeping sensitive data protected:
 
 ```sql
-ALTER TYPE public.app_role ADD VALUE 'tester';
+CREATE OR REPLACE VIEW public.profiles_public
+WITH (security_invoker=on) AS
+SELECT 
+  user_id,
+  display_name,
+  avatar_url,
+  cover_banner_url,
+  bio,
+  filmmaking_style,
+  camera_gear,
+  current_project,
+  favorite_films,
+  influences,
+  -- Social/portfolio links (user-provided, public by nature)
+  portfolio_url,
+  imdb_url,
+  vimeo_url,
+  instagram_url,
+  youtube_url,
+  twitter_url,
+  tiktok_url,
+  -- Visual customization
+  profile_accent_color,
+  avatar_border_style
+FROM profiles;
 ```
 
-This adds the new role value to the existing enum used in the `user_roles` table.
-
----
-
-## Implementation Details
-
-### 1. New Hook: useTesterAuth
-
-Similar to `useAdminAuth`, this hook checks if the current user has the "tester" role.
-
-```typescript
-// src/hooks/useTesterAuth.ts
-export function useTesterAuth() {
-  const { user, loading: authLoading } = useAuth();
-
-  const { data: isTester, isLoading: roleLoading } = useQuery({
-    queryKey: ["tester-role", user?.id],
-    queryFn: async () => {
-      if (!user?.id) return false;
-      const { data } = await supabase.rpc("has_role", {
-        _user_id: user.id,
-        _role: "tester",
-      });
-      return data === true;
-    },
-    enabled: !!user?.id,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  return {
-    isTester: isTester ?? false,
-    isLoading: authLoading || roleLoading,
-    user,
-  };
-}
-```
-
-### 2. Enhanced TestModeContext
-
-Update the context to recognize testers as having automatic test access:
-
-| Check | Admin | Tester | Student |
-|-------|-------|--------|---------|
-| `canUseTestMode` | Yes (toggle) | N/A (always on) | No |
-| `isTestModeEnabled` | Manual toggle | Always true | No |
-| `isTesterRole` | false | true | false |
-
-Key changes:
-- Add `isTester` check from new hook
-- Testers get `isTestModeEnabled = true` automatically (no toggle)
-- All bypass flags enabled by default for testers
-- Add `isTesterRole` flag to distinguish display
-
-### 3. TesterModeBanner Component
-
-A distinct purple banner for testers (different from admin's red banner):
-
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│ 🧪 Tester Mode Active — Full platform access for testing       │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-Unlike the admin banner:
-- No "Disable" button (testers can't toggle off)
-- Purple/violet color scheme to distinguish from admin
-- Shows simpler message (no bypass toggles)
-
-### 4. Update UserManager for Tester Role
-
-Add "Make Tester" and "Remove Tester" options to the user management dropdown, similar to existing admin/moderator/professor role management.
-
-### 5. Update StudentFilters for Tester Role
-
-Add "tester" option to the role filter dropdown so admins can filter to see all testers.
+**Fields EXCLUDED (sensitive):**
+- `location` (privacy concern)
+- `subscription_status`, `subscription_*`, `trial_*` (billing)
+- `is_banned`, `banned_*`, `ban_reason` (admin data)
+- `terms_accepted_at`, `enrolled_at` (metadata)
+- `is_demo`, `degree_path`, `certificate_*`, `recommended_*`, `onboarding_*` (internal)
 
 ---
 
@@ -134,68 +107,151 @@ Add "tester" option to the role filter dropdown so admins can filter to see all 
 
 | File | Purpose |
 |------|---------|
-| `src/hooks/useTesterAuth.ts` | Hook to check if user has tester role |
-| `src/components/admin/TesterModeBanner.tsx` | Purple banner shown to testers |
+| `src/pages/PublicProfile.tsx` | Full public profile page with cover, avatar, bio, links |
+| `src/hooks/usePublicProfile.ts` | Fetch public profile data + roles for a given user ID |
+| `src/components/profile/PublicProfileCard.tsx` | Reusable component for rendering a full public profile |
+| `src/components/profile/UserProfileLink.tsx` | Clickable avatar/name that links to profile page |
+
+---
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/contexts/TestModeContext.tsx` | Add tester role detection, automatic enabling |
-| `src/hooks/useTestMode.ts` | Add `isTesterRole` flag |
-| `src/pages/admin/UserManager.tsx` | Add Make/Remove Tester menu options |
-| `src/components/admin/StudentFilters.tsx` | Add "tester" to RoleFilter type |
-| `src/App.tsx` | Include TesterModeBanner component |
-| Database migration | Add 'tester' to app_role enum |
+| `src/App.tsx` | Add `/profile/:userId` route |
+| `src/components/community/PostCard.tsx` | Make author avatar/name clickable to profile |
+| `src/components/friends/FriendCard.tsx` | Make friend avatar/name clickable to profile |
+| `src/components/messaging/ConversationItem.tsx` | Make participant avatar clickable |
+| `src/components/profile/index.ts` | Export new components |
+| Database migration | Update `profiles_public` view |
 
 ---
 
-## Behavior Matrix
+## Implementation Details
 
-| Feature | Admin (Test Mode OFF) | Admin (Test Mode ON) | Tester | Student |
-|---------|----------------------|---------------------|--------|---------|
-| Course enrollment check | Normal | Bypassed | Bypassed | Normal |
-| Video progress tracking | Normal | Optional bypass | Bypassed | Normal |
-| Quiz taking | Normal | Auto-pass option | Normal (tracked) | Normal |
-| Progression locks | Normal | Can skip | Unlocked | Normal |
-| Subscription check | Normal | Bypassed | Bypassed | Normal |
-| Admin panel access | Yes | Yes | No | No |
-| Banner shown | None | Red | Purple | None |
-| Can toggle mode | N/A | Yes | No | N/A |
+### 1. PublicProfile Page
+
+A read-only view of another user's profile featuring:
+
+| Section | Content |
+|---------|---------|
+| Cover Banner | User's custom banner image |
+| Avatar & Name | Styled with user's accent color and border style |
+| Role Badge | Admin/Professor/Moderator/Tester if applicable |
+| Bio | User's description |
+| Creative Identity | Filmmaking style, current project, influences |
+| Camera Gear | Equipment list |
+| Favorite Films | Tag-style film list |
+| Social Links | Instagram, YouTube, Vimeo, Twitter, TikTok |
+| Portfolio Links | Portfolio URL, IMDb |
+| Action Buttons | Add Friend / Message (if friends) |
+
+### 2. usePublicProfile Hook
+
+```typescript
+export function usePublicProfile(userId: string | null) {
+  // Returns:
+  // - profile: Public profile data
+  // - role: Highest role (admin > professor > moderator > tester > student)
+  // - loading: boolean
+  // - error: Error | null
+}
+```
+
+### 3. UserProfileLink Component
+
+A reusable component for clickable profile links:
+
+```typescript
+interface UserProfileLinkProps {
+  userId: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  showAvatar?: boolean;
+  showName?: boolean;
+  size?: "sm" | "md" | "lg";
+  className?: string;
+}
+```
+
+Usage in community posts:
+```tsx
+<UserProfileLink
+  userId={post.user_id}
+  displayName={post.author?.display_name}
+  avatarUrl={post.author?.avatar_url}
+/>
+```
 
 ---
 
-## Key Differences: Tester vs Admin Test Mode
+## Security Considerations
 
-| Aspect | Tester Role | Admin Test Mode |
-|--------|-------------|-----------------|
-| Access control | Role-based (permanent until removed) | Toggle (admin chooses when to use) |
-| Quiz results | Always tracked normally | Can auto-pass (skip tracking) |
-| Banner color | Purple (tester) | Red (warning) |
-| Disable button | None | Yes |
-| Admin panel | No access | Full access |
-| Purpose | QA testing by non-admins | Admin development/debugging |
+| Aspect | Implementation |
+|--------|----------------|
+| View access | `profiles_public` view with `security_invoker=on` |
+| RLS on base table | Existing policy requires `is_enrolled_student(auth.uid())` |
+| Sensitive data | Not included in view (billing, ban info, location) |
+| Own profile | Redirect to `/student/profile` for editing |
+| Unauthenticated | Show login prompt or redirect |
 
 ---
 
-## User Experience Flow
+## UI Preview
 
-### Granting Tester Access
-1. Admin navigates to User Management (`/admin/users`)
-2. Finds the user to make a tester
-3. Clicks dropdown menu → "Make Tester"
-4. Confirms in dialog
-5. User now has tester role
+### Public Profile Page Layout
 
-### Tester Using Platform
-1. Tester logs in normally
-2. Purple "Tester Mode Active" banner appears
-3. All courses visible and accessible
-4. Can enroll in any course without limits
-5. All modules unlocked within courses
-6. Can take quizzes (results tracked for validation)
-7. Progress saved normally for testing verification
-8. No admin panel access (404 if attempted)
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│  ← Back                                                         │
+├─────────────────────────────────────────────────────────────────┤
+│ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │ ← Cover
+│ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌──────┐                                                       │
+│  │ 👤   │  John Smith                     [Add Friend] [Message]│
+│  └──────┘  🎬 Documentary  |  🎓 Professor Badge               │
+│                                                                 │
+│  "Passionate filmmaker focused on human stories..."             │
+│                                                                 │
+├─────────────────────────────────────────────────────────────────┤
+│  📷 Camera Gear                                                 │
+│  Sony A7S III, Blackmagic Pocket 6K Pro, DJI RS3               │
+│                                                                 │
+│  🎬 Current Project                                             │
+│  "Shadows of Memory" - Documentary feature                      │
+│                                                                 │
+│  🎥 Favorite Films                                              │
+│  [The Godfather] [Parasite] [2001: A Space Odyssey] +2 more    │
+│                                                                 │
+│  ✨ Influences                                                  │
+│  Kubrick, Villeneuve, Spielberg                                 │
+│                                                                 │
+├─────────────────────────────────────────────────────────────────┤
+│  🔗 Connect                                                     │
+│  [🌐 Portfolio] [📸 Instagram] [🎬 YouTube] [🎥 Vimeo]         │
+│  [🎭 IMDb]                                                      │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Integration Points
+
+### Community → Profile
+Clicking an author's name/avatar in posts or comments navigates to their public profile.
+
+### Friends → Profile  
+Clicking a friend in the friends list opens their profile (with "Message" button shown).
+
+### Messages → Profile
+Clicking the conversation participant's avatar opens their profile.
+
+### Profile → Friends/Messages
+From a public profile, users can:
+- Send friend request (if not friends)
+- Open direct message (if already friends)
 
 ---
 
@@ -203,12 +259,10 @@ Add "tester" option to the role filter dropdown so admins can filter to see all 
 
 | Category | Changes |
 |----------|---------|
-| Database | Add 'tester' value to app_role enum |
-| New Files | 2 (useTesterAuth hook, TesterModeBanner) |
-| Modified Files | 5 (context, hook, UserManager, filters, App) |
-| Role Management | Full CRUD via existing useManageRoles hook |
+| Database | Update `profiles_public` view to include more public fields |
+| New Files | 4 (page, hook, 2 components) |
+| Modified Files | 5 (App, PostCard, FriendCard, ConversationItem, index) |
+| Features | View profiles, click-to-navigate, friend/message actions |
+| Security | View-based access, sensitive data excluded, RLS enforced |
 
-This implementation allows admins to designate specific users as testers, giving them full platform access for QA testing while:
-- Keeping their quiz results and progress tracked
-- Preventing access to administrative functions
-- Providing a clear visual indicator of their testing status
+This creates a fully connected social ecosystem where users can discover, view, and connect with each other through their public profiles!
