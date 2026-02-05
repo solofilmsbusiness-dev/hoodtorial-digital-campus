@@ -1,11 +1,12 @@
-import { useRef, useState, useCallback } from "react";
+ import { useRef, useState, useCallback, useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Camera, Trash2, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAvatarUpload } from "@/hooks/useAvatarUpload";
-import { useToast } from "@/hooks/use-toast";
+ import { useToast } from "@/hooks/use-toast";
+ import { ImageCropperDialog } from "./ImageCropperDialog";
 
 interface AvatarEditorProps {
   currentAvatarUrl?: string | null;
@@ -32,7 +33,9 @@ export function AvatarEditor({
   onUploadComplete,
 }: AvatarEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
+   const [isDragging, setIsDragging] = useState(false);
+   const [cropperOpen, setCropperOpen] = useState(false);
+   const [selectedImageSrc, setSelectedImageSrc] = useState<string | null>(null);
   const { uploadAvatar, removeAvatar, uploading, progress } = useAvatarUpload();
   const { toast } = useToast();
 
@@ -41,7 +44,7 @@ export function AvatarEditor({
     return name.split(" ").map((n) => n.charAt(0)).join("").toUpperCase().slice(0, 2);
   };
 
-  const handleFileSelect = useCallback(async (file: File) => {
+   const handleFileSelect = useCallback((file: File) => {
     if (!file.type.startsWith("image/")) {
       toast({
         variant: "destructive",
@@ -51,32 +54,66 @@ export function AvatarEditor({
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        variant: "destructive",
-        title: "File too large",
-        description: "Please upload an image smaller than 5MB",
-      });
-      return;
-    }
-
-    const { url, error } = await uploadAvatar(file);
-
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Upload failed",
-        description: error.message,
-      });
-    } else if (url) {
-      toast({
-        title: "Avatar updated",
-        description: "Your profile picture has been changed",
-      });
-      onAvatarChange?.(url);
-      onUploadComplete?.();
-    }
-  }, [uploadAvatar, toast, onAvatarChange, onUploadComplete]);
+       if (file.size > 5 * 1024 * 1024) {
+         toast({
+           variant: "destructive",
+           title: "File too large",
+           description: "Please upload an image smaller than 5MB",
+         });
+         return;
+       }
+ 
+       // Create object URL for cropper
+       const imageUrl = URL.createObjectURL(file);
+       setSelectedImageSrc(imageUrl);
+       setCropperOpen(true);
+     },
+     [toast]
+   );
+ 
+   const handleCropComplete = useCallback(
+     async (croppedBlob: Blob) => {
+       // Clean up object URL
+       if (selectedImageSrc) {
+         URL.revokeObjectURL(selectedImageSrc);
+         setSelectedImageSrc(null);
+       }
+ 
+       // Convert blob to file for upload
+       const croppedFile = new File([croppedBlob], "avatar.jpg", {
+         type: "image/jpeg",
+       });
+ 
+       const { url, error } = await uploadAvatar(croppedFile);
+ 
+       if (error) {
+         toast({
+           variant: "destructive",
+           title: "Upload failed",
+           description: error.message,
+         });
+       } else if (url) {
+         toast({
+           title: "Avatar updated",
+           description: "Your profile picture has been changed",
+         });
+         onAvatarChange?.(url);
+         onUploadComplete?.();
+       }
+     },
+     [selectedImageSrc, uploadAvatar, toast, onAvatarChange, onUploadComplete]
+   );
+ 
+   const handleCropperClose = useCallback(
+     (open: boolean) => {
+       if (!open && selectedImageSrc) {
+         URL.revokeObjectURL(selectedImageSrc);
+         setSelectedImageSrc(null);
+       }
+       setCropperOpen(open);
+     },
+     [selectedImageSrc]
+   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -207,7 +244,15 @@ export function AvatarEditor({
             Remove
           </Button>
         )}
-      </div>
-    </div>
-  );
+       </div>
+ 
+       <ImageCropperDialog
+         open={cropperOpen}
+         onOpenChange={handleCropperClose}
+         imageSrc={selectedImageSrc}
+         onCropComplete={handleCropComplete}
+         accentColor={accentColor}
+       />
+     </div>
+   );
 }
