@@ -6,7 +6,9 @@
  import { PageLayout } from "@/components/layout";
  import { PublicProfileCard } from "@/components/profile/PublicProfileCard";
  import { ProfileWall } from "@/components/profile/ProfileWall";
+import { ProfileAcademicStats, ProfileAchievements, ProfileGallery } from "@/components/profile";
  import { usePublicProfile } from "@/hooks/usePublicProfile";
+import { useProfileAchievements } from "@/hooks/useProfileAchievements";
  import { useAuth } from "@/contexts/AuthContext";
  import { useFriendships } from "@/hooks/useFriendships";
  import { useConversations } from "@/hooks/useConversations";
@@ -17,6 +19,7 @@
    const navigate = useNavigate();
    const { user } = useAuth();
    const { profile, role, isOwnProfile, isFriend, isLoading, error } = usePublicProfile(userId ?? null);
+  const { achievements, stats, isLoading: achievementsLoading } = useProfileAchievements(userId ?? null);
    const { sendFriendRequest, hasPendingRequest: checkPendingRequest, loading: friendshipLoading } = useFriendships();
    const { getOrCreateConversation } = useConversations();
  
@@ -189,6 +192,39 @@
          />
  
          <div className="px-4 md:px-6 mt-8">
+          {/* Academic Stats */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="mb-8"
+          >
+            <ProfileAcademicStats stats={stats} isLoading={achievementsLoading} />
+          </motion.div>
+
+          {/* Course Achievements */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+            className="mb-8"
+          >
+            <ProfileAchievements achievements={achievements} isLoading={achievementsLoading} />
+          </motion.div>
+
+          {/* Portfolio Gallery */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.5 }}
+            className="mb-8"
+          >
+            <ProfileGallery 
+              gallery={profile.portfolio_gallery || []} 
+              isOwnProfile={isOwnProfile} 
+            />
+          </motion.div>
+
            <ProfileWall 
              profileUserId={userId!}
              profileDisplayName={profile.display_name}

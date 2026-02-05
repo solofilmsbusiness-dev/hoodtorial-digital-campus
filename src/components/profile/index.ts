@@ -12,3 +12,6 @@
  export { ProfileAvatar } from "./ProfileAvatar";
  export { ProfileInfoCard } from "./ProfileInfoCard";
  export { ProfileSocialLinks } from "./ProfileSocialLinks";
+export { ProfileAcademicStats } from "./ProfileAcademicStats";
+export { ProfileAchievements } from "./ProfileAchievements";
+export { ProfileGallery } from "./ProfileGallery";

@@ -23,6 +23,7 @@
    tiktok_url: string | null;
    profile_accent_color: string | null;
    avatar_border_style: string | null;
+  portfolio_gallery: string[] | null;
  }
  
  export type UserRole = "admin" | "professor" | "moderator" | "tester" | "student";
