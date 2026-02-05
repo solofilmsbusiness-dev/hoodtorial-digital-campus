@@ -10,6 +10,8 @@ import { ProfileProvider } from "@/contexts/ProfileContext";
 import { TestModeProvider } from "@/contexts/TestModeContext";
 import { DemoModeProvider } from "@/contexts/DemoModeContext";
 import { DemoModeBanner } from "@/components/admin/DemoModeBanner";
+ import { TesterModeBanner } from "@/components/admin/TesterModeBanner";
+ import { useTestMode } from "@/hooks/useTestMode";
 import { ProtectedRoute, AdminRoute, PaidRoute, AssessmentRequiredRoute } from "@/components/auth";
 import Degrees from "./pages/Degrees";
 import Academics from "./pages/Academics";
@@ -55,7 +57,123 @@ function RootRedirect() {
   return <Navigate to={user ? "/student" : "/auth"} replace />;
 }
 
-const App = () => (
+ // Wrapper component to access hooks inside providers
+ function AppContent() {
+   const { isTesterRole, isTestModeEnabled } = useTestMode();
+   
+   // Show tester banner only for tester role (not admin test mode)
+   const showTesterBanner = isTesterRole && isTestModeEnabled;
+   
+   return (
+     <>
+       {showTesterBanner && <TesterModeBanner />}
+       <BrowserRouter>
+         <DemoModeBanner />
+         <ChatWidget />
+         <Routes>
+           <Route path="/" element={<RootRedirect />} />
+           <Route path="/degrees" element={<Degrees />} />
+           <Route path="/skill-tree/:path" element={<SkillTree />} />
+           <Route path="/academics" element={<Academics />} />
+           <Route path="/course/:code" element={
+             <PaidRoute>
+               <CourseDetail />
+             </PaidRoute>
+           } />
+           <Route path="/enrollment" element={<Enrollment />} />
+           <Route path="/faculty" element={<Faculty />} />
+           <Route path="/about" element={<About />} />
+           <Route path="/shop" element={<Shop />} />
+           <Route path="/community" element={
+             <AssessmentRequiredRoute>
+               <Community />
+             </AssessmentRequiredRoute>
+           } />
+           <Route path="/auth" element={<Auth />} />
+           <Route path="/checkout" element={
+             <ProtectedRoute>
+               <Checkout />
+             </ProtectedRoute>
+           } />
+           <Route path="/assessment" element={
+             <ProtectedRoute>
+               <Assessment />
+             </ProtectedRoute>
+           } />
+           <Route path="/student" element={
+             <AssessmentRequiredRoute>
+               <StudentCenter />
+             </AssessmentRequiredRoute>
+           } />
+           <Route path="/student/profile" element={
+             <AssessmentRequiredRoute>
+               <StudentProfile />
+             </AssessmentRequiredRoute>
+           } />
+           <Route path="/student/grades" element={
+             <AssessmentRequiredRoute>
+               <StudentGrades />
+             </AssessmentRequiredRoute>
+           } />
+           <Route path="/friends" element={
+             <AssessmentRequiredRoute>
+               <Friends />
+             </AssessmentRequiredRoute>
+           } />
+           <Route path="/messages" element={
+             <AssessmentRequiredRoute>
+               <Messages />
+             </AssessmentRequiredRoute>
+           } />
+           <Route path="/admin" element={
+             <AdminRoute>
+               <AdminDashboard />
+             </AdminRoute>
+           } />
+           <Route path="/admin/courses" element={
+             <AdminRoute>
+               <CourseManager />
+             </AdminRoute>
+           } />
+           <Route path="/admin/courses/:code" element={
+             <AdminRoute>
+               <CourseEditor />
+             </AdminRoute>
+           } />
+           <Route path="/admin/users" element={
+             <AdminRoute>
+               <UserManager />
+             </AdminRoute>
+           } />
+           <Route path="/admin/community" element={
+             <AdminRoute>
+               <CommunityManager />
+             </AdminRoute>
+           } />
+           <Route path="/admin/settings" element={
+             <AdminRoute>
+               <AdminSettings />
+             </AdminRoute>
+           } />
+           <Route path="/admin/challenges" element={
+             <AdminRoute>
+               <ChallengeManager />
+             </AdminRoute>
+           } />
+           <Route path="/admin/support" element={
+             <AdminRoute>
+               <SupportManager />
+             </AdminRoute>
+           } />
+           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+           <Route path="*" element={<NotFound />} />
+         </Routes>
+       </BrowserRouter>
+     </>
+   );
+ }
+ 
+ const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
       <TooltipProvider>
@@ -65,108 +183,7 @@ const App = () => (
               <DemoModeProvider>
               <Toaster />
               <Sonner />
-              <BrowserRouter>
-                <DemoModeBanner />
-                <ChatWidget />
-              <Routes>
-                <Route path="/" element={<RootRedirect />} />
-                <Route path="/degrees" element={<Degrees />} />
-                <Route path="/skill-tree/:path" element={<SkillTree />} />
-                <Route path="/academics" element={<Academics />} />
-                <Route path="/course/:code" element={
-                  <PaidRoute>
-                    <CourseDetail />
-                  </PaidRoute>
-                } />
-                <Route path="/enrollment" element={<Enrollment />} />
-                <Route path="/faculty" element={<Faculty />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/shop" element={<Shop />} />
-                <Route path="/community" element={
-                  <AssessmentRequiredRoute>
-                    <Community />
-                  </AssessmentRequiredRoute>
-                } />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/checkout" element={
-                  <ProtectedRoute>
-                    <Checkout />
-                  </ProtectedRoute>
-                } />
-                <Route path="/assessment" element={
-                  <ProtectedRoute>
-                    <Assessment />
-                  </ProtectedRoute>
-                } />
-                <Route path="/student" element={
-                  <AssessmentRequiredRoute>
-                    <StudentCenter />
-                  </AssessmentRequiredRoute>
-                } />
-                <Route path="/student/profile" element={
-                  <AssessmentRequiredRoute>
-                    <StudentProfile />
-                  </AssessmentRequiredRoute>
-                } />
-                <Route path="/student/grades" element={
-                  <AssessmentRequiredRoute>
-                    <StudentGrades />
-                  </AssessmentRequiredRoute>
-                } />
-                <Route path="/friends" element={
-                  <AssessmentRequiredRoute>
-                    <Friends />
-                  </AssessmentRequiredRoute>
-                } />
-                <Route path="/messages" element={
-                  <AssessmentRequiredRoute>
-                    <Messages />
-                  </AssessmentRequiredRoute>
-                } />
-                <Route path="/admin" element={
-                  <AdminRoute>
-                    <AdminDashboard />
-                  </AdminRoute>
-                } />
-                <Route path="/admin/courses" element={
-                  <AdminRoute>
-                    <CourseManager />
-                  </AdminRoute>
-                } />
-                <Route path="/admin/courses/:code" element={
-                  <AdminRoute>
-                    <CourseEditor />
-                  </AdminRoute>
-                } />
-                <Route path="/admin/users" element={
-                  <AdminRoute>
-                    <UserManager />
-                  </AdminRoute>
-                } />
-                <Route path="/admin/community" element={
-                  <AdminRoute>
-                    <CommunityManager />
-                  </AdminRoute>
-                } />
-                <Route path="/admin/settings" element={
-                  <AdminRoute>
-                    <AdminSettings />
-                  </AdminRoute>
-                } />
-                <Route path="/admin/challenges" element={
-                  <AdminRoute>
-                    <ChallengeManager />
-                  </AdminRoute>
-                } />
-                <Route path="/admin/support" element={
-                  <AdminRoute>
-                    <SupportManager />
-                  </AdminRoute>
-                } />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
+               <AppContent />
             </DemoModeProvider>
         </TestModeProvider>
       </ProfileProvider>
