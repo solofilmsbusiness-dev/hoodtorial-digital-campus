@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
- import { Menu, X, User, LogOut, Shield, Users, MessageCircle, UserPlus } from "lucide-react";
+ import { Menu, X, User, LogOut, Shield, Users, MessageCircle, UserPlus, Eye, Settings, GraduationCap } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfileContext } from "@/contexts/ProfileContext";
@@ -95,10 +95,23 @@ export function Navigation() {
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
+                 <DropdownMenuItem asChild>
+                   <Link to={`/profile/${user.id}`} className="flex items-center gap-2 cursor-pointer">
+                     <Eye className="h-4 w-4" />
+                     View My Profile
+                   </Link>
+                 </DropdownMenuItem>
+                 <DropdownMenuItem asChild>
+                   <Link to="/student/profile" className="flex items-center gap-2 cursor-pointer">
+                     <Settings className="h-4 w-4" />
+                     Edit Profile
+                   </Link>
+                 </DropdownMenuItem>
+                 <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <Link to="/student" className="flex items-center gap-2 cursor-pointer">
-                      <User className="h-4 w-4" />
-                      Student Center
+                     <GraduationCap className="h-4 w-4" />
+                     Student Hub
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
@@ -129,6 +142,7 @@ export function Navigation() {
                       )}
                     </Link>
                   </DropdownMenuItem>
+                 <DropdownMenuSeparator />
                   {isAdmin && (
                     <DropdownMenuItem asChild>
                       <Link to="/admin" className="flex items-center gap-2 cursor-pointer">
@@ -137,7 +151,7 @@ export function Navigation() {
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuSeparator />
+                 {isAdmin && <DropdownMenuSeparator />}
                   <DropdownMenuItem onClick={handleSignOut} className="flex items-center gap-2 cursor-pointer text-destructive">
                     <LogOut className="h-4 w-4" />
                     Sign Out
@@ -194,7 +208,7 @@ export function Navigation() {
                     onClick={() => setIsOpen(false)}
                     className="text-lg font-bold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide py-2"
                   >
-                    Student Center
+                   Student Hub
                   </Link>
                   <Link 
                     to="/community" 

@@ -1,9 +1,11 @@
  import { useParams, useNavigate } from "react-router-dom";
+ import { Link } from "react-router-dom";
  import { motion } from "framer-motion";
- import { ArrowLeft, Eye } from "lucide-react";
+ import { ArrowLeft, Eye, Pencil } from "lucide-react";
  import { Button } from "@/components/ui/button";
  import { Alert, AlertDescription } from "@/components/ui/alert";
  import { PageLayout } from "@/components/layout";
+ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
  import { PublicProfileCard } from "@/components/profile/PublicProfileCard";
  import { ProfileWall } from "@/components/profile/ProfileWall";
 import { ProfileAcademicStats, ProfileAchievements, ProfileGallery, FeaturedProjectShowcase } from "@/components/profile";
@@ -55,6 +57,14 @@ import { useMemo } from "react";
     }
   };
 
+   const handleGoBack = () => {
+     if (isOwnProfile) {
+       navigate("/student");
+     } else {
+       navigate(-1);
+     }
+   };
+ 
   // Get section order with fallback
   const sectionOrder = useMemo(() => {
     return profile?.profile_section_order ?? ["stats", "achievements", "gallery", "wall"];
@@ -217,19 +227,56 @@ import { useMemo } from "react";
        </div>
 
        <div className="container max-w-5xl py-8 relative z-10">
+          {/* Breadcrumb navigation */}
+          {isOwnProfile && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="mb-4"
+            >
+              <Breadcrumb>
+                <BreadcrumbList>
+                  <BreadcrumbItem>
+                    <BreadcrumbLink asChild>
+                      <Link to="/student" className="hover:text-primary transition-colors">Student Hub</Link>
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>My Profile</BreadcrumbPage>
+                  </BreadcrumbItem>
+                </BreadcrumbList>
+              </Breadcrumb>
+            </motion.div>
+          )}
+ 
          <motion.div
            initial={{ opacity: 0, x: -10 }}
            animate={{ opacity: 1, x: 0 }}
            transition={{ duration: 0.3 }}
+            className="flex items-center justify-between mb-6"
          >
            <Button
              variant="ghost"
-             onClick={() => navigate(-1)}
-             className="mb-6 hover:bg-charcoal-light"
+             onClick={handleGoBack}
+             className="hover:bg-charcoal-light"
            >
              <ArrowLeft className="h-4 w-4 mr-2" />
-             Back
+             {isOwnProfile ? "Student Hub" : "Back"}
            </Button>
+            
+            {isOwnProfile && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleEditProfile}
+                className="gap-2"
+              >
+                <Pencil className="h-4 w-4" />
+                Edit Profile
+              </Button>
+            )}
          </motion.div>
  
          {/* Own profile indicator */}
