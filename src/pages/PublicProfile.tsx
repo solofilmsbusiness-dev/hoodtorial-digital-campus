@@ -8,7 +8,7 @@
  import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
  import { PublicProfileCard } from "@/components/profile/PublicProfileCard";
  import { ProfileWall } from "@/components/profile/ProfileWall";
- import { ProfileAcademicStats, ProfileAchievements, ProfileGallery } from "@/components/profile";
+import { ProfileAcademicStats, ProfileAchievements, ProfileGallery, FeaturedProjectShowcase } from "@/components/profile";
  import { usePublicProfile } from "@/hooks/usePublicProfile";
 import { useProfileAchievements } from "@/hooks/useProfileAchievements";
  import { useAuth } from "@/contexts/AuthContext";
@@ -309,6 +309,22 @@ import { useMemo } from "react";
          />
  
          <div className="px-4 md:px-6 mt-8">
+          {/* Featured Project - Always first if set */}
+          {(profile.featured_project_url || profile.featured_project_thumbnail) && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.25 }}
+              className="mb-8"
+            >
+              <FeaturedProjectShowcase
+                title={profile.featured_project_title || ""}
+                url={profile.featured_project_url || ""}
+                thumbnail={profile.featured_project_thumbnail}
+              />
+            </motion.div>
+          )}
+
           {/* Dynamic sections based on user's order preference */}
           {sectionOrder.map((sectionId, index) => renderSection(sectionId, index))}
          </div>

@@ -1,154 +1,238 @@
 
-# Compact Featured Project Placement
+# Seamless Navigation Fixes Across Entire Site
 
 ## Overview
 
-Move the Featured Project showcase from its current full-width position below the profile card to a **compact, inline placement directly under the bio/caption section** within the PublicProfileCard component. The customizable section stack (stats, achievements, gallery, wall) remains fully reorderable.
+This plan addresses all unpredictable navigation patterns throughout the website to create a completely fluid, consistent experience. The goal is to ensure users always know where they are, where they can go, and how to get back.
 
 ---
 
-## Current Layout vs Proposed Layout
+## Current Navigation Issues Identified
+
+| Page/Component | Issue | Impact |
+|---------------|-------|--------|
+| `PublicProfile.tsx` (error state) | Uses `navigate(-1)` | Unpredictable if opened from external link |
+| `PostDetail.tsx` | "Back to Community" uses callback, loses state | User loses scroll position |
+| `Checkout.tsx` | "Back to Plans" hardcoded to `/enrollment` | Works but inconsistent pattern |
+| `CourseEditor.tsx` | "Back to Courses" hardcoded | Good pattern, keep it |
+| `CourseDetail.tsx` | "Back to Courses" is a Link | Good pattern, keep it |
+| `Friends.tsx` | No back navigation at all | User feels stuck |
+| `Messages.tsx` | No back navigation at all | User feels stuck |
+| `Community.tsx` | No back navigation | User feels stuck |
+| `StudentGrades.tsx` | No back navigation | User feels stuck |
+| `StudentCenter.tsx` | No navigation header | Missing context |
+| Mobile Navigation | No profile links | Can't access profile easily |
+
+---
+
+## Solution Strategy
+
+### 1. Consistent Navigation Hierarchy
+
+Define clear parent-child relationships for all pages:
 
 ```text
-CURRENT LAYOUT:
-┌─────────────────────────────────────────────────────────────────┐
-│  [Cover Banner]                                                 │
-│  [Avatar & Name & Bio]                                          │
-│  [Creative Info Cards]                                          │
-│  [Social Links]                                                 │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────┐
-│  ◆ FEATURED PROJECT ◆  (FULL WIDTH - BIG)                      │
-│  ┌─────────────────────────────────────────────────────────────┐│
-│  │                    16:9 VIDEO EMBED                         ││
-│  └─────────────────────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────┐
-│  [Reorderable Sections: Stats, Achievements, Gallery, Wall]    │
-└─────────────────────────────────────────────────────────────────┘
-
-
-PROPOSED LAYOUT:
-┌─────────────────────────────────────────────────────────────────┐
-│  [Cover Banner]                                                 │
-│  [Avatar & Name]                                                │
-│                                                                 │
-│  ❝ Bio/Caption text here... ❞                                  │
-│                                                                 │
-│  ┌───────────────────────────┐  ← NEW: Compact Featured Project │
-│  │  ◆ Featured Project       │     (Smaller, right-aligned or  │
-│  │  ┌─────────────────────┐  │      inline with content)       │
-│  │  │   Compact Video     │  │                                 │
-│  │  │   (Smaller aspect)  │  │                                 │
-│  │  └─────────────────────┘  │                                 │
-│  │  "Project Title"          │                                 │
-│  └───────────────────────────┘                                 │
-│                                                                 │
-│  [Creative Info Cards]                                          │
-│  [Social Links]                                                 │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────┐
-│  [Reorderable Sections: Stats, Achievements, Gallery, Wall]    │
-│  (Order still customizable by user)                             │
-└─────────────────────────────────────────────────────────────────┘
+Root Destinations (Top-Level - accessible from nav)
+├── Student Hub (/)
+│   ├── Edit Profile
+│   ├── View Profile (My Profile)
+│   └── Grades
+├── Academics
+│   └── Course Detail
+├── Community
+│   └── Post Detail
+├── Friends
+├── Messages
+├── Degrees
+│   └── Skill Tree
+├── Faculty
+├── About
+└── Shop
 ```
+
+### 2. Standard Back Navigation Patterns
+
+**Pattern A: Smart Context-Aware Back**
+For pages that can be reached from multiple sources:
+- Use history state to track referrer
+- Fall back to logical parent if no referrer
+
+**Pattern B: Explicit Parent Links**
+For pages with a clear hierarchy:
+- Always link to the parent page
+- Use breadcrumbs for deep hierarchies
+
+### 3. Breadcrumb Consistency
+
+Add breadcrumbs to all student-facing pages that are 2+ levels deep.
 
 ---
 
-## Implementation Details
+## Detailed Changes
 
-### 1. Create Compact Featured Project Component
+### 1. PublicProfile.tsx - Fix Error State Navigation
 
-Create a new `FeaturedProjectCompact.tsx` component with:
-- Smaller aspect ratio (4:3 or similar compact size)
-- Max width constraint (~400px)
-- Condensed styling that fits within the profile card flow
-
-```typescript
-// src/components/profile/FeaturedProjectCompact.tsx
-interface FeaturedProjectCompactProps {
-  title: string;
-  url: string;
-  thumbnail: string | null;
-}
+**Current (Line 188):**
+```tsx
+<Button variant="ghost" onClick={() => navigate(-1)} className="mb-6">
 ```
 
-**Visual Specifications:**
-- Max width: 400px on desktop, full width on mobile
-- Aspect ratio: 4:3 (more compact than 16:9)
-- Smaller title text
-- Subtle border with accent color glow on hover
-- Positioned directly below the bio quote block
+**Fixed:**
+```tsx
+<Button variant="ghost" onClick={() => navigate("/student")} className="mb-6">
+```
 
-### 2. Update PublicProfileCard.tsx
+Also add breadcrumb for non-own profiles showing context.
 
-Move the Featured Project into the PublicProfileCard component, placing it between the bio section and the Creative Info Cards:
+### 2. Friends.tsx - Add Navigation Header
+
+**Add:**
+```tsx
+<div className="flex items-center gap-4 mb-6">
+  <Link to="/student" className="p-2 hover:bg-muted rounded-lg transition-colors">
+    <ArrowLeft className="h-6 w-6" />
+  </Link>
+  <div>
+    <h1 className="heading-2">Friends</h1>
+    <p className="text-muted-foreground text-sm">Manage your connections</p>
+  </div>
+</div>
+
+<Breadcrumb>
+  <BreadcrumbList>
+    <BreadcrumbItem>
+      <BreadcrumbLink asChild>
+        <Link to="/student">Student Hub</Link>
+      </BreadcrumbLink>
+    </BreadcrumbItem>
+    <BreadcrumbSeparator />
+    <BreadcrumbItem>
+      <BreadcrumbPage>Friends</BreadcrumbPage>
+    </BreadcrumbItem>
+  </BreadcrumbList>
+</Breadcrumb>
+```
+
+### 3. Messages.tsx - Add Navigation Header
+
+**Add:**
+```tsx
+<Breadcrumb className="mb-4">
+  <BreadcrumbList>
+    <BreadcrumbItem>
+      <BreadcrumbLink asChild>
+        <Link to="/student">Student Hub</Link>
+      </BreadcrumbLink>
+    </BreadcrumbItem>
+    <BreadcrumbSeparator />
+    <BreadcrumbItem>
+      <BreadcrumbPage>Messages</BreadcrumbPage>
+    </BreadcrumbItem>
+  </BreadcrumbList>
+</Breadcrumb>
+```
+
+And add a back button in the header.
+
+### 4. Community.tsx - Add Navigation Header
+
+**Add:**
+```tsx
+<Breadcrumb className="mb-4">
+  <BreadcrumbList>
+    <BreadcrumbItem>
+      <BreadcrumbLink asChild>
+        <Link to="/student">Student Hub</Link>
+      </BreadcrumbLink>
+    </BreadcrumbItem>
+    <BreadcrumbSeparator />
+    <BreadcrumbItem>
+      <BreadcrumbPage>Community</BreadcrumbPage>
+    </BreadcrumbItem>
+  </BreadcrumbList>
+</Breadcrumb>
+```
+
+### 5. StudentGrades.tsx - Add Navigation Header
+
+**Add:**
+```tsx
+<Breadcrumb className="mb-4">
+  <BreadcrumbList>
+    <BreadcrumbItem>
+      <BreadcrumbLink asChild>
+        <Link to="/student">Student Hub</Link>
+      </BreadcrumbLink>
+    </BreadcrumbItem>
+    <BreadcrumbSeparator />
+    <BreadcrumbItem>
+      <BreadcrumbPage>Grades</BreadcrumbPage>
+    </BreadcrumbItem>
+  </BreadcrumbList>
+</Breadcrumb>
+```
+
+### 6. Mobile Navigation - Add Profile Links
+
+Update the mobile menu in `Navigation.tsx` to include:
 
 ```tsx
-{/* Bio Section */}
-{profile.bio && (
-  <motion.div>...</motion.div>
-)}
-
-{/* NEW: Compact Featured Project - right under bio */}
-{(profile.featured_project_url || profile.featured_project_thumbnail) && (
-  <motion.div className="px-4 md:px-6">
-    <FeaturedProjectCompact
-      title={profile.featured_project_title || ""}
-      url={profile.featured_project_url || ""}
-      thumbnail={profile.featured_project_thumbnail}
-    />
-  </motion.div>
-)}
-
-{/* Creative Info Cards */}
-{infoCards.length > 0 && (...)}
+{/* Profile Section for Mobile */}
+<Link 
+  to={`/profile/${user.id}`}
+  onClick={() => setIsOpen(false)}
+  className="text-lg font-bold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide py-2"
+>
+  My Profile
+</Link>
+<Link 
+  to="/student/profile"
+  onClick={() => setIsOpen(false)}
+  className="text-lg font-bold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide py-2"
+>
+  Edit Profile
+</Link>
+<Separator className="my-2" />
 ```
 
-### 3. Update PublicProfile.tsx
+### 7. StudentCenter.tsx - Fix Button Layout
 
-Remove the Featured Project from the main content area since it's now inside PublicProfileCard:
+**Current Issue:**
+Two buttons (Edit Profile, View Profile) are rendered separately, breaking flex layout.
 
+**Fix:**
+Wrap in a flex container:
 ```tsx
-// REMOVE THIS SECTION:
-{/* Featured Project - Always first if set */}
-{(profile.featured_project_url || profile.featured_project_thumbnail) && (
-  <motion.div>
-    <FeaturedProjectShowcase ... />
-  </motion.div>
-)}
-
-// KEEP ONLY THE REORDERABLE SECTIONS:
-{sectionOrder.map((sectionId, index) => renderSection(sectionId, index))}
+<div className="flex items-center gap-3">
+  <Link to="/student/profile" className="btn-brutal text-sm flex items-center gap-2">
+    <Settings className="h-4 w-4" />
+    Edit Profile
+  </Link>
+  <Link 
+    to={`/profile/${user?.id}`} 
+    className="btn-brutal text-sm flex items-center gap-2 bg-charcoal hover:bg-charcoal-light"
+  >
+    <Eye className="h-4 w-4" />
+    View Profile
+  </Link>
+</div>
 ```
 
----
+### 8. Checkout.tsx - Use History State for Better Back Navigation
 
-## New Component: FeaturedProjectCompact
-
-```text
-┌─────────────────────────────────────┐
-│  ◆ Featured Project                 │
-│  ┌───────────────────────────────┐  │
-│  │                               │  │
-│  │     Compact Video/Image       │  │
-│  │     (4:3 aspect ratio)        │  │
-│  │                               │  │
-│  └───────────────────────────────┘  │
-│  "My Latest Short Film" ↗          │
-└─────────────────────────────────────┘
-     └── Max 400px width ──┘
+**Enhanced:**
+```tsx
+const handleBack = () => {
+  // Check if we have navigation history within the app
+  if (window.history.length > 1) {
+    navigate(-1);
+  } else {
+    navigate("/enrollment");
+  }
+};
 ```
 
-**Styling:**
-- Rounded corners with border
-- Accent color glow on hover
-- External link icon for non-embed URLs
-- Play button overlay for video thumbnails
-- Condensed title with external link indicator
+This is actually fine as-is since it explicitly goes to `/enrollment`.
 
 ---
 
@@ -156,45 +240,121 @@ Remove the Featured Project from the main content area since it's now inside Pub
 
 | File | Changes |
 |------|---------|
-| `src/components/profile/FeaturedProjectCompact.tsx` | NEW: Compact version of featured project |
-| `src/components/profile/PublicProfileCard.tsx` | Add FeaturedProjectCompact after bio section |
-| `src/pages/PublicProfile.tsx` | Remove the full-width FeaturedProjectShowcase |
-| `src/components/profile/index.ts` | Export new FeaturedProjectCompact component |
+| `src/pages/PublicProfile.tsx` | Fix error state navigation, enhance breadcrumbs for non-own profiles |
+| `src/pages/Friends.tsx` | Add back button, breadcrumbs, and navigation header |
+| `src/pages/Messages.tsx` | Add breadcrumbs and back button |
+| `src/pages/Community.tsx` | Add breadcrumbs |
+| `src/pages/StudentGrades.tsx` | Add breadcrumbs and navigation header |
+| `src/pages/StudentCenter.tsx` | Fix button container layout |
+| `src/components/layout/Navigation.tsx` | Add profile links to mobile menu |
 
 ---
 
-## Mobile Behavior
+## Navigation Hierarchy Diagram
 
-On mobile screens:
-- Featured Project compact card takes full width
-- Maintains compact aspect ratio (4:3)
-- Positioned in natural flow under bio
+```text
+                        NAVIGATION FLOW
+                        
+   ┌──────────────────────────────────────────────────────────┐
+   │                     MAIN NAVIGATION                      │
+   │  [Logo] [Academics] [Degrees] [Faculty] [About] [Shop]  │
+   │                                              [Avatar ▼] │
+   └──────────────────────────────────────────────────────────┘
+                              │
+        ┌─────────────────────┼─────────────────────┐
+        ▼                     ▼                     ▼
+   ┌─────────┐         ┌───────────┐         ┌───────────┐
+   │ Student │         │ Community │         │  Friends  │
+   │   Hub   │         │           │         │           │
+   └────┬────┘         └─────┬─────┘         └───────────┘
+        │                    │
+   ┌────┴────┬────────┐      │
+   ▼         ▼        ▼      ▼
+┌──────┐ ┌──────┐ ┌──────┐ ┌────────┐
+│Edit  │ │ View │ │Grades│ │ Post   │
+│Profile│ │Profile│ │     │ │ Detail │
+└──────┘ └──────┘ └──────┘ └────────┘
 
-On desktop screens:
-- Featured Project constrained to max-width: 400px
-- Left-aligned under the bio quote
-- Creates visual balance with info cards
+Breadcrumb Pattern:
+┌────────────────────────────────────────┐
+│ Student Hub > Edit Profile             │
+│ Student Hub > Grades                   │
+│ Student Hub > My Profile               │
+│ Student Hub > Community                │
+│ Student Hub > Friends                  │
+│ Student Hub > Messages                 │
+└────────────────────────────────────────┘
+```
 
 ---
 
-## What Stays the Same
+## Mobile Navigation Update
 
-| Feature | Status |
-|---------|--------|
-| Section reordering (stats, achievements, gallery, wall) | Unchanged - still fully customizable |
-| FeaturedProjectEditor in Edit Profile | Unchanged - same editing experience |
-| FeaturedProjectShowcase component | Kept for potential future use, but not used on profile page |
+```text
+MOBILE MENU (Logged In)
+┌────────────────────────────┐
+│ [X]                        │
+├────────────────────────────┤
+│ ACADEMICS                  │
+│ DEGREES                    │
+│ FACULTY                    │
+│ ABOUT                      │
+│ SHOP                       │
+├────────────────────────────┤
+│ MY PROFILE         [NEW]   │
+│ EDIT PROFILE       [NEW]   │
+├────────────────────────────┤
+│ STUDENT HUB                │
+│ COMMUNITY                  │
+│ FRIENDS            [2]     │
+│ MESSAGES           [5]     │
+├────────────────────────────┤
+│ ADMIN PANEL                │
+├────────────────────────────┤
+│ SIGN OUT                   │
+└────────────────────────────┘
+```
+
+---
+
+## Breadcrumb Component Pattern
+
+All pages will use the same breadcrumb style:
+
+```tsx
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+
+<Breadcrumb className="mb-4">
+  <BreadcrumbList>
+    <BreadcrumbItem>
+      <BreadcrumbLink asChild>
+        <Link to="/student" className="hover:text-primary transition-colors">
+          Student Hub
+        </Link>
+      </BreadcrumbLink>
+    </BreadcrumbItem>
+    <BreadcrumbSeparator />
+    <BreadcrumbItem>
+      <BreadcrumbPage>{currentPageName}</BreadcrumbPage>
+    </BreadcrumbItem>
+  </BreadcrumbList>
+</Breadcrumb>
+```
 
 ---
 
 ## Summary
 
-| Category | Details |
+| Category | Changes |
 |----------|---------|
-| New component | 1 (FeaturedProjectCompact) |
-| Modified files | 3 (PublicProfileCard, PublicProfile, index) |
-| Layout change | Featured Project moves inside profile card, under bio |
-| Size change | Compact (max 400px, 4:3 aspect) instead of full-width 16:9 |
-| Reorderable sections | Still fully customizable |
+| Files modified | 7 |
+| Pages with new breadcrumbs | 5 (Friends, Messages, Community, Grades, PublicProfile for others) |
+| Pages with fixed navigation | 2 (PublicProfile error state, StudentCenter layout) |
+| Navigation menu updates | 1 (Mobile profile links) |
+| `navigate(-1)` usage eliminated | 1 instance fixed |
 
-This creates a more integrated profile header where the featured project feels like part of the identity section rather than a separate showcase block, while maintaining the flexibility to customize the order of the main content sections below.
+This creates a consistent, predictable navigation experience where:
+- Every page shows breadcrumb context (where you are)
+- Every sub-page has a clear back path to its parent
+- Mobile users can access profile features directly
+- No more unpredictable `navigate(-1)` behavior
