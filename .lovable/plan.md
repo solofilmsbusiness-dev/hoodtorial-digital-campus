@@ -1,53 +1,53 @@
 
-# Enhanced Profile: Portfolio Gallery & Course Achievements
+# Enhanced Profile Gallery & Customization System
 
 ## Overview
 
-Transform the public profile into a comprehensive showcase of the student's filmmaking journey by adding:
-1. **Portfolio Gallery** - A visual showcase for photos/videos of their work
-2. **Course Achievement Badges** - Display completed courses with certifications
-3. **Academic Stats Section** - Credits earned, courses completed, quizzes passed
-
-This creates a profile that truly represents their educational progress and creative work.
+Transform the profile editing experience into a powerful creative canvas where students can:
+1. **Manage Portfolio Gallery** in the Edit Profile page with drag-to-reorder capability
+2. **Add a Featured Project** with a prominent, full-width showcase display
+3. **Rearrange Profile Sections** to customize the layout of their public profile
+4. **Enhanced Visual Focus** with larger gallery items and better media presentation
 
 ---
 
 ## Current State
 
-| Element | Status |
+| Feature | Status |
 |---------|--------|
-| Cover banner | Exists with visual effects |
-| Avatar & bio | Exists with animations |
-| Info cards (gear, project, etc.) | Exists with 3D tilt |
-| Social links | Exists |
-| Profile wall | Exists |
-| Portfolio gallery | Missing |
-| Course badges | Missing |
-| Academic stats | Missing |
+| Portfolio Gallery on Public Profile | Exists (view-only grid) |
+| Portfolio Gallery in Edit Profile | Missing |
+| Drag-to-reorder gallery items | Missing |
+| Featured Project showcase | Missing (only text field) |
+| Section reordering | Missing |
+| Custom layout control | Missing |
 
 ---
 
 ## Database Changes
 
-### 1. Add Gallery to Profiles Table
+### New Columns on profiles Table
 
 ```sql
-ALTER TABLE public.profiles 
-ADD COLUMN portfolio_gallery TEXT[] DEFAULT '{}';
+ALTER TABLE public.profiles
+ADD COLUMN featured_project_url TEXT,
+ADD COLUMN featured_project_title TEXT,
+ADD COLUMN featured_project_thumbnail TEXT,
+ADD COLUMN profile_section_order TEXT[] DEFAULT ARRAY['stats', 'achievements', 'gallery', 'wall'];
 ```
 
-This stores an array of image/video URLs for the user's showcase.
+### Update profiles_public View
 
-### 2. Update profiles_public View
-
-Add the new column to the public view so visitors can see galleries:
+Add new columns for public visibility:
 
 ```sql
-CREATE OR REPLACE VIEW public.profiles_public
-WITH (security_invoker=on) AS
+CREATE OR REPLACE VIEW public.profiles_public AS
 SELECT 
   -- existing columns --
-  portfolio_gallery
+  featured_project_url,
+  featured_project_title,
+  featured_project_thumbnail,
+  profile_section_order
 FROM public.profiles;
 ```
 
@@ -56,46 +56,98 @@ FROM public.profiles;
 ## System Architecture
 
 ```text
-                    ENHANCED PROFILE LAYOUT
+                 ENHANCED EDIT PROFILE LAYOUT
 ┌─────────────────────────────────────────────────────────────────┐
-│  ◆━━━━━━━━━━━━━━ COVER BANNER ━━━━━━━━━━━━━━◆                   │
+│  EDIT PROFILE PAGE                                              │
 ├─────────────────────────────────────────────────────────────────┤
-│       [AVATAR]      NAME                                        │
-│                     🎬 Filmmaking Style                         │
-│                     [Edit Profile] [Share]                      │
+│  1. Cover & Avatar          [existing]                          │
+│  2. Basic Information       [existing]                          │
+│  3. Creative Identity       [existing]                          │
 ├─────────────────────────────────────────────────────────────────┤
-│  ❝ Bio quote section ❞                                          │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌──────────────────┐  ┌──────────────────┐                    │
-│  │ CAMERA GEAR      │  │ CURRENT PROJECT  │  ← 3D tilt cards   │
-│  └──────────────────┘  └──────────────────┘                    │
-├─────────────────────────────────────────────────────────────────┤
-│  ◆ ACADEMIC STATS ◆                                             │
-│  ┌───────────┐ ┌───────────┐ ┌───────────┐                     │
-│  │ CREDITS   │ │ COURSES   │ │ QUIZZES   │                     │
-│  │   12/60   │ │    3/12   │ │    8/12   │                     │
-│  └───────────┘ └───────────┘ └───────────┘                     │
-├─────────────────────────────────────────────────────────────────┤
-│  ◆ COURSE ACHIEVEMENTS ◆                                        │
-│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐               │
-│  │    🏆       │ │    🏆       │ │    🏆       │               │
-│  │  CIN-101   │ │  DIR-201   │ │  PRD-101   │               │
-│  │ ✓ Certified │ │ ✓ Certified │ │ ✓ Certified │               │
-│  │  Mar 2026  │ │  Jan 2026  │ │  Feb 2026  │               │
-│  └─────────────┘ └─────────────┘ └─────────────┘               │
-├─────────────────────────────────────────────────────────────────┤
-│  ◆ PORTFOLIO GALLERY ◆                         [+ Add Media]   │
+│  4. FEATURED PROJECT SHOWCASE  [NEW]                            │
 │  ┌─────────────────────────────────────────────────────────────┐│
-│  │  ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐                   ││
-│  │  │ 📷  │ │ 🎬  │ │ 📷  │ │ 📷  │ │ +3  │   ← Masonry grid  ││
-│  │  └─────┘ └─────┘ └─────┘ └─────┘ └─────┘                   ││
+│  │  Project Title: [________________]                          ││
+│  │  Project URL:   [________________] (YouTube/Vimeo/Link)     ││
+│  │  Thumbnail:     [Upload] or [Auto-fetch from URL]           ││
+│  │                                                              ││
+│  │  Preview: ┌─────────────────────────────────────────────┐   ││
+│  │           │        FULL WIDTH VIDEO/IMAGE PREVIEW       │   ││
+│  │           └─────────────────────────────────────────────┘   ││
 │  └─────────────────────────────────────────────────────────────┘│
 ├─────────────────────────────────────────────────────────────────┤
-│  ◆ SOCIAL LINKS ◆                                               │
-│  [🌐] [📸] [🎬] [🐦]                                            │
+│  5. PORTFOLIO GALLERY MANAGER  [NEW]                            │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │  [+ Add Media]                          12/12 slots used    ││
+│  │                                                              ││
+│  │  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐                       ││
+│  │  │ ≡ 1 │ │ ≡ 2 │ │ ≡ 3 │ │ ≡ 4 │  ← Drag handles         ││
+│  │  │ IMG │ │ VID │ │ IMG │ │ IMG │                            ││
+│  │  │ [X] │ │ [X] │ │ [X] │ │ [X] │  ← Delete buttons         ││
+│  │  └──────┘ └──────┘ └──────┘ └──────┘                       ││
+│  │                                                              ││
+│  │  Drag items to reorder. Changes save automatically.         ││
+│  └─────────────────────────────────────────────────────────────┘│
 ├─────────────────────────────────────────────────────────────────┤
-│  ◆ WALL ◆                                                       │
-│  [Wall posts...]                                                │
+│  6. PROFILE LAYOUT CUSTOMIZATION  [NEW]                         │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │  Drag sections to reorder how they appear on your profile:  ││
+│  │                                                              ││
+│  │  ┌─────────────────────────────────────────────────────┐    ││
+│  │  │ ≡  Academic Stats                                   │    ││
+│  │  └─────────────────────────────────────────────────────┘    ││
+│  │  ┌─────────────────────────────────────────────────────┐    ││
+│  │  │ ≡  Course Achievements                              │    ││
+│  │  └─────────────────────────────────────────────────────┘    ││
+│  │  ┌─────────────────────────────────────────────────────┐    ││
+│  │  │ ≡  Portfolio Gallery                                │    ││
+│  │  └─────────────────────────────────────────────────────┘    ││
+│  │  ┌─────────────────────────────────────────────────────┐    ││
+│  │  │ ≡  Profile Wall                                     │    ││
+│  │  └─────────────────────────────────────────────────────┘    ││
+│  └─────────────────────────────────────────────────────────────┘│
+├─────────────────────────────────────────────────────────────────┤
+│  7. Portfolio & Social Links  [existing]                        │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Public Profile Layout (After Changes)
+
+```text
+                    PUBLIC PROFILE (CUSTOMIZED)
+┌─────────────────────────────────────────────────────────────────┐
+│  [Cover Banner]                                                 │
+│  [Avatar & Identity]                                            │
+│  [Bio Quote]                                                    │
+│  [Creative Info Cards]                                          │
+├─────────────────────────────────────────────────────────────────┤
+│  ◆ FEATURED PROJECT ◆  [NEW - Always at top if set]            │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │                                                              ││
+│  │               FULL WIDTH VIDEO EMBED                        ││
+│  │               or HERO IMAGE WITH LINK                       ││
+│  │                                                              ││
+│  │  "My Latest Short Film"                                     ││
+│  └─────────────────────────────────────────────────────────────┘│
+├─────────────────────────────────────────────────────────────────┤
+│  [Sections rendered in user's custom order]                     │
+│                                                                 │
+│  e.g., if order = ['gallery', 'stats', 'achievements', 'wall']: │
+│                                                                 │
+│  ◆ PORTFOLIO GALLERY ◆                                          │
+│  [Larger, more visual grid]                                     │
+│                                                                 │
+│  ◆ ACADEMIC STATS ◆                                              │
+│  [Stats cards]                                                  │
+│                                                                 │
+│  ◆ COURSE ACHIEVEMENTS ◆                                         │
+│  [Course badges]                                                │
+│                                                                 │
+│  ◆ WALL ◆                                                        │
+│  [Wall posts]                                                   │
+├─────────────────────────────────────────────────────────────────┤
+│  [Social Links - Always at bottom]                              │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -105,11 +157,12 @@ FROM public.profiles;
 
 | File | Purpose |
 |------|---------|
-| `src/components/profile/ProfileAcademicStats.tsx` | Display credits, courses, quizzes in animated stat cards |
-| `src/components/profile/ProfileAchievements.tsx` | Show completed course badges with certificates |
-| `src/components/profile/ProfileGallery.tsx` | Portfolio gallery with lightbox viewer |
-| `src/hooks/useProfileAchievements.ts` | Fetch completed enrollments for any user (public) |
-| `src/hooks/useProfileGallery.ts` | Manage gallery uploads for own profile |
+| `src/components/profile/GalleryEditor.tsx` | Drag-to-reorder gallery manager with dnd-kit |
+| `src/components/profile/SortableGalleryItem.tsx` | Individual draggable gallery item |
+| `src/components/profile/FeaturedProjectEditor.tsx` | Featured project form with preview |
+| `src/components/profile/FeaturedProjectShowcase.tsx` | Full-width featured project display |
+| `src/components/profile/SectionLayoutEditor.tsx` | Drag-to-reorder section order |
+| `src/components/profile/SortableSectionItem.tsx` | Individual draggable section item |
 
 ---
 
@@ -117,201 +170,255 @@ FROM public.profiles;
 
 | File | Changes |
 |------|---------|
-| `src/pages/PublicProfile.tsx` | Add new sections: stats, achievements, gallery |
-| `src/hooks/usePublicProfile.ts` | Add portfolio_gallery to interface |
+| `src/pages/StudentProfile.tsx` | Add gallery editor, featured project, and section order cards |
+| `src/pages/PublicProfile.tsx` | Render sections dynamically based on order, add featured project |
+| `src/hooks/usePublicProfile.ts` | Add new fields to interface |
+| `src/hooks/useProfileGallery.ts` | Add reorder functionality |
+| `src/components/profile/ProfileGallery.tsx` | Enhanced visual display, larger items |
 | `src/components/profile/index.ts` | Export new components |
-| Database migration | Add portfolio_gallery column, update view |
+| Database migration | Add new columns |
 
 ---
 
 ## Implementation Details
 
-### 1. ProfileAcademicStats Component
-
-Animated stat cards showing progress:
-- Credits earned / required (with progress ring)
-- Courses completed count
-- Quizzes passed count
-
-Uses the same 3D tilt effect as ProfileInfoCard for consistency.
-
-### 2. ProfileAchievements Component
-
-Grid of completed course badges:
-- Course code and title
-- "✓ Certified" stamp badge
-- Completion date
-- Credits earned
-- Shimmer animation overlay
-- Uses existing `StampBadge` component
-
-For other users' profiles, fetch their completed enrollments via a new hook.
-
-### 3. ProfileGallery Component
-
-Visual portfolio showcase:
-- Masonry-style grid layout
-- Support for images and video thumbnails
-- Lightbox viewer for full-size viewing
-- Owner can add/remove media
-- Reuses existing `ImageGallery` component for lightbox
-- Uses `useCommunityUploads` for upload functionality
-- Maximum 12 gallery items
-
-### 4. useProfileAchievements Hook
+### 1. GalleryEditor Component
 
 ```typescript
-interface ProfileAchievement {
-  course_code: string;
-  course_title: string;
-  department: string;
-  credits: number;
-  completed_at: string;
-}
+// Uses dnd-kit for drag-and-drop reordering
+// Grid layout with visual drag handles
+// Each item shows thumbnail with delete overlay
+// Changes persist to database on drop
 
-export function useProfileAchievements(userId: string) {
-  // Fetch enrollments where status = 'completed' for the user
-  // Join with courses data to get titles and credits
+interface GalleryEditorProps {
+  gallery: string[];
+  onReorder: (newOrder: string[]) => void;
+  onAdd: (files: File[]) => void;
+  onRemove: (url: string) => void;
+  isUploading: boolean;
 }
 ```
 
-### 5. useProfileGallery Hook
+Features:
+- 4-column grid with 1:1 aspect ratio items
+- Drag handle (grip icon) on each item
+- Visual feedback during drag (opacity, scale)
+- Delete button on hover
+- Add media button
+- Slot counter (e.g., "8/12 used")
+
+### 2. FeaturedProjectEditor Component
 
 ```typescript
-export function useProfileGallery(isOwnProfile: boolean) {
-  // If own profile: upload, delete, reorder capabilities
-  // Uses community-uploads bucket (existing)
-  // Updates profiles.portfolio_gallery array
+interface FeaturedProjectEditorProps {
+  title: string;
+  url: string;
+  thumbnail: string | null;
+  onChange: (updates: {
+    featured_project_title?: string;
+    featured_project_url?: string;
+    featured_project_thumbnail?: string | null;
+  }) => void;
 }
 ```
 
----
+Features:
+- URL input with auto-detection (YouTube, Vimeo, custom)
+- Title input
+- Thumbnail upload or auto-extract from video URL
+- Live preview of how it will look on profile
+- Clear button to remove featured project
 
-## UI Styling Details
+### 3. FeaturedProjectShowcase Component
 
-### Academic Stats Cards
-
-```text
-┌─────────────────────────────┐
-│  ┌─────────┐                │
-│  │ ◎ 12/60 │  CREDITS      │
-│  └─────────┘  EARNED        │
-│                             │
-│  [Progress bar: 20%]        │
-└─────────────────────────────┘
+```typescript
+interface FeaturedProjectShowcaseProps {
+  title: string;
+  url: string;
+  thumbnail: string | null;
+}
 ```
 
-- Uses `ProgressRing` component for circular progress
-- Gold accent for completed sections
-- Stagger entrance animations
+Display modes:
+- **YouTube/Vimeo**: Embedded responsive player
+- **Image URL**: Full-width clickable image
+- **External link**: Hero thumbnail with play button overlay
 
-### Achievement Badges
+Visual styling:
+- Full-width container with rounded corners
+- Gradient overlay on thumbnail
+- Title below with accent styling
+- Glow effect on hover
+- Film-grain texture overlay for cinematic feel
 
-```text
-┌─────────────────────────┐
-│  ┌─────┐ [shimmer]     │
-│  │  🏆 │               │
-│  └─────┘               │
-│  CIN-101               │
-│  Intro to Cinema       │
-│                        │
-│  [✓ CERTIFIED]         │
-│                        │
-│  Completed Mar 5, 2026 │
-│  5 credits earned      │
-└─────────────────────────┘
+### 4. SectionLayoutEditor Component
+
+```typescript
+interface SectionLayoutEditorProps {
+  order: string[];
+  onChange: (newOrder: string[]) => void;
+}
+
+const AVAILABLE_SECTIONS = [
+  { id: 'stats', label: 'Academic Stats', icon: GraduationCap },
+  { id: 'achievements', label: 'Course Achievements', icon: Trophy },
+  { id: 'gallery', label: 'Portfolio Gallery', icon: Images },
+  { id: 'wall', label: 'Profile Wall', icon: MessageSquare },
+];
 ```
 
-- Reuses existing shimmer animation from StudentCenter
-- Gold border for completed
-- 3D tilt on hover
-- Urban stamp badge style
+Features:
+- Vertical list with drag handles
+- Clear section labels with icons
+- Visual feedback during drag
+- Saves on drop
 
-### Gallery Grid
+### 5. Enhanced ProfileGallery for Public View
 
-```text
-┌────────────────────────────────────────────────┐
-│  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐  │
-│  │        │ │        │ │   ▶    │ │        │  │
-│  │  IMG   │ │  IMG   │ │ VIDEO  │ │  IMG   │  │
-│  │        │ │        │ │        │ │        │  │
-│  └────────┘ └────────┘ └────────┘ └────────┘  │
-│  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐  │
-│  │        │ │        │ │        │ │  +4    │  │
-│  │  IMG   │ │  IMG   │ │  IMG   │ │ MORE   │  │
-│  │        │ │        │ │        │ │        │  │
-│  └────────┘ └────────┘ └────────┘ └────────┘  │
-└────────────────────────────────────────────────┘
-```
-
-- 4-column grid on desktop, 2-column on mobile
-- Videos show play icon overlay
-- Click opens lightbox
-- Owner sees "Add Media" button
+Visual improvements:
+- Larger grid items (3 columns on desktop vs 4)
+- 16:9 aspect ratio for more cinematic feel
+- Lightbox with navigation arrows
+- Video autoplay in lightbox
+- Caption/title option for items (future)
 
 ---
 
-## Data Flow
+## Hook Updates
 
-### Viewing Another User's Profile
+### useProfileGallery Enhancement
 
-```text
-1. Load profile from profiles_public view
-   ↓
-2. Fetch enrollments (status='completed') for user_id
-   ↓
-3. Get course details from courses table/static data
-   ↓
-4. Display achievements, stats, gallery
-```
+```typescript
+const reorderGallery = async (newOrder: string[]) => {
+  if (!isOwnProfile || !user) return;
+  
+  await updateGalleryMutation.mutateAsync(newOrder);
+};
 
-### Editing Own Gallery
-
-```text
-1. Click "Add Media"
-   ↓
-2. Select files (images/videos)
-   ↓
-3. Upload to community-uploads bucket
-   ↓
-4. Update profiles.portfolio_gallery array
-   ↓
-5. Refetch profile context
+return {
+  // existing...
+  reorderGallery,
+};
 ```
 
 ---
 
-## Security Considerations
+## Database Migration
 
-| Action | Policy |
-|--------|--------|
-| View achievements | Anyone can see completed enrollments (public info) |
-| View gallery | Anyone can see portfolio_gallery (in profiles_public) |
-| Add to gallery | Only own profile (auth.uid() = user_id) |
-| Remove from gallery | Only own profile (auth.uid() = user_id) |
-
-RLS for enrollments viewing:
 ```sql
-CREATE POLICY "Users can view completed enrollments"
-ON public.enrollments FOR SELECT
-USING (
-  status = 'completed' OR user_id = auth.uid()
-);
+-- Add featured project fields
+ALTER TABLE public.profiles
+ADD COLUMN featured_project_url TEXT,
+ADD COLUMN featured_project_title TEXT,
+ADD COLUMN featured_project_thumbnail TEXT;
+
+-- Add section order preference
+ALTER TABLE public.profiles
+ADD COLUMN profile_section_order TEXT[] DEFAULT ARRAY['stats', 'achievements', 'gallery', 'wall'];
+
+-- Update profiles_public view to include new fields
+CREATE OR REPLACE VIEW public.profiles_public
+WITH (security_invoker=on) AS
+SELECT 
+  user_id,
+  display_name,
+  avatar_url,
+  cover_banner_url,
+  bio,
+  filmmaking_style,
+  camera_gear,
+  current_project,
+  favorite_films,
+  influences,
+  portfolio_url,
+  imdb_url,
+  vimeo_url,
+  instagram_url,
+  youtube_url,
+  twitter_url,
+  tiktok_url,
+  profile_accent_color,
+  avatar_border_style,
+  portfolio_gallery,
+  featured_project_url,
+  featured_project_title,
+  featured_project_thumbnail,
+  profile_section_order
+FROM public.profiles;
 ```
 
 ---
 
-## Section Order on Profile Page
+## UI/UX Details
 
-1. Cover Banner (existing)
-2. Avatar & Identity (existing)
-3. Bio Quote (existing)
-4. Info Cards - Gear, Project, etc. (existing)
-5. **Academic Stats (NEW)** - Credits, courses, quizzes
-6. **Course Achievements (NEW)** - Completed course badges
-7. **Portfolio Gallery (NEW)** - Photos/videos of work
-8. Social Links (existing)
-9. Profile Wall (existing)
+### Gallery Editor Card in Edit Profile
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│  📸 Portfolio Gallery                              8/12 items   │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │
+│  │ ≡        │ │ ≡        │ │ ≡        │ │ ≡        │           │
+│  │          │ │          │ │    ▶     │ │          │           │
+│  │   IMG    │ │   IMG    │ │  VIDEO   │ │   IMG    │           │
+│  │          │ │          │ │          │ │          │           │
+│  │     [×]  │ │     [×]  │ │     [×]  │ │     [×]  │           │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘           │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │
+│  │ ≡        │ │ ≡        │ │ ≡        │ │ ≡        │           │
+│  │   IMG    │ │   IMG    │ │   IMG    │ │   IMG    │           │
+│  │     [×]  │ │     [×]  │ │     [×]  │ │     [×]  │           │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘           │
+│                                                                 │
+│  [+ Add Media]                                                  │
+│                                                                 │
+│  💡 Drag items to reorder. First item shows as primary.        │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Featured Project Card in Edit Profile
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│  🎬 Featured Project                           [Clear Project]  │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Project Title                                                  │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │ My Latest Short Film                                        ││
+│  └─────────────────────────────────────────────────────────────┘│
+│                                                                 │
+│  Project URL (YouTube, Vimeo, or any link)                      │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │ https://youtu.be/xyz123                                     ││
+│  └─────────────────────────────────────────────────────────────┘│
+│                                                                 │
+│  Thumbnail  [Upload Custom]  or  [Use Video Thumbnail]          │
+│                                                                 │
+│  PREVIEW:                                                       │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │                                                              ││
+│  │         [▶ PLAY]  Video Thumbnail Preview                   ││
+│  │                                                              ││
+│  │  "My Latest Short Film"                                     ││
+│  └─────────────────────────────────────────────────────────────┘│
+│                                                                 │
+│  💡 This will appear prominently at the top of your profile.   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Animation Specifications
+
+| Element | Animation |
+|---------|-----------|
+| Gallery drag | Scale 1.05, opacity 0.8, shadow elevation |
+| Gallery drop | Spring animation back to position |
+| Section drag | Slight lift, background highlight |
+| Featured project hover | Glow pulse, slight scale |
+| Lightbox open | Fade + scale from center |
 
 ---
 
@@ -319,11 +426,10 @@ USING (
 
 | Category | Details |
 |----------|---------|
-| Database changes | 1 new column (portfolio_gallery), 1 view update |
-| New components | 3 (Stats, Achievements, Gallery) |
-| New hooks | 2 (useProfileAchievements, useProfileGallery) |
-| Modified files | 4 (PublicProfile, usePublicProfile, index, migration) |
-| RLS policies | 1 new policy for public enrollment viewing |
-| Storage | Uses existing community-uploads bucket |
+| Database changes | 4 new columns on profiles, view update |
+| New components | 6 (GalleryEditor, SortableGalleryItem, FeaturedProjectEditor, FeaturedProjectShowcase, SectionLayoutEditor, SortableSectionItem) |
+| Modified files | 7 (StudentProfile, PublicProfile, usePublicProfile, useProfileGallery, ProfileGallery, index, migration) |
+| Dependencies | Uses existing @dnd-kit/core, @dnd-kit/sortable |
+| Features | Drag gallery reorder, featured project showcase, custom section order |
 
-This transforms the profile into a true portfolio showcase where students can display their filmmaking journey - from courses completed to work samples - creating a rich, engaging profile experience.
+This transforms the profile into a truly customizable creative portfolio where filmmakers can highlight their best work prominently, organize their content the way they want, and create a profile that reflects their unique creative identity.
