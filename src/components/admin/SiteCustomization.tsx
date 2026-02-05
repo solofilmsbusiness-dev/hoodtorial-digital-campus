@@ -4,11 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
-import { Upload, Trash2, ExternalLink, Loader2, Video, Image, Music, Play, Pause, Volume2 } from "lucide-react";
+import { Upload, Trash2, ExternalLink, Loader2, Video, Image, Music, Play, Pause, Volume2, UserX, AlertTriangle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
 
 export function SiteCustomization() {
   const { settings, loading, updateSetting, uploadAsset, deleteAsset } = useSiteSettings();
@@ -18,6 +20,7 @@ export function SiteCustomization() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(50);
+  const [signupToggling, setSignupToggling] = useState(false);
   
   const videoInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -275,6 +278,28 @@ export function SiteCustomization() {
     }
   };
 
+  const handleSignupToggle = async (disabled: boolean) => {
+    setSignupToggling(true);
+    try {
+      await updateSetting("signup_disabled", disabled ? "true" : "false");
+      toast({
+        title: disabled ? "Sign up disabled" : "Sign up enabled",
+        description: disabled 
+          ? "New users can no longer create accounts." 
+          : "New users can now create accounts.",
+      });
+    } catch (error) {
+      console.error("Error toggling signup:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update sign up setting.",
+        variant: "destructive",
+      });
+    } finally {
+      setSignupToggling(false);
+    }
+  };
+
   const handlePreviewLoginPage = () => {
     window.open('/auth', '_blank');
   };
@@ -306,6 +331,39 @@ export function SiteCustomization() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-8">
+        {/* Access Control */}
+        <div className="space-y-4">
+          <Label className="text-base font-medium flex items-center gap-2">
+            <UserX className="h-4 w-4" />
+            Access Control
+          </Label>
+          
+          <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-muted/30">
+            <div className="space-y-0.5">
+              <p className="text-sm font-medium">Disable Sign Up</p>
+              <p className="text-xs text-muted-foreground">
+                Prevent new users from creating accounts
+              </p>
+            </div>
+            <Switch
+              checked={settings.signup_disabled === "true"}
+              onCheckedChange={handleSignupToggle}
+              disabled={signupToggling}
+            />
+          </div>
+          
+          {settings.signup_disabled === "true" && (
+            <div className="flex items-start gap-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+              <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+              <p className="text-sm text-amber-600 dark:text-amber-400">
+                Sign up is currently disabled. Only existing users can access the platform.
+              </p>
+            </div>
+          )}
+        </div>
+
+        <Separator />
+
         {/* Login Background Video */}
         <div className="space-y-4">
           <Label className="text-base font-medium">Login Background Video</Label>

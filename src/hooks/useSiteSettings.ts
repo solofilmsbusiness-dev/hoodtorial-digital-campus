@@ -6,6 +6,7 @@ interface SiteSettings {
   login_video_url: string | null;
   login_logo_url: string | null;
   login_music_url: string | null;
+  signup_disabled: string | null;
   [key: string]: string | null;
 }
 
@@ -14,6 +15,7 @@ export function useSiteSettings() {
     login_video_url: null,
     login_logo_url: null,
     login_music_url: null,
+    signup_disabled: null,
   });
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
@@ -33,6 +35,7 @@ export function useSiteSettings() {
         login_video_url: null,
         login_logo_url: null,
         login_music_url: null,
+        signup_disabled: null,
       };
       
       data?.forEach((s) => {
