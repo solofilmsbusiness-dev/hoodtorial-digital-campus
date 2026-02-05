@@ -39,6 +39,7 @@ import SupportManager from "./pages/admin/SupportManager";
 import Checkout from "./pages/Checkout";
  import Friends from "./pages/Friends";
  import Messages from "./pages/Messages";
+ import PublicProfile from "./pages/PublicProfile";
 
 const queryClient = new QueryClient();
 
@@ -125,6 +126,11 @@ function RootRedirect() {
                <Messages />
              </AssessmentRequiredRoute>
            } />
+             <Route path="/profile/:userId" element={
+               <AssessmentRequiredRoute>
+                 <PublicProfile />
+               </AssessmentRequiredRoute>
+             } />
            <Route path="/admin" element={
              <AdminRoute>
                <AdminDashboard />

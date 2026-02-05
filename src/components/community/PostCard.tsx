@@ -27,6 +27,7 @@ import {
 import { cn } from "@/lib/utils";
 import { CommunityPost, PostCategory } from "@/hooks/useCommunityPosts";
 import { useAuth } from "@/contexts/AuthContext";
+ import { UserProfileLink } from "@/components/profile/UserProfileLink";
 
 interface PostCardProps {
   post: CommunityPost;
@@ -73,17 +74,22 @@ export function PostCard({ post, onLike, onFollow, onDelete, onClick }: PostCard
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10 border-2 border-border">
-              <AvatarImage src={post.author?.avatar_url || undefined} />
-              <AvatarFallback className="bg-primary/10 text-primary font-bold">
-                {getInitials(post.author?.display_name)}
-              </AvatarFallback>
-            </Avatar>
+             <UserProfileLink
+               userId={post.user_id}
+               displayName={post.author?.display_name ?? null}
+               avatarUrl={post.author?.avatar_url ?? null}
+               showName={false}
+               size="lg"
+             />
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-foreground">
-                  {post.author?.display_name || "Anonymous Student"}
-                </span>
+                 <UserProfileLink
+                   userId={post.user_id}
+                   displayName={post.author?.display_name ?? null}
+                   avatarUrl={post.author?.avatar_url ?? null}
+                   showAvatar={false}
+                   nameClassName="text-foreground"
+                 />
                 {post.author?.role === 'admin' && (
                   <Badge className="bg-destructive/20 text-destructive text-xs">
                     <GraduationCap className="h-3 w-3 mr-1" />

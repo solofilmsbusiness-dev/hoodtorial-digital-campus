@@ -5,3 +5,5 @@ export { CoverBanner } from "./CoverBanner";
 export { FavoriteFilmsInput } from "./FavoriteFilmsInput";
 export { ProfilePreviewCard } from "./ProfilePreviewCard";
 export { ProfileCompleteness } from "./ProfileCompleteness";
+ export { PublicProfileCard } from "./PublicProfileCard";
+ export { UserProfileLink } from "./UserProfileLink";

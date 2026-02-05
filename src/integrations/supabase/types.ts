@@ -1237,19 +1237,67 @@ export type Database = {
     Views: {
       profiles_public: {
         Row: {
+          avatar_border_style: string | null
           avatar_url: string | null
+          bio: string | null
+          camera_gear: string | null
+          cover_banner_url: string | null
+          current_project: string | null
           display_name: string | null
+          favorite_films: string[] | null
+          filmmaking_style: string | null
+          imdb_url: string | null
+          influences: string | null
+          instagram_url: string | null
+          portfolio_url: string | null
+          profile_accent_color: string | null
+          tiktok_url: string | null
+          twitter_url: string | null
           user_id: string | null
+          vimeo_url: string | null
+          youtube_url: string | null
         }
         Insert: {
+          avatar_border_style?: string | null
           avatar_url?: string | null
+          bio?: string | null
+          camera_gear?: string | null
+          cover_banner_url?: string | null
+          current_project?: string | null
           display_name?: string | null
+          favorite_films?: string[] | null
+          filmmaking_style?: string | null
+          imdb_url?: string | null
+          influences?: string | null
+          instagram_url?: string | null
+          portfolio_url?: string | null
+          profile_accent_color?: string | null
+          tiktok_url?: string | null
+          twitter_url?: string | null
           user_id?: string | null
+          vimeo_url?: string | null
+          youtube_url?: string | null
         }
         Update: {
+          avatar_border_style?: string | null
           avatar_url?: string | null
+          bio?: string | null
+          camera_gear?: string | null
+          cover_banner_url?: string | null
+          current_project?: string | null
           display_name?: string | null
+          favorite_films?: string[] | null
+          filmmaking_style?: string | null
+          imdb_url?: string | null
+          influences?: string | null
+          instagram_url?: string | null
+          portfolio_url?: string | null
+          profile_accent_color?: string | null
+          tiktok_url?: string | null
+          twitter_url?: string | null
           user_id?: string | null
+          vimeo_url?: string | null
+          youtube_url?: string | null
         }
         Relationships: []
       }

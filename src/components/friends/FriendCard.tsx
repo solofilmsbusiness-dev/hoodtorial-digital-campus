@@ -5,6 +5,7 @@
  import { Card } from "@/components/ui/card";
  import { useFriendships, FriendProfile } from "@/hooks/useFriendships";
  import { useConversations } from "@/hooks/useConversations";
+ import { UserProfileLink } from "@/components/profile/UserProfileLink";
  import {
    AlertDialog,
    AlertDialogAction,
@@ -49,18 +50,14 @@
  
    return (
      <Card className="p-4 flex items-center gap-4 hover:bg-muted/50 transition-colors">
-       <Avatar className="h-12 w-12 border-2 border-primary/20">
-         <AvatarImage src={friend.avatar_url || undefined} />
-         <AvatarFallback className="bg-primary/10 text-primary font-bold">
-           {getInitials(friend.display_name)}
-         </AvatarFallback>
-       </Avatar>
- 
-       <div className="flex-1 min-w-0">
-         <p className="font-semibold truncate">
-           {friend.display_name || "Unknown User"}
-         </p>
-       </div>
+         <UserProfileLink
+           userId={friend.user_id}
+           displayName={friend.display_name}
+           avatarUrl={friend.avatar_url}
+           size="lg"
+           avatarClassName="border-primary/20"
+           className="flex-1 min-w-0"
+         />
  
        <div className="flex gap-2">
          <Button size="sm" variant="default" onClick={handleMessage}>
