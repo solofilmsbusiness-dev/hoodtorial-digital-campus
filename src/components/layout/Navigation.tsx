@@ -204,6 +204,21 @@ export function Navigation() {
               {user ? (
                 <>
                   <Link 
+                    to={`/profile/${user.id}`}
+                    onClick={() => setIsOpen(false)}
+                    className="text-lg font-bold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide py-2"
+                  >
+                    My Profile
+                  </Link>
+                  <Link 
+                    to="/student/profile"
+                    onClick={() => setIsOpen(false)}
+                    className="text-lg font-bold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide py-2"
+                  >
+                    Edit Profile
+                  </Link>
+                  <div className="border-t border-border my-2" />
+                  <Link 
                     to="/student" 
                     onClick={() => setIsOpen(false)}
                     className="text-lg font-bold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide py-2"
