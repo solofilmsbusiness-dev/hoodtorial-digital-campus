@@ -28,6 +28,7 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; displayName?: string }>({});
   const [showTermsModal, setShowTermsModal] = useState(false);
+  const [signupDisabled, setSignupDisabled] = useState(false);
   
   // Dynamic media URLs (fall back to static imports)
   const [videoUrl, setVideoUrl] = useState<string>(defaultVideo);
@@ -51,7 +52,7 @@ export default function Auth() {
         const { data } = await supabase
           .from("site_settings")
           .select("id, value")
-          .in("id", ["login_video_url", "login_logo_url", "login_music_url"]);
+          .in("id", ["login_video_url", "login_logo_url", "login_music_url", "signup_disabled"]);
 
         data?.forEach((setting) => {
           if (setting.id === "login_video_url" && setting.value) {
@@ -62,6 +63,9 @@ export default function Auth() {
           }
           if (setting.id === "login_music_url" && setting.value) {
             setMusicUrl(setting.value);
+          }
+          if (setting.id === "signup_disabled") {
+            setSignupDisabled(setting.value === "true");
           }
         });
       } catch (err) {
@@ -105,6 +109,13 @@ export default function Auth() {
     document.addEventListener('click', handleInteraction);
     return () => document.removeEventListener('click', handleInteraction);
   }, [musicUrl, isMusicEnabled]);
+
+  // Force sign-in mode if signup is disabled
+  useEffect(() => {
+    if (signupDisabled && isSignUp) {
+      setIsSignUp(false);
+    }
+  }, [signupDisabled, isSignUp]);
 
   const toggleMusic = () => {
     const newState = !isMusicEnabled;
@@ -450,21 +461,23 @@ export default function Auth() {
               </form>
 
               {/* Toggle Sign In/Up */}
-              <div className="mt-6 text-center">
-                <p className="text-sm text-muted-foreground">
-                  {isSignUp ? "Already have an account?" : "Don't have an account?"}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsSignUp(!isSignUp);
-                      setErrors({});
-                    }}
-                    className="ml-2 text-primary font-bold hover:underline"
-                  >
-                    {isSignUp ? "Sign In" : "Sign Up"}
-                  </button>
-                </p>
-              </div>
+              {!signupDisabled && (
+                <div className="mt-6 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    {isSignUp ? "Already have an account?" : "Don't have an account?"}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsSignUp(!isSignUp);
+                        setErrors({});
+                      }}
+                      className="ml-2 text-primary font-bold hover:underline"
+                    >
+                      {isSignUp ? "Sign In" : "Sign Up"}
+                    </button>
+                  </p>
+                </div>
+              )}
             </div>
           </motion.div>
 
