@@ -4,9 +4,12 @@
  import { useAuth } from "@/contexts/AuthContext";
  import { MessageBubble } from "./MessageBubble";
  import { MessageComposer } from "./MessageComposer";
+import { TypingIndicator } from "./TypingIndicator";
  import { Skeleton } from "@/components/ui/skeleton";
  import { ScrollArea } from "@/components/ui/scroll-area";
  import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useTypingIndicator } from "@/hooks/useTypingIndicator";
+import { useMessageReactions } from "@/hooks/useMessageReactions";
  
  interface ChatWindowProps {
    conversationId: string | null;
@@ -19,8 +22,10 @@
  
  export function ChatWindow({ conversationId, otherUser }: ChatWindowProps) {
    const { user } = useAuth();
-   const { messages, loading } = useDirectMessages(conversationId);
+  const { messages, loading, deleteMessage } = useDirectMessages(conversationId);
    const scrollRef = useRef<HTMLDivElement>(null);
+  const { typingUsers, setTyping } = useTypingIndicator(conversationId);
+  const { toggleReaction, getReactionSummary } = useMessageReactions(conversationId);
  
    useEffect(() => {
      // Scroll to bottom when messages change
@@ -94,14 +99,20 @@
                      ? otherUser
                      : undefined
                  }
+                onDelete={() => deleteMessage(message.id)}
+                onReact={(emoji) => toggleReaction(message.id, emoji)}
+                reactions={getReactionSummary(message.id)}
                />
              ))}
            </div>
          )}
+        
+        {/* Typing Indicator */}
+        <TypingIndicator typingUsers={typingUsers} className="mt-2" />
        </ScrollArea>
  
        {/* Composer */}
-       <MessageComposer conversationId={conversationId} />
+      <MessageComposer conversationId={conversationId} onTyping={setTyping} />
      </div>
    );
  }

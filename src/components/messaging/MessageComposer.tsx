@@ -14,9 +14,10 @@
  
  interface MessageComposerProps {
    conversationId: string;
+  onTyping?: (isTyping: boolean) => void;
  }
  
- export function MessageComposer({ conversationId }: MessageComposerProps) {
+export function MessageComposer({ conversationId, onTyping }: MessageComposerProps) {
    const [message, setMessage] = useState("");
    const [sending, setSending] = useState(false);
    const [showContactPreview, setShowContactPreview] = useState(false);
@@ -31,6 +32,11 @@
      setSending(false);
    };
  
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setMessage(e.target.value);
+    onTyping?.(true);
+  };
+
    const handleKeyDown = (e: React.KeyboardEvent) => {
      if (e.key === "Enter" && !e.shiftKey) {
        e.preventDefault();
@@ -107,7 +113,8 @@
  
          <Textarea
            value={message}
-           onChange={(e) => setMessage(e.target.value)}
+          onChange={handleInputChange}
+          onBlur={() => onTyping?.(false)}
            onKeyDown={handleKeyDown}
            placeholder="Type a message..."
            className="min-h-[44px] max-h-32 resize-none"

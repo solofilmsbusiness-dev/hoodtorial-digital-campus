@@ -193,18 +193,46 @@
      channelRef.current = channel;
  
      return () => {
-       if (channelRef.current) {
-         supabase.removeChannel(channelRef.current);
-         channelRef.current = null;
-       }
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, [conversationId, user, fetchMessages]);
+
+  const deleteMessage = async (messageId: string) => {
+    if (!user) return { error: new Error("Not authenticated") };
+
+    try {
+      const { error } = await supabase
+        .from("direct_messages")
+        .delete()
+        .eq("id", messageId)
+        .eq("sender_id", user.id);
+
+      if (error) throw error;
+
+      // Remove from local state immediately
+      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+
+      return { error: null };
+    } catch (error) {
+      console.error("Error deleting message:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete message.",
+        variant: "destructive",
+      });
+      return { error: error as Error };
+    }
      };
-   }, [conversationId, user, fetchMessages]);
  
    return {
      messages,
      loading,
      sendMessage,
      sendContactCard,
+    deleteMessage,
      markAsRead,
      refetch: fetchMessages,
    };

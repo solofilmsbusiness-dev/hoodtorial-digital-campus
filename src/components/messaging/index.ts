@@ -4,3 +4,7 @@
  export { ContactCardMessage } from "./ContactCardMessage";
  export { MessageBubble } from "./MessageBubble";
  export { MessageComposer } from "./MessageComposer";
+export { TypingIndicator } from "./TypingIndicator";
+export { ReactionPicker } from "./ReactionPicker";
+export { MessageReactions } from "./MessageReactions";
+export { MessageActions } from "./MessageActions";
