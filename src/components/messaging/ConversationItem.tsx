@@ -3,6 +3,7 @@
  import { ConversationWithProfile } from "@/hooks/useConversations";
  import { formatDistanceToNow } from "date-fns";
  import { cn } from "@/lib/utils";
+ import { Link } from "react-router-dom";
  
  interface ConversationItemProps {
    conversation: ConversationWithProfile;
@@ -35,12 +36,18 @@
          isActive && "bg-muted"
        )}
      >
-       <Avatar className="h-10 w-10 border-2 border-primary/20 shrink-0">
-         <AvatarImage src={conversation.otherUser.avatar_url || undefined} />
-         <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
-           {getInitials(conversation.otherUser.display_name)}
-         </AvatarFallback>
-       </Avatar>
+         <Link 
+           to={`/profile/${conversation.otherUser.user_id}`}
+           onClick={(e) => e.stopPropagation()}
+           className="shrink-0 hover:opacity-80 transition-opacity"
+         >
+           <Avatar className="h-10 w-10 border-2 border-primary/20">
+             <AvatarImage src={conversation.otherUser.avatar_url || undefined} />
+             <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
+               {getInitials(conversation.otherUser.display_name)}
+             </AvatarFallback>
+           </Avatar>
+         </Link>
  
        <div className="flex-1 min-w-0">
          <div className="flex items-center justify-between gap-2">
