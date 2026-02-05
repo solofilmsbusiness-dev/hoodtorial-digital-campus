@@ -2,8 +2,6 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useAssessmentResults } from "@/hooks/useAssessmentResults";
-import { useToast } from "@/hooks/use-toast";
-import { useEffect, useRef } from "react";
 import { useTestMode } from "@/hooks/useTestMode";
 
 interface PaidRouteProps {
@@ -16,20 +14,8 @@ export function PaidRoute({ children }: PaidRouteProps) {
   const { hasAccess, loading: subLoading } = useSubscription();
   const { isTestModeEnabled, canUseTestMode } = useTestMode();
   const location = useLocation();
-  const { toast } = useToast();
-  const hasShownToast = useRef(false);
 
   const loading = authLoading || assessmentLoading || subLoading;
-
-  useEffect(() => {
-    if (!loading && user && !hasCompletedAssessment && !hasShownToast.current) {
-      hasShownToast.current = true;
-      toast({
-        title: "Assessment Required",
-        description: "Please complete your entry assessment to continue.",
-      });
-    }
-  }, [loading, user, hasCompletedAssessment, toast]);
 
   if (loading) {
     return (
