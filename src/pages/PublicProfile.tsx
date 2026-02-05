@@ -6,13 +6,14 @@
  import { PageLayout } from "@/components/layout";
  import { PublicProfileCard } from "@/components/profile/PublicProfileCard";
  import { ProfileWall } from "@/components/profile/ProfileWall";
-import { ProfileAcademicStats, ProfileAchievements, ProfileGallery } from "@/components/profile";
+import { ProfileAcademicStats, ProfileAchievements, ProfileGallery, FeaturedProjectShowcase } from "@/components/profile";
  import { usePublicProfile } from "@/hooks/usePublicProfile";
 import { useProfileAchievements } from "@/hooks/useProfileAchievements";
  import { useAuth } from "@/contexts/AuthContext";
  import { useFriendships } from "@/hooks/useFriendships";
  import { useConversations } from "@/hooks/useConversations";
  import { toast } from "sonner";
+import { useMemo } from "react";
  
  export default function PublicProfile() {
    const { userId } = useParams<{ userId: string }>();
@@ -51,6 +52,75 @@ import { useProfileAchievements } from "@/hooks/useProfileAchievements";
       toast.success("Profile link copied to clipboard!");
     } catch {
       toast.error("Failed to copy link");
+    }
+  };
+
+  // Get section order with fallback
+  const sectionOrder = useMemo(() => {
+    return profile?.profile_section_order ?? ["stats", "achievements", "gallery", "wall"];
+  }, [profile?.profile_section_order]);
+
+  // Render sections dynamically based on order
+  const renderSection = (sectionId: string, index: number) => {
+    const delay = 0.3 + index * 0.1;
+    
+    switch (sectionId) {
+      case "stats":
+        return (
+          <motion.div
+            key="stats"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay }}
+            className="mb-8"
+          >
+            <ProfileAcademicStats stats={stats} isLoading={achievementsLoading} />
+          </motion.div>
+        );
+      case "achievements":
+        return (
+          <motion.div
+            key="achievements"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay }}
+            className="mb-8"
+          >
+            <ProfileAchievements achievements={achievements} isLoading={achievementsLoading} />
+          </motion.div>
+        );
+      case "gallery":
+        return (
+          <motion.div
+            key="gallery"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay }}
+            className="mb-8"
+          >
+            <ProfileGallery 
+              gallery={profile?.portfolio_gallery || []} 
+              isOwnProfile={isOwnProfile} 
+            />
+          </motion.div>
+        );
+      case "wall":
+        return (
+          <motion.div
+            key="wall"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay }}
+          >
+            <ProfileWall 
+              profileUserId={userId!}
+              profileDisplayName={profile?.display_name || ""}
+              isOwnProfile={isOwnProfile}
+            />
+          </motion.div>
+        );
+      default:
+        return null;
     }
   };
 
@@ -192,44 +262,24 @@ import { useProfileAchievements } from "@/hooks/useProfileAchievements";
          />
  
          <div className="px-4 md:px-6 mt-8">
-          {/* Academic Stats */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            className="mb-8"
-          >
-            <ProfileAcademicStats stats={stats} isLoading={achievementsLoading} />
-          </motion.div>
+          {/* Featured Project - Always first if set */}
+          {(profile.featured_project_url || profile.featured_project_thumbnail) && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.25 }}
+              className="mb-8"
+            >
+              <FeaturedProjectShowcase
+                title={profile.featured_project_title || ""}
+                url={profile.featured_project_url || ""}
+                thumbnail={profile.featured_project_thumbnail}
+              />
+            </motion.div>
+          )}
 
-          {/* Course Achievements */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-            className="mb-8"
-          >
-            <ProfileAchievements achievements={achievements} isLoading={achievementsLoading} />
-          </motion.div>
-
-          {/* Portfolio Gallery */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.5 }}
-            className="mb-8"
-          >
-            <ProfileGallery 
-              gallery={profile.portfolio_gallery || []} 
-              isOwnProfile={isOwnProfile} 
-            />
-          </motion.div>
-
-           <ProfileWall 
-             profileUserId={userId!}
-             profileDisplayName={profile.display_name}
-             isOwnProfile={isOwnProfile}
-           />
+          {/* Dynamic sections based on user's order preference */}
+          {sectionOrder.map((sectionId, index) => renderSection(sectionId, index))}
          </div>
        </div>
      </PageLayout>

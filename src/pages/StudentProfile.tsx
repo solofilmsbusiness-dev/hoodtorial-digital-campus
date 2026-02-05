@@ -14,8 +14,12 @@ import {
   CoverBanner, 
   FavoriteFilmsInput,
   ProfilePreviewCard,
-  ProfileCompleteness
+  ProfileCompleteness,
+  GalleryEditor,
+  FeaturedProjectEditor,
+  SectionLayoutEditor
 } from "@/components/profile";
+import { useProfileGallery } from "@/hooks/useProfileGallery";
 import { 
   User, 
   MapPin, 
@@ -93,10 +97,23 @@ export default function StudentProfile() {
     portfolio_url: "",
     imdb_url: "",
     vimeo_url: "",
+    featured_project_url: "",
+    featured_project_title: "",
+    featured_project_thumbnail: null as string | null,
+    profile_section_order: ["stats", "achievements", "gallery", "wall"] as string[],
   });
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
+  const [gallery, setGallery] = useState<string[]>([]);
+
+  // Gallery hook for managing portfolio items
+  const {
+    addMedia,
+    removeMedia,
+    reorderGallery,
+    isUploading: galleryUploading,
+  } = useProfileGallery(gallery, true);
 
   // Check for unsaved changes
   const hasUnsavedChanges = useMemo(() => {
@@ -132,11 +149,16 @@ export default function StudentProfile() {
         portfolio_url: profile.portfolio_url || "",
         imdb_url: profile.imdb_url || "",
         vimeo_url: profile.vimeo_url || "",
+        featured_project_url: profile.featured_project_url || "",
+        featured_project_title: profile.featured_project_title || "",
+        featured_project_thumbnail: profile.featured_project_thumbnail || null,
+        profile_section_order: profile.profile_section_order || ["stats", "achievements", "gallery", "wall"],
       };
       setFormData(newFormData);
       setInitialFormData(newFormData);
       setAvatarUrl(profile.avatar_url);
       setBannerUrl(profile.cover_banner_url);
+      setGallery(profile.portfolio_gallery || []);
     }
   }, [profile]);
 
@@ -151,6 +173,42 @@ export default function StudentProfile() {
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [hasUnsavedChanges]);
+
+  // Sync gallery with profile context
+  useEffect(() => {
+    if (profile?.portfolio_gallery) {
+      setGallery(profile.portfolio_gallery);
+    }
+  }, [profile?.portfolio_gallery]);
+
+  const handleGalleryAdd = async (files: File[]) => {
+    await addMedia(files);
+    // Refetch profile to get updated gallery
+    await refetch();
+  };
+
+  const handleGalleryRemove = async (url: string) => {
+    await removeMedia(url);
+    await refetch();
+  };
+
+  const handleGalleryReorder = async (newOrder: string[]) => {
+    setGallery(newOrder); // Optimistic update
+    await reorderGallery(newOrder);
+    await refetch();
+  };
+
+  const handleFeaturedProjectChange = (updates: {
+    featured_project_title?: string;
+    featured_project_url?: string;
+    featured_project_thumbnail?: string | null;
+  }) => {
+    setFormData((prev) => ({ ...prev, ...updates }));
+  };
+
+  const handleSectionOrderChange = (newOrder: string[]) => {
+    setFormData((prev) => ({ ...prev, profile_section_order: newOrder }));
+  };
 
   const handleNavigateAway = (path: string) => {
     if (hasUnsavedChanges) {
@@ -486,6 +544,30 @@ export default function StudentProfile() {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Portfolio & Social Links */}
+                {/* Featured Project */}
+                <FeaturedProjectEditor
+                  title={formData.featured_project_title}
+                  url={formData.featured_project_url}
+                  thumbnail={formData.featured_project_thumbnail}
+                  onChange={handleFeaturedProjectChange}
+                />
+
+                {/* Portfolio Gallery */}
+                <GalleryEditor
+                  gallery={gallery}
+                  onReorder={handleGalleryReorder}
+                  onAdd={handleGalleryAdd}
+                  onRemove={handleGalleryRemove}
+                  isUploading={galleryUploading}
+                />
+
+                {/* Section Layout */}
+                <SectionLayoutEditor
+                  order={formData.profile_section_order}
+                  onChange={handleSectionOrderChange}
+                />
 
                 {/* Portfolio & Social Links */}
                 <Card className="card-urban">
