@@ -794,6 +794,7 @@ export type Database = {
           banned_by: string | null
           bio: string | null
           camera_gear: string | null
+          card_section_order: string[] | null
           certificate_department: string | null
           cover_banner_url: string | null
           current_project: string | null
@@ -840,6 +841,7 @@ export type Database = {
           banned_by?: string | null
           bio?: string | null
           camera_gear?: string | null
+          card_section_order?: string[] | null
           certificate_department?: string | null
           cover_banner_url?: string | null
           current_project?: string | null
@@ -886,6 +888,7 @@ export type Database = {
           banned_by?: string | null
           bio?: string | null
           camera_gear?: string | null
+          card_section_order?: string[] | null
           certificate_department?: string | null
           cover_banner_url?: string | null
           current_project?: string | null
@@ -1273,6 +1276,7 @@ export type Database = {
           avatar_url: string | null
           bio: string | null
           camera_gear: string | null
+          card_section_order: string[] | null
           cover_banner_url: string | null
           current_project: string | null
           display_name: string | null
@@ -1299,6 +1303,7 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           camera_gear?: string | null
+          card_section_order?: string[] | null
           cover_banner_url?: string | null
           current_project?: string | null
           display_name?: string | null
@@ -1325,6 +1330,7 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           camera_gear?: string | null
+          card_section_order?: string[] | null
           cover_banner_url?: string | null
           current_project?: string | null
           display_name?: string | null

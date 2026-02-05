@@ -21,3 +21,4 @@ export { FeaturedProjectEditor } from "./FeaturedProjectEditor";
 export { FeaturedProjectShowcase } from "./FeaturedProjectShowcase";
 export { SectionLayoutEditor } from "./SectionLayoutEditor";
 export { SortableSectionItem } from "./SortableSectionItem";
+ export { CardSectionLayoutEditor } from "./CardSectionLayoutEditor";

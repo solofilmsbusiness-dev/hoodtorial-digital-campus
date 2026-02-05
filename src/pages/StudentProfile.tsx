@@ -18,7 +18,8 @@ import {
   ProfileCompleteness,
   GalleryEditor,
   FeaturedProjectEditor,
-  SectionLayoutEditor
+  SectionLayoutEditor,
+  CardSectionLayoutEditor
 } from "@/components/profile";
  import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { useProfileGallery } from "@/hooks/useProfileGallery";
@@ -104,6 +105,7 @@ export default function StudentProfile() {
     featured_project_title: "",
     featured_project_thumbnail: null as string | null,
     profile_section_order: ["stats", "achievements", "gallery", "wall"] as string[],
+    card_section_order: ["bio", "featured_project", "info_cards", "social_links"] as string[],
   });
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -156,6 +158,7 @@ export default function StudentProfile() {
         featured_project_title: profile.featured_project_title || "",
         featured_project_thumbnail: profile.featured_project_thumbnail || null,
         profile_section_order: profile.profile_section_order || ["stats", "achievements", "gallery", "wall"],
+        card_section_order: profile.card_section_order || ["bio", "featured_project", "info_cards", "social_links"],
       };
       setFormData(newFormData);
       setInitialFormData(newFormData);
@@ -212,6 +215,10 @@ export default function StudentProfile() {
   const handleSectionOrderChange = (newOrder: string[]) => {
     setFormData((prev) => ({ ...prev, profile_section_order: newOrder }));
   };
+ 
+   const handleCardSectionOrderChange = (newOrder: string[]) => {
+     setFormData((prev) => ({ ...prev, card_section_order: newOrder }));
+   };
 
   const handleNavigateAway = (path: string) => {
     if (hasUnsavedChanges) {
@@ -593,6 +600,11 @@ export default function StudentProfile() {
                 />
 
                 {/* Section Layout */}
+                <CardSectionLayoutEditor
+                  order={formData.card_section_order}
+                  onChange={handleCardSectionOrderChange}
+                />
+
                 <SectionLayoutEditor
                   order={formData.profile_section_order}
                   onChange={handleSectionOrderChange}
