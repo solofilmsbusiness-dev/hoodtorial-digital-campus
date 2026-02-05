@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { SiteCustomization } from "@/components/admin/SiteCustomization";
 import { TestModeSettingsCard } from "@/components/admin/TestModeSettingsCard";
 import { DemoModeSettingsCard } from "@/components/admin/DemoModeSettingsCard";
+import { TestMessagesCard } from "@/components/admin/TestMessagesCard";
 
 type DisplayDensity = "comfortable" | "compact" | "cozy";
 
@@ -96,6 +97,9 @@ export default function AdminSettings() {
 
         {/* Demo Mode Settings */}
         <DemoModeSettingsCard />
+
+        {/* Test Messages Generator */}
+        <TestMessagesCard />
 
         {/* Site Customization - Login Page Media */}
         <SiteCustomization />
