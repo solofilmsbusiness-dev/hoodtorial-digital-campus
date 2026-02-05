@@ -1,110 +1,138 @@
 
-# Enhanced Public Profile with Profile Wall
+# Enhanced Public Profile Visual Design
 
 ## Overview
 
-Transform the public profile system so that:
-1. Users can view their own profile as others see it (with additional owner actions like "Edit Profile")
-2. Introduce a "Profile Wall" where visitors can leave comments/posts that appear in the community feed
-3. Create a connected ecosystem where profile activity flows into the community
+Transform the public profile from a basic mockup into a polished, immersive experience that matches the ultra-dark, urban, brutalist aesthetic of Hoodtorial University. Add animations, visual effects, and interactive elements to create a profile that feels cinematic and engaging.
 
 ---
 
-## Current State
+## Current Issues
 
-| Behavior | Current Implementation |
-|----------|----------------------|
-| Click own avatar in community | Redirects to `/student/profile` (edit mode) |
-| View other users | Shows `PublicProfileCard` with public data |
-| Profile comments | Not supported |
-
----
-
-## Proposed Changes
-
-### 1. Remove Auto-Redirect for Own Profile
-
-Update `PublicProfile.tsx` to allow users to view their own public profile instead of redirecting to the edit page. Add an "Edit Profile" button for owners.
-
-### 2. Enhanced PublicProfileCard for Owners
-
-When viewing your own profile, show additional actions:
-- "Edit Profile" button (navigates to `/student/profile`)
-- "Share Profile" button (copies profile link)
-- View counts / analytics (future enhancement)
-
-### 3. Profile Wall System
-
-Create a profile wall where users can post comments on a profile. These wall posts will:
-- Link to the user's profile (as a "target")
-- Appear in the community feed as a special "profile_wall" post type
-- Be visible on the profile page itself
+| Problem | Impact |
+|---------|--------|
+| No entrance animations | Page feels static and lifeless |
+| Plain cover banner | Missing depth, gradients, and visual interest |
+| Basic card layouts | Don't match the `card-urban` hover effects elsewhere |
+| No glow/neon effects | Inconsistent with brand's neon aesthetic |
+| Simple avatar display | Missing the animated border styles, glow effects |
+| No visual hierarchy | All sections look the same weight |
+| Missing decorative elements | No floating tags, corner accents, or texture |
+| Static wall section | Plain form without visual interest |
 
 ---
 
-## Database Changes
+## Design Enhancements
 
-### New Column on community_posts Table
+### 1. Cover Banner Hero Section
 
-```sql
-ALTER TABLE public.community_posts 
-ADD COLUMN target_profile_id UUID REFERENCES profiles(user_id) ON DELETE SET NULL;
-```
+Transform the cover into a cinematic hero with:
+- Parallax-style layered effects
+- Gradient overlay that fades into content
+- Noise texture overlay for film grain
+- Decorative corner accents (animated pulse)
+- Optional scanline effect for cinematic feel
 
-This allows posts to be "about" or "on" a specific user's profile.
+### 2. Avatar & Identity Section
 
-### Updated Indexes
+- Avatar with animated glow ring matching accent color
+- Floating "role" badge with animation
+- Name with optional gold gradient for special roles
+- Stagger entrance animations for each element
+- Subtle float animation on avatar hover
 
-```sql
-CREATE INDEX idx_community_posts_target_profile ON public.community_posts(target_profile_id) 
-WHERE target_profile_id IS NOT NULL;
-```
+### 3. Bio Section
+
+- Large quote-style presentation with decorative marks
+- Gradient border accent on the left side
+- Entrance animation from the side
+
+### 4. Creative Info Cards (Stats Grid)
+
+Transform into visual stat cards like the homepage:
+- Icon boxes with hover color transitions
+- 3D tilt effect on hover (like CourseCard)
+- Glare effect on mouse move
+- Stagger reveal animations
+- Neon accents for different categories
+
+### 5. Favorite Films Section
+
+- Film-strip style layout with enhanced badges
+- Horizontal scroll on mobile
+- Shimmer animation on badges
+
+### 6. Social Links Section
+
+- Circular social icons with glow hover effects
+- Stagger animation on entrance
+- Individual hover states with brand colors per platform
+
+### 7. Profile Wall Section
+
+- More immersive composer with glowing focus state
+- Better visual separation between posts
+- Animated like/comment counters
+- Enhanced empty state with illustration feel
 
 ---
 
-## System Architecture
+## Visual Architecture
 
 ```text
-                    PROFILE WALL FLOW
 ┌─────────────────────────────────────────────────────────────────┐
+│  ◆━━━━━━━━━━━━━━ COVER BANNER ━━━━━━━━━━━━━━◆                   │
+│  │  [gradient overlay + noise texture]      │                   │
+│  │  [decorative corner accents]             │                   │
+│  ◆━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━◆                   │
+├─────────────────────────────────────────────────────────────────┤
+│       ╔═══════════╗                                             │
+│       ║  AVATAR   ║  ←─ animated glow ring                      │
+│       ║  + GLOW   ║                                             │
+│       ╚═══════════╝                                             │
 │                                                                 │
-│   ┌─────────────────┐                                           │
-│   │  Visit Profile  │                                           │
-│   │  /profile/:id   │                                           │
-│   └────────┬────────┘                                           │
-│            │                                                    │
-│            ▼                                                    │
-│   ┌─────────────────────────────────────────────────┐          │
-│   │              PublicProfileCard                   │          │
-│   │  - Cover banner, avatar, bio, links              │          │
-│   │  - Owner actions: Edit, Share (if own profile)   │          │
-│   └─────────────────────────────────────────────────┘          │
-│            │                                                    │
-│            ▼                                                    │
-│   ┌─────────────────────────────────────────────────┐          │
-│   │              Profile Wall Section                │          │
-│   │  - "Write on wall" composer                      │          │
-│   │  - List of wall posts (filtered by target_id)   │          │
-│   └─────────────────────────────────────────────────┘          │
-│            │                                                    │
-│            ▼                                                    │
-│   ┌─────────────────────────────────────────────────┐          │
-│   │           Community Feed (filtered)              │          │
-│   │  - Profile wall posts show as special type       │          │
-│   │  - "Posted on [User]'s profile"                  │          │
-│   └─────────────────────────────────────────────────┘          │
-│                                                                 │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │  [TAG STICKER: ROLE]                                        ││
+│  │                                                              ││
+│  │  NAME                        [EDIT] [SHARE]                 ││
+│  │  🎬 Documentary Filmmaker                                   ││
+│  └─────────────────────────────────────────────────────────────┘│
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │ ❝ Bio text with cinematic quote styling ❞                  ││
+│  │   [gradient left border accent]                             ││
+│  └─────────────────────────────────────────────────────────────┘│
+├─────────────────────────────────────────────────────────────────┤
+│  ┌──────────────────┐  ┌──────────────────┐                    │
+│  │ ╔═══╗            │  │ ╔═══╗            │  ← 3D tilt cards   │
+│  │ ║📷║ CAMERA GEAR │  │ ║🎬║ PROJECT    │                    │
+│  │ ╚═══╝            │  │ ╚═══╝            │                    │
+│  │ Sony A7S III     │  │ "Short Film"    │                    │
+│  └──────────────────┘  └──────────────────┘                    │
+│  ┌──────────────────┐  ┌──────────────────┐                    │
+│  │ ╔═══╗            │  │ ╔═══╗            │                    │
+│  │ ║✨║ INFLUENCES  │  │ ║🎥║ FAV FILMS  │                    │
+│  │ ╚═══╝            │  │ ╚═══╝            │                    │
+│  │ Kubrick, Nolan   │  │ [Tag] [Tag] +2  │                    │
+│  └──────────────────┘  └──────────────────┘                    │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │  [🌐] [📸] [🎬] [🎥] [🐦]  ← Social icons with glow hover   ││
+│  └─────────────────────────────────────────────────────────────┘│
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │  ◆ WALL ◆                                                   ││
+│  │  ┌─────────────────────────────────────────────────────────┐││
+│  │  │ [Avatar] Write something...           [Post]            │││
+│  │  │ [Glowing focus state border]                            │││
+│  │  └─────────────────────────────────────────────────────────┘││
+│  │                                                              ││
+│  │  ┌─────────────────────────────────────────────────────────┐││
+│  │  │ [Wall Post with enhanced styling]                       │││
+│  │  └─────────────────────────────────────────────────────────┘││
+│  └─────────────────────────────────────────────────────────────┘│
 └─────────────────────────────────────────────────────────────────┘
 ```
-
----
-
-## Files to Create
-
-| File | Purpose |
-|------|---------|
-| `src/components/profile/ProfileWall.tsx` | Wall post composer and post list for profiles |
-| `src/hooks/useProfileWall.ts` | Fetch/create wall posts filtered by target profile |
 
 ---
 
@@ -112,135 +140,90 @@ WHERE target_profile_id IS NOT NULL;
 
 | File | Changes |
 |------|---------|
-| `src/pages/PublicProfile.tsx` | Remove redirect, add owner actions, add wall section |
-| `src/components/profile/PublicProfileCard.tsx` | Add "Edit Profile" and "Share" buttons for owner |
-| `src/hooks/useCommunityPosts.ts` | Add `target_profile_id` to CreatePostData interface |
-| `src/components/community/TimelinePost.tsx` | Show "Posted on [Name]'s profile" for wall posts |
-| `src/components/profile/index.ts` | Export new component |
-| Database migration | Add `target_profile_id` column |
+| `src/pages/PublicProfile.tsx` | Add entrance animations, loading shimmer, background effects |
+| `src/components/profile/PublicProfileCard.tsx` | Complete visual redesign with effects |
+| `src/components/profile/ProfileWall.tsx` | Enhanced wall styling and animations |
 
 ---
 
 ## Implementation Details
 
-### 1. PublicProfile Page Changes
+### PublicProfile.tsx Enhancements
 
-```typescript
-// Remove the auto-redirect
-// useEffect(() => {
-//   if (isOwnProfile && !isLoading) {
-//     navigate("/student/profile", { replace: true });
-//   }
-// }, [isOwnProfile, isLoading, navigate]);
+- Add animated background orbs (like Index hero)
+- Add grid texture overlay
+- Wrap content in ScrollReveal for entrance animations
+- Enhanced loading skeleton with shimmer effect
 
-// Add owner-specific props
-<PublicProfileCard
-  ...
-  isOwnProfile={isOwnProfile}
-  onEditProfile={() => navigate("/student/profile")}
-  onShareProfile={() => copyProfileLink()}
-/>
+### PublicProfileCard.tsx Enhancements
 
-// Add wall section below profile card
-<ProfileWall profileUserId={userId} isOwnProfile={isOwnProfile} />
-```
+**Cover Banner:**
+- Gradient overlay from transparent to background
+- Noise texture via `bg-noise` class
+- Decorative corner accents with pulse animation
+- Fallback gradient with animated color flow
 
-### 2. PublicProfileCard Owner Actions
+**Avatar:**
+- Larger size with shadow
+- Animated ring effect based on accent color
+- Float animation on hover
+- Pop-in entrance animation
 
-For owners viewing their own profile:
-- Replace "Add Friend" / "Message" with "Edit Profile" and "Share Profile" buttons
-- Show a subtle indicator "This is how others see your profile"
+**Name & Role:**
+- Role displayed as floating sticker tag (rotated)
+- Gold gradient text for admin/professor roles
+- Stagger animations for entrance
 
-### 3. ProfileWall Component
+**Info Cards:**
+- Use framer-motion for 3D tilt effect
+- Icon box with hover state (like homepage features)
+- Glare effect on mouse move
+- Entrance animations with stagger
 
-```typescript
-interface ProfileWallProps {
-  profileUserId: string;
-  isOwnProfile: boolean;
-}
+**Social Links:**
+- Circular buttons with individual platform colors on hover
+- Glow effect matching platform brand
+- Stagger entrance animation
 
-// Features:
-// - Composer for writing wall posts
-// - List of wall posts (community_posts where target_profile_id = userId)
-// - Each post links back to full community view
-```
+### ProfileWall.tsx Enhancements
 
-### 4. Community Feed Integration
+**Composer:**
+- Glowing border on focus (gold pulse)
+- Enhanced submit button with hover effect
+- Better visual hierarchy
 
-When displaying posts in community:
-- If `target_profile_id` is set, show "Posted on [Name]'s profile"
-- Clicking the target name navigates to that profile
-
----
-
-## UI Preview
-
-### Own Profile View
-
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│  ← Back                                                         │
-├─────────────────────────────────────────────────────────────────┤
-│  [Cover Banner]                                                 │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌──────┐                                                       │
-│  │ 👤   │  Your Name                                           │
-│  └──────┘  🎬 Documentary                                       │
-│                                                                 │
-│            [Edit Profile]  [Share Profile]  ← Owner actions     │
-│                                                                 │
-│  ℹ️ This is how others see your profile                         │
-│                                                                 │
-├─────────────────────────────────────────────────────────────────┤
-│  📋 Wall                                                        │
-│  ┌─────────────────────────────────────────────────────────────┐│
-│  │ Write something on your wall...                             ││
-│  │ [Post]                                                      ││
-│  └─────────────────────────────────────────────────────────────┘│
-│                                                                 │
-│  [Wall posts appear here - visible in community too]            │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Community Feed with Wall Post
-
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│  👤 Jane Smith → Posted on John's profile                       │
-│  "Happy birthday! Can't wait to see your new short film!"       │
-│                                                                 │
-│  ❤️ 5  💬 2                                                     │
-└─────────────────────────────────────────────────────────────────┘
-```
+**Posts:**
+- Card styling with subtle border glow on hover
+- Enhanced action buttons with fill states
+- Smooth transitions
 
 ---
 
-## Privacy & Security
+## Animation Specifications
 
-| Aspect | Implementation |
-|--------|----------------|
-| Wall visibility | Public to all enrolled students (same as community) |
-| Who can post | Any enrolled student on any profile |
-| Wall moderation | Profile owner can delete wall posts on their profile |
-| Owner deletion | Users can delete their own wall posts |
-| Admin control | Admins can moderate all wall posts |
+| Element | Animation Type | Timing |
+|---------|----------------|--------|
+| Cover banner | Fade in | 0.3s |
+| Avatar | Scale in + pop | 0.4s, delay 0.2s |
+| Name | Fade in from left | 0.5s, delay 0.3s |
+| Role badge | Pop in + slight float | 0.3s, delay 0.4s |
+| Bio section | Slide in from left | 0.5s, delay 0.4s |
+| Info cards | Stagger reveal up | 0.5s each, stagger 0.1s |
+| Social links | Stagger scale in | 0.3s each, stagger 0.05s |
+| Wall section | Fade in up | 0.5s, delay 0.6s |
 
 ---
 
-## RLS Policies
+## Color/Effect Additions
 
-### New Policy for Target Profile Deletion
-
-```sql
--- Profile owners can delete wall posts on their profile
-CREATE POLICY "Profile owners can delete wall posts"
-ON public.community_posts FOR DELETE
-USING (
-  target_profile_id IS NOT NULL AND
-  target_profile_id = auth.uid()
-);
-```
+| Effect | Application |
+|--------|-------------|
+| `glow-gold` | Avatar ring, highlighted elements |
+| `glow-purple` | Secondary accents, hover states |
+| `bg-noise` | Cover overlay for film grain |
+| `animate-float` | Avatar on hover, role badge |
+| `animate-border-flow` | Featured profile accent |
+| `text-gold-gradient` | Admin/Professor names |
 
 ---
 
@@ -248,10 +231,10 @@ USING (
 
 | Category | Changes |
 |----------|---------|
-| Database | Add `target_profile_id` column to community_posts |
-| New Files | 2 (ProfileWall component, useProfileWall hook) |
-| Modified Files | 6 (PublicProfile, PublicProfileCard, useCommunityPosts, TimelinePost, index, migration) |
-| Features | Own profile view, wall posts, community integration |
-| Security | Profile owners can moderate their wall |
+| Files modified | 3 (PublicProfile, PublicProfileCard, ProfileWall) |
+| New dependencies | None (uses existing framer-motion, animations) |
+| Animation types | 8+ different entrance/interaction animations |
+| Visual effects | Glows, gradients, noise, 3D tilt, floating elements |
+| Consistency | Matches homepage and course card design language |
 
-This creates a fully connected social ecosystem where profile interactions flow into the community, encouraging engagement and discoverability!
+This transforms the profile from a basic mockup into a polished, immersive experience that feels cohesive with the rest of Hoodtorial University's urban, brutalist, cinematic aesthetic.
