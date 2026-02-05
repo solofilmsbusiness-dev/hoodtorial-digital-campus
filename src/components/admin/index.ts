@@ -20,3 +20,4 @@ export { AdminNotifications } from "./AdminNotifications";
 export { PendingItemsCard } from "./PendingItemsCard";
 export { SupportTicketList } from "./SupportTicketList";
 export { SupportConversation } from "./SupportConversation";
+export { TestMessagesCard } from "./TestMessagesCard";
