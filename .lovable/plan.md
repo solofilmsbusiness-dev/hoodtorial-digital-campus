@@ -1,216 +1,238 @@
 
-# Seamless Profile Navigation
+# Seamless Navigation Fixes Across Entire Site
 
 ## Overview
 
-Improve the navigation flow so users can easily access their own public profile and navigate between Student Center, Edit Profile, and View Profile with minimal steps.
+This plan addresses all unpredictable navigation patterns throughout the website to create a completely fluid, consistent experience. The goal is to ensure users always know where they are, where they can go, and how to get back.
 
 ---
 
-## Current Problems
+## Current Navigation Issues Identified
 
-| Issue | Impact |
-|-------|--------|
-| No "View My Profile" link in navigation dropdown | Users can't quickly see how others see them |
-| Avatar click opens dropdown instead of going to profile | Extra click required |
-| No breadcrumb on StudentProfile (Edit) or PublicProfile | Users lose sense of location |
-| Back button uses `navigate(-1)` | Unpredictable navigation |
-| Edit Profile only links to Student Center | Can't go directly to public profile view |
+| Page/Component | Issue | Impact |
+|---------------|-------|--------|
+| `PublicProfile.tsx` (error state) | Uses `navigate(-1)` | Unpredictable if opened from external link |
+| `PostDetail.tsx` | "Back to Community" uses callback, loses state | User loses scroll position |
+| `Checkout.tsx` | "Back to Plans" hardcoded to `/enrollment` | Works but inconsistent pattern |
+| `CourseEditor.tsx` | "Back to Courses" hardcoded | Good pattern, keep it |
+| `CourseDetail.tsx` | "Back to Courses" is a Link | Good pattern, keep it |
+| `Friends.tsx` | No back navigation at all | User feels stuck |
+| `Messages.tsx` | No back navigation at all | User feels stuck |
+| `Community.tsx` | No back navigation | User feels stuck |
+| `StudentGrades.tsx` | No back navigation | User feels stuck |
+| `StudentCenter.tsx` | No navigation header | Missing context |
+| Mobile Navigation | No profile links | Can't access profile easily |
 
 ---
 
-## Navigation Flow (Proposed)
+## Solution Strategy
+
+### 1. Consistent Navigation Hierarchy
+
+Define clear parent-child relationships for all pages:
 
 ```text
-Current Flow (Too Many Steps):
-┌─────────────┐      ┌─────────────┐      ┌─────────────┐
-│   Nav Bar   │──►   │ Dropdown    │──►   │  Student    │──►  ┌──────────┐
-│   Avatar    │      │ Click       │      │  Center     │     │ Edit     │
-│   Click     │      │ Student     │      │             │     │ Profile  │
-└─────────────┘      │ Center      │      └─────────────┘     └──────────┘
-                     └─────────────┘                                │
-                                                                    │ no link
-                                                                    ▼
-                                                             ┌──────────┐
-                                                             │ View My  │
-                                                             │ Profile? │
-                                                             └──────────┘
-
-Proposed Flow (Direct & Clear):
-┌─────────────┐                    ┌─────────────────┐
-│   Nav Bar   │────────────────►   │  View My        │
-│   Avatar    │   (direct click)   │  Profile        │
-│   Click     │                    └─────────────────┘
-└─────────────┘                           │
-       │                                  │ Tabs/Links
-       ▼                                  ▼
-┌─────────────────┐              ┌─────────────────┐
-│  Dropdown       │              │  Edit Profile   │
-│  - My Profile   │◄─────────────┤  (Tab View)     │
-│  - Student Hub  │              └─────────────────┘
-│  - Community    │
-│  - Friends      │
-│  - Messages     │
-│  - Admin        │
-│  - Sign Out     │
-└─────────────────┘
+Root Destinations (Top-Level - accessible from nav)
+├── Student Hub (/)
+│   ├── Edit Profile
+│   ├── View Profile (My Profile)
+│   └── Grades
+├── Academics
+│   └── Course Detail
+├── Community
+│   └── Post Detail
+├── Friends
+├── Messages
+├── Degrees
+│   └── Skill Tree
+├── Faculty
+├── About
+└── Shop
 ```
 
----
+### 2. Standard Back Navigation Patterns
 
-## Solution Approach
+**Pattern A: Smart Context-Aware Back**
+For pages that can be reached from multiple sources:
+- Use history state to track referrer
+- Fall back to logical parent if no referrer
 
-### Option A: Enhanced Dropdown (Recommended)
+**Pattern B: Explicit Parent Links**
+For pages with a clear hierarchy:
+- Always link to the parent page
+- Use breadcrumbs for deep hierarchies
 
-Add "My Profile" as a prominent link in the dropdown menu, positioned at the top.
+### 3. Breadcrumb Consistency
 
-**Changes:**
-1. Add "My Profile" link in dropdown (links to `/profile/{userId}`)
-2. Add visual separator after profile-related items
-3. Keep avatar click as dropdown trigger (consistent behavior)
-
-### Option B: Split Avatar Behavior
-
-Left-click avatar goes to profile, hover shows dropdown.
-
-**Downside:** Less intuitive, accessibility concerns.
+Add breadcrumbs to all student-facing pages that are 2+ levels deep.
 
 ---
 
-## Implementation Details
+## Detailed Changes
 
-### 1. Navigation.tsx Enhancements
+### 1. PublicProfile.tsx - Fix Error State Navigation
 
-**Add "My Profile" to dropdown (top position):**
-
+**Current (Line 188):**
 ```tsx
-<DropdownMenuContent align="end" className="w-56">
-  {/* Profile section */}
-  <DropdownMenuItem asChild>
-    <Link to={`/profile/${user.id}`} className="flex items-center gap-2">
-      <Eye className="h-4 w-4" />
-      View My Profile
-    </Link>
-  </DropdownMenuItem>
-  <DropdownMenuItem asChild>
-    <Link to="/student/profile" className="flex items-center gap-2">
-      <Settings className="h-4 w-4" />
-      Edit Profile
-    </Link>
-  </DropdownMenuItem>
-  <DropdownMenuSeparator />
-  
-  {/* Hub section */}
-  <DropdownMenuItem asChild>
-    <Link to="/student" className="...">
-      <GraduationCap className="h-4 w-4" />
-      Student Hub
-    </Link>
-  </DropdownMenuItem>
-  {/* ... rest of items */}
-</DropdownMenuContent>
+<Button variant="ghost" onClick={() => navigate(-1)} className="mb-6">
 ```
 
-### 2. StudentProfile.tsx - Add "View Profile" Button
+**Fixed:**
+```tsx
+<Button variant="ghost" onClick={() => navigate("/student")} className="mb-6">
+```
 
-Add a button next to the back arrow to view the public profile:
+Also add breadcrumb for non-own profiles showing context.
 
+### 2. Friends.tsx - Add Navigation Header
+
+**Add:**
 ```tsx
 <div className="flex items-center gap-4 mb-6">
-  <button onClick={() => handleNavigateAway("/student")} ...>
-    <ArrowLeft />
-  </button>
-  <div className="flex-1">
-    <h1>Edit Profile</h1>
+  <Link to="/student" className="p-2 hover:bg-muted rounded-lg transition-colors">
+    <ArrowLeft className="h-6 w-6" />
+  </Link>
+  <div>
+    <h1 className="heading-2">Friends</h1>
+    <p className="text-muted-foreground text-sm">Manage your connections</p>
   </div>
-  
-  {/* NEW: Quick action buttons */}
-  <Button 
-    variant="outline" 
-    size="sm" 
-    onClick={() => handleNavigateAway(`/profile/${user.id}`)}
+</div>
+
+<Breadcrumb>
+  <BreadcrumbList>
+    <BreadcrumbItem>
+      <BreadcrumbLink asChild>
+        <Link to="/student">Student Hub</Link>
+      </BreadcrumbLink>
+    </BreadcrumbItem>
+    <BreadcrumbSeparator />
+    <BreadcrumbItem>
+      <BreadcrumbPage>Friends</BreadcrumbPage>
+    </BreadcrumbItem>
+  </BreadcrumbList>
+</Breadcrumb>
+```
+
+### 3. Messages.tsx - Add Navigation Header
+
+**Add:**
+```tsx
+<Breadcrumb className="mb-4">
+  <BreadcrumbList>
+    <BreadcrumbItem>
+      <BreadcrumbLink asChild>
+        <Link to="/student">Student Hub</Link>
+      </BreadcrumbLink>
+    </BreadcrumbItem>
+    <BreadcrumbSeparator />
+    <BreadcrumbItem>
+      <BreadcrumbPage>Messages</BreadcrumbPage>
+    </BreadcrumbItem>
+  </BreadcrumbList>
+</Breadcrumb>
+```
+
+And add a back button in the header.
+
+### 4. Community.tsx - Add Navigation Header
+
+**Add:**
+```tsx
+<Breadcrumb className="mb-4">
+  <BreadcrumbList>
+    <BreadcrumbItem>
+      <BreadcrumbLink asChild>
+        <Link to="/student">Student Hub</Link>
+      </BreadcrumbLink>
+    </BreadcrumbItem>
+    <BreadcrumbSeparator />
+    <BreadcrumbItem>
+      <BreadcrumbPage>Community</BreadcrumbPage>
+    </BreadcrumbItem>
+  </BreadcrumbList>
+</Breadcrumb>
+```
+
+### 5. StudentGrades.tsx - Add Navigation Header
+
+**Add:**
+```tsx
+<Breadcrumb className="mb-4">
+  <BreadcrumbList>
+    <BreadcrumbItem>
+      <BreadcrumbLink asChild>
+        <Link to="/student">Student Hub</Link>
+      </BreadcrumbLink>
+    </BreadcrumbItem>
+    <BreadcrumbSeparator />
+    <BreadcrumbItem>
+      <BreadcrumbPage>Grades</BreadcrumbPage>
+    </BreadcrumbItem>
+  </BreadcrumbList>
+</Breadcrumb>
+```
+
+### 6. Mobile Navigation - Add Profile Links
+
+Update the mobile menu in `Navigation.tsx` to include:
+
+```tsx
+{/* Profile Section for Mobile */}
+<Link 
+  to={`/profile/${user.id}`}
+  onClick={() => setIsOpen(false)}
+  className="text-lg font-bold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide py-2"
+>
+  My Profile
+</Link>
+<Link 
+  to="/student/profile"
+  onClick={() => setIsOpen(false)}
+  className="text-lg font-bold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide py-2"
+>
+  Edit Profile
+</Link>
+<Separator className="my-2" />
+```
+
+### 7. StudentCenter.tsx - Fix Button Layout
+
+**Current Issue:**
+Two buttons (Edit Profile, View Profile) are rendered separately, breaking flex layout.
+
+**Fix:**
+Wrap in a flex container:
+```tsx
+<div className="flex items-center gap-3">
+  <Link to="/student/profile" className="btn-brutal text-sm flex items-center gap-2">
+    <Settings className="h-4 w-4" />
+    Edit Profile
+  </Link>
+  <Link 
+    to={`/profile/${user?.id}`} 
+    className="btn-brutal text-sm flex items-center gap-2 bg-charcoal hover:bg-charcoal-light"
   >
-    <Eye className="h-4 w-4 mr-2" />
+    <Eye className="h-4 w-4" />
     View Profile
-  </Button>
-  
-  {hasUnsavedChanges && <span>Unsaved changes</span>}
+  </Link>
 </div>
 ```
 
-### 3. PublicProfile.tsx - Smarter Back Button
+### 8. Checkout.tsx - Use History State for Better Back Navigation
 
-Replace `navigate(-1)` with contextual back navigation:
-
+**Enhanced:**
 ```tsx
-const handleGoBack = () => {
-  // If we have history and came from within the app, go back
-  // Otherwise, go to a sensible default
-  if (isOwnProfile) {
-    navigate("/student");
-  } else {
+const handleBack = () => {
+  // Check if we have navigation history within the app
+  if (window.history.length > 1) {
     navigate(-1);
+  } else {
+    navigate("/enrollment");
   }
 };
 ```
 
-### 4. Add Breadcrumb Navigation
-
-Add breadcrumbs to both StudentProfile and PublicProfile for context:
-
-**StudentProfile:**
-```tsx
-<Breadcrumb>
-  <BreadcrumbList>
-    <BreadcrumbItem>
-      <BreadcrumbLink asChild>
-        <Link to="/student">Student Hub</Link>
-      </BreadcrumbLink>
-    </BreadcrumbItem>
-    <BreadcrumbSeparator />
-    <BreadcrumbItem>
-      <BreadcrumbPage>Edit Profile</BreadcrumbPage>
-    </BreadcrumbItem>
-  </BreadcrumbList>
-</Breadcrumb>
-```
-
-**PublicProfile (own profile):**
-```tsx
-<Breadcrumb>
-  <BreadcrumbList>
-    <BreadcrumbItem>
-      <BreadcrumbLink asChild>
-        <Link to="/student">Student Hub</Link>
-      </BreadcrumbLink>
-    </BreadcrumbItem>
-    <BreadcrumbSeparator />
-    <BreadcrumbItem>
-      <BreadcrumbPage>My Profile</BreadcrumbPage>
-    </BreadcrumbItem>
-  </BreadcrumbList>
-</Breadcrumb>
-```
-
----
-
-## Dropdown Menu Restructure
-
-```text
-┌────────────────────────────────┐
-│ 👁  View My Profile            │  ← NEW (prominent)
-│ ⚙️  Edit Profile               │  ← Moved up
-├────────────────────────────────┤
-│ 🎓 Student Hub                 │  ← Renamed from "Student Center"
-│ 👥 Community                   │
-│ 👤 Friends            [2]      │
-│ 💬 Messages           [5]      │
-├────────────────────────────────┤
-│ 🛡️ Admin Panel                 │  (if admin)
-├────────────────────────────────┤
-│ 🚪 Sign Out                    │
-└────────────────────────────────┘
-```
+This is actually fine as-is since it explicitly goes to `/enrollment`.
 
 ---
 
@@ -218,52 +240,105 @@ Add breadcrumbs to both StudentProfile and PublicProfile for context:
 
 | File | Changes |
 |------|---------|
-| `src/components/layout/Navigation.tsx` | Add "View My Profile" link, restructure dropdown |
-| `src/pages/StudentProfile.tsx` | Add "View Profile" button, add breadcrumbs |
-| `src/pages/PublicProfile.tsx` | Replace `navigate(-1)` with smart navigation, add breadcrumbs |
-| `src/pages/StudentCenter.tsx` | Add quick link to view public profile |
+| `src/pages/PublicProfile.tsx` | Fix error state navigation, enhance breadcrumbs for non-own profiles |
+| `src/pages/Friends.tsx` | Add back button, breadcrumbs, and navigation header |
+| `src/pages/Messages.tsx` | Add breadcrumbs and back button |
+| `src/pages/Community.tsx` | Add breadcrumbs |
+| `src/pages/StudentGrades.tsx` | Add breadcrumbs and navigation header |
+| `src/pages/StudentCenter.tsx` | Fix button container layout |
+| `src/components/layout/Navigation.tsx` | Add profile links to mobile menu |
 
 ---
 
-## Visual Changes
+## Navigation Hierarchy Diagram
 
-### Navigation Dropdown - Before vs After
-
-**Before:**
-- Student Center
-- Community
-- Friends
-- Messages
-- Admin Panel
-- Sign Out
-
-**After:**
-- View My Profile ← NEW
-- Edit Profile ← NEW
-- ---
-- Student Hub (renamed)
-- Community
-- Friends
-- Messages
-- ---
-- Admin Panel
-- ---
-- Sign Out
-
-### StudentProfile Header - Before vs After
-
-**Before:**
 ```text
-[← Back]   Edit Profile
-           Make it uniquely you
+                        NAVIGATION FLOW
+                        
+   ┌──────────────────────────────────────────────────────────┐
+   │                     MAIN NAVIGATION                      │
+   │  [Logo] [Academics] [Degrees] [Faculty] [About] [Shop]  │
+   │                                              [Avatar ▼] │
+   └──────────────────────────────────────────────────────────┘
+                              │
+        ┌─────────────────────┼─────────────────────┐
+        ▼                     ▼                     ▼
+   ┌─────────┐         ┌───────────┐         ┌───────────┐
+   │ Student │         │ Community │         │  Friends  │
+   │   Hub   │         │           │         │           │
+   └────┬────┘         └─────┬─────┘         └───────────┘
+        │                    │
+   ┌────┴────┬────────┐      │
+   ▼         ▼        ▼      ▼
+┌──────┐ ┌──────┐ ┌──────┐ ┌────────┐
+│Edit  │ │ View │ │Grades│ │ Post   │
+│Profile│ │Profile│ │     │ │ Detail │
+└──────┘ └──────┘ └──────┘ └────────┘
+
+Breadcrumb Pattern:
+┌────────────────────────────────────────┐
+│ Student Hub > Edit Profile             │
+│ Student Hub > Grades                   │
+│ Student Hub > My Profile               │
+│ Student Hub > Community                │
+│ Student Hub > Friends                  │
+│ Student Hub > Messages                 │
+└────────────────────────────────────────┘
 ```
 
-**After:**
-```text
-Student Hub > Edit Profile          [View Profile] [Save]
+---
 
-Edit Profile
-Make it uniquely you
+## Mobile Navigation Update
+
+```text
+MOBILE MENU (Logged In)
+┌────────────────────────────┐
+│ [X]                        │
+├────────────────────────────┤
+│ ACADEMICS                  │
+│ DEGREES                    │
+│ FACULTY                    │
+│ ABOUT                      │
+│ SHOP                       │
+├────────────────────────────┤
+│ MY PROFILE         [NEW]   │
+│ EDIT PROFILE       [NEW]   │
+├────────────────────────────┤
+│ STUDENT HUB                │
+│ COMMUNITY                  │
+│ FRIENDS            [2]     │
+│ MESSAGES           [5]     │
+├────────────────────────────┤
+│ ADMIN PANEL                │
+├────────────────────────────┤
+│ SIGN OUT                   │
+└────────────────────────────┘
+```
+
+---
+
+## Breadcrumb Component Pattern
+
+All pages will use the same breadcrumb style:
+
+```tsx
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+
+<Breadcrumb className="mb-4">
+  <BreadcrumbList>
+    <BreadcrumbItem>
+      <BreadcrumbLink asChild>
+        <Link to="/student" className="hover:text-primary transition-colors">
+          Student Hub
+        </Link>
+      </BreadcrumbLink>
+    </BreadcrumbItem>
+    <BreadcrumbSeparator />
+    <BreadcrumbItem>
+      <BreadcrumbPage>{currentPageName}</BreadcrumbPage>
+    </BreadcrumbItem>
+  </BreadcrumbList>
+</Breadcrumb>
 ```
 
 ---
@@ -272,9 +347,14 @@ Make it uniquely you
 
 | Category | Changes |
 |----------|---------|
-| Files modified | 4 (Navigation, StudentProfile, PublicProfile, StudentCenter) |
-| New features | Direct "View My Profile" link, breadcrumbs, contextual back navigation |
-| User benefit | Fewer clicks to access own profile, clearer navigation hierarchy |
-| Consistency | All profile-related pages have consistent navigation patterns |
+| Files modified | 7 |
+| Pages with new breadcrumbs | 5 (Friends, Messages, Community, Grades, PublicProfile for others) |
+| Pages with fixed navigation | 2 (PublicProfile error state, StudentCenter layout) |
+| Navigation menu updates | 1 (Mobile profile links) |
+| `navigate(-1)` usage eliminated | 1 instance fixed |
 
-This creates a more fluid experience where users can quickly toggle between viewing and editing their profile, always know where they are, and navigate with predictable, consistent patterns.
+This creates a consistent, predictable navigation experience where:
+- Every page shows breadcrumb context (where you are)
+- Every sub-page has a clear back path to its parent
+- Mobile users can access profile features directly
+- No more unpredictable `navigate(-1)` behavior
