@@ -261,6 +261,30 @@ export type Database = {
           },
         ]
       }
+      conversations: {
+        Row: {
+          created_at: string
+          id: string
+          last_message_at: string | null
+          participant_1: string
+          participant_2: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          participant_1: string
+          participant_2: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          participant_1?: string
+          participant_2?: string
+        }
+        Relationships: []
+      }
       courses: {
         Row: {
           code: string
@@ -393,6 +417,47 @@ export type Database = {
         }
         Relationships: []
       }
+      direct_messages: {
+        Row: {
+          contact_card_data: Json | null
+          content: string | null
+          conversation_id: string
+          created_at: string
+          id: string
+          is_read: boolean
+          message_type: string
+          sender_id: string
+        }
+        Insert: {
+          contact_card_data?: Json | null
+          content?: string | null
+          conversation_id: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message_type?: string
+          sender_id: string
+        }
+        Update: {
+          contact_card_data?: Json | null
+          content?: string | null
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message_type?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "direct_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       enrollments: {
         Row: {
           completed_at: string | null
@@ -431,6 +496,54 @@ export type Database = {
           status?: string
           swaps_used?: number
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      friend_requests: {
+        Row: {
+          created_at: string
+          id: string
+          receiver_id: string
+          responded_at: string | null
+          sender_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          receiver_id: string
+          responded_at?: string | null
+          sender_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          receiver_id?: string
+          responded_at?: string | null
+          sender_id?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      friendships: {
+        Row: {
+          created_at: string
+          friend_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          friend_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          friend_id?: string
+          id?: string
           user_id?: string
         }
         Relationships: []
@@ -1148,6 +1261,10 @@ export type Database = {
       }
     }
     Functions: {
+      are_friends: {
+        Args: { _user1_id: string; _user2_id: string }
+        Returns: boolean
+      }
       can_enroll: { Args: { _user_id: string }; Returns: boolean }
       check_quiz_answer: {
         Args: { _question_id: string; _selected_answer: number }
@@ -1157,10 +1274,19 @@ export type Database = {
         Args: { _user_id: string }
         Returns: number
       }
+      get_or_create_conversation: {
+        Args: { _user1_id: string; _user2_id: string }
+        Returns: string
+      }
+      get_pending_friend_request_count: {
+        Args: { _user_id: string }
+        Returns: number
+      }
       get_quiz_attempt_count: {
         Args: { _quiz_id: string; _user_id: string }
         Returns: number
       }
+      get_unread_message_count: { Args: { _user_id: string }; Returns: number }
       get_user_email: { Args: { _user_id: string }; Returns: string }
       has_paid_access: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
