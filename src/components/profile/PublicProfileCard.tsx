@@ -15,7 +15,9 @@
    FlaskConical,
    UserPlus,
    MessageCircle,
-   ExternalLink
+  ExternalLink,
+  Pencil,
+  Share2
  } from "lucide-react";
  import { PublicProfile, UserRole } from "@/hooks/usePublicProfile";
  import { cn } from "@/lib/utils";
@@ -29,6 +31,8 @@
    onMessage?: () => void;
    isAddingFriend?: boolean;
    hasPendingRequest?: boolean;
+  onEditProfile?: () => void;
+  onShareProfile?: () => void;
  }
  
  const roleBadges: Record<UserRole, { label: string; icon: React.ReactNode; className: string } | null> = {
@@ -64,6 +68,8 @@
    onMessage,
    isAddingFriend,
    hasPendingRequest,
+  onEditProfile,
+  onShareProfile,
  }: PublicProfileCardProps) {
    const getInitials = (name?: string | null) => {
      if (!name) return "?";
@@ -138,7 +144,18 @@
                )}
              </div>
  
-             {!isOwnProfile && (
+              {isOwnProfile ? (
+                <div className="flex gap-2">
+                  <Button onClick={onEditProfile} variant="default">
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Edit Profile
+                  </Button>
+                  <Button onClick={onShareProfile} variant="outline">
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Share
+                  </Button>
+                </div>
+              ) : (
                <div className="flex gap-2">
                  {isFriend ? (
                    <Button onClick={onMessage} variant="default">

@@ -1,13 +1,15 @@
  import { useParams, useNavigate } from "react-router-dom";
- import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Eye } from "lucide-react";
  import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
  import { PageLayout } from "@/components/layout";
  import { PublicProfileCard } from "@/components/profile/PublicProfileCard";
+import { ProfileWall } from "@/components/profile/ProfileWall";
  import { usePublicProfile } from "@/hooks/usePublicProfile";
  import { useAuth } from "@/contexts/AuthContext";
  import { useFriendships } from "@/hooks/useFriendships";
  import { useConversations } from "@/hooks/useConversations";
- import { useEffect } from "react";
+import { toast } from "sonner";
  
  export default function PublicProfile() {
    const { userId } = useParams<{ userId: string }>();
@@ -16,13 +18,6 @@
    const { profile, role, isOwnProfile, isFriend, isLoading, error } = usePublicProfile(userId ?? null);
    const { sendFriendRequest, hasPendingRequest: checkPendingRequest, loading: friendshipLoading } = useFriendships();
    const { getOrCreateConversation } = useConversations();
- 
-   // Redirect to own profile page if viewing own profile
-   useEffect(() => {
-     if (isOwnProfile && !isLoading) {
-       navigate("/student/profile", { replace: true });
-     }
-   }, [isOwnProfile, isLoading, navigate]);
  
    const hasPendingRequest = userId ? checkPendingRequest(userId) : false;
  
@@ -41,6 +36,20 @@
      }
    };
  
+  const handleEditProfile = () => {
+    navigate("/student/profile");
+  };
+
+  const handleShareProfile = async () => {
+    const profileUrl = `${window.location.origin}/profile/${userId}`;
+    try {
+      await navigator.clipboard.writeText(profileUrl);
+      toast.success("Profile link copied to clipboard!");
+    } catch {
+      toast.error("Failed to copy link");
+    }
+  };
+
    if (!user) {
      return (
        <PageLayout>
@@ -104,6 +113,15 @@
            <ArrowLeft className="h-4 w-4 mr-2" />
            Back
          </Button>
+
+          {isOwnProfile && (
+            <Alert className="mb-6 bg-muted/50 border-primary/20">
+              <Eye className="h-4 w-4" />
+              <AlertDescription>
+                This is how others see your profile. Edit your profile to make changes.
+              </AlertDescription>
+            </Alert>
+          )}
  
          <PublicProfileCard
            profile={profile}
@@ -114,7 +132,15 @@
            onMessage={handleMessage}
            isAddingFriend={friendshipLoading}
            hasPendingRequest={hasPendingRequest}
+            onEditProfile={handleEditProfile}
+            onShareProfile={handleShareProfile}
          />
+
+          <ProfileWall 
+            profileUserId={userId!}
+            profileDisplayName={profile.display_name}
+            isOwnProfile={isOwnProfile}
+          />
        </div>
      </PageLayout>
    );

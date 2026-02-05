@@ -212,6 +212,7 @@ export type Database = {
           is_pinned: boolean
           is_project_post: boolean
           media_urls: string[] | null
+          target_profile_id: string | null
           title: string
           updated_at: string
           user_id: string
@@ -229,6 +230,7 @@ export type Database = {
           is_pinned?: boolean
           is_project_post?: boolean
           media_urls?: string[] | null
+          target_profile_id?: string | null
           title: string
           updated_at?: string
           user_id: string
@@ -246,6 +248,7 @@ export type Database = {
           is_pinned?: boolean
           is_project_post?: boolean
           media_urls?: string[] | null
+          target_profile_id?: string | null
           title?: string
           updated_at?: string
           user_id?: string
@@ -258,6 +261,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "daily_challenges"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_posts_target_profile_id_fkey"
+            columns: ["target_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "community_posts_target_profile_id_fkey"
+            columns: ["target_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["user_id"]
           },
         ]
       }
