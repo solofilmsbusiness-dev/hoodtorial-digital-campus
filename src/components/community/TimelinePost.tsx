@@ -9,7 +9,7 @@ import { CommunityPost, CommentPreview } from "@/hooks/useCommunityPosts";
 import { motion, AnimatePresence } from "framer-motion";
 import { getVideoType, getYouTubeId, getYouTubeEmbedUrl } from "@/lib/videoUtils";
  import { AddFriendButton } from "@/components/friends";
- import { useAuth } from "@/contexts/AuthContext";
+ import { UserProfileLink } from "@/components/profile/UserProfileLink";
 
 interface TimelinePostProps {
   post: CommunityPost;
@@ -83,12 +83,13 @@ export function TimelinePost({
       {/* Header */}
       <div className="flex items-center gap-3 p-4">
         <div className="relative group">
-          <Avatar className="h-10 w-10 border-2 border-border">
-          <AvatarImage src={post.author?.avatar_url || undefined} />
-          <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
-            {getInitials(post.author?.display_name)}
-          </AvatarFallback>
-        </Avatar>
+          <UserProfileLink
+            userId={post.user_id}
+            displayName={post.author?.display_name || null}
+            avatarUrl={post.author?.avatar_url || null}
+            showName={false}
+            size="lg"
+          />
           {/* Add friend button on hover */}
           <div className="absolute -bottom-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <AddFriendButton 
@@ -102,9 +103,13 @@ export function TimelinePost({
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <p className="font-bold text-sm text-foreground truncate">
-              {post.author?.display_name || "Anonymous"}
-            </p>
+            <UserProfileLink
+              userId={post.user_id}
+              displayName={post.author?.display_name || null}
+              avatarUrl={post.author?.avatar_url || null}
+              showAvatar={false}
+              nameClassName="text-sm truncate"
+            />
             {post.author?.role === 'admin' && (
               <Badge className="bg-destructive/20 text-destructive text-xs">
                 <GraduationCap className="h-3 w-3 mr-1" />
@@ -302,17 +307,24 @@ export function TimelinePost({
         <div className="p-4 space-y-3">
           {previewComments.map((comment) => (
             <div key={comment.id} className="flex items-start gap-2">
-              <Avatar className="h-7 w-7 border border-border">
-                <AvatarImage src={comment.author?.avatar_url || undefined} />
-                <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
-                  {getInitials(comment.author?.display_name)}
-                </AvatarFallback>
-              </Avatar>
+              <UserProfileLink
+                userId={comment.user_id}
+                displayName={comment.author?.display_name || null}
+                avatarUrl={comment.author?.avatar_url || null}
+                showName={false}
+                size="sm"
+                avatarClassName="h-7 w-7 border border-border"
+              />
               <div className="flex-1 min-w-0">
                 <p className="text-sm">
-                  <span className="font-bold text-foreground mr-1">
-                    {comment.author?.display_name || "Anonymous"}
-                  </span>
+                  <UserProfileLink
+                    userId={comment.user_id}
+                    displayName={comment.author?.display_name || null}
+                    avatarUrl={comment.author?.avatar_url || null}
+                    showAvatar={false}
+                    nameClassName="text-sm mr-1"
+                    className="inline"
+                  />
                   <span className="text-muted-foreground line-clamp-2">
                     {comment.content}
                   </span>

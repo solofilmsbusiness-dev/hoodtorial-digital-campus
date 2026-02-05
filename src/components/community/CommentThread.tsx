@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { CommunityComment } from "@/hooks/useCommunityComments";
 import { useAuth } from "@/contexts/AuthContext";
 import { ImageGallery } from "./ImageGallery";
+import { UserProfileLink } from "@/components/profile/UserProfileLink";
 
 interface CommentThreadProps {
   comments: CommunityComment[];
@@ -88,26 +89,31 @@ function CommentItem({ comment, onLike, onReply, onDelete, depth = 0 }: CommentI
   return (
     <div className={cn("py-4", depth > 0 && "ml-6 pl-4 border-l-2 border-border")}>
       <div className="flex items-start gap-3">
-        <Avatar className={cn(
-          "border-2",
-          comment.is_instructor_comment || comment.user_role === 'admin' || comment.user_role === 'professor'
-            ? "border-primary"
-            : "border-border"
-        )}>
-          <AvatarImage src={comment.author?.avatar_url || undefined} />
-          <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
-            {getInitials(comment.author?.display_name)}
-          </AvatarFallback>
-        </Avatar>
+        <UserProfileLink
+          userId={comment.user_id}
+          displayName={comment.author?.display_name || null}
+          avatarUrl={comment.author?.avatar_url || null}
+          showName={false}
+          avatarClassName={cn(
+            "border-2",
+            comment.is_instructor_comment || comment.user_role === 'admin' || comment.user_role === 'professor'
+              ? "border-primary"
+              : "border-border"
+          )}
+        />
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center flex-wrap gap-2 mb-1">
-            <span className={cn(
-              "font-bold text-sm",
-              comment.is_instructor_comment ? "text-primary" : "text-foreground"
-            )}>
-              {comment.author?.display_name || "Anonymous"}
-            </span>
+            <UserProfileLink
+              userId={comment.user_id}
+              displayName={comment.author?.display_name || null}
+              avatarUrl={comment.author?.avatar_url || null}
+              showAvatar={false}
+              nameClassName={cn(
+                "text-sm",
+                comment.is_instructor_comment ? "text-primary" : "text-foreground"
+              )}
+            />
             {getRoleBadge()}
             {comment.is_highlighted && (
               <Star className="h-3 w-3 text-primary fill-primary" />

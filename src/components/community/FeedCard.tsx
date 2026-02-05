@@ -6,6 +6,7 @@ import { Heart, MessageSquare, Award, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CommunityPost } from "@/hooks/useCommunityPosts";
 import { motion } from "framer-motion";
+import { UserProfileLink } from "@/components/profile/UserProfileLink";
 
 interface FeedCardProps {
   post: CommunityPost;
@@ -42,16 +43,21 @@ export function FeedCard({ post, onLike, onClick, variant = 'grid' }: FeedCardPr
       >
         {/* Header */}
         <div className="flex items-center gap-3 p-4">
-          <Avatar className="h-10 w-10 border-2 border-border">
-            <AvatarImage src={post.author?.avatar_url || undefined} />
-            <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
-              {getInitials(post.author?.display_name)}
-            </AvatarFallback>
-          </Avatar>
+          <UserProfileLink
+            userId={post.user_id}
+            displayName={post.author?.display_name || null}
+            avatarUrl={post.author?.avatar_url || null}
+            showName={false}
+            size="lg"
+          />
           <div className="flex-1 min-w-0">
-            <p className="font-bold text-sm text-foreground truncate">
-              {post.author?.display_name || "Anonymous"}
-            </p>
+            <UserProfileLink
+              userId={post.user_id}
+              displayName={post.author?.display_name || null}
+              avatarUrl={post.author?.avatar_url || null}
+              showAvatar={false}
+              nameClassName="text-sm truncate"
+            />
             <p className="text-xs text-muted-foreground">
               {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
             </p>
@@ -224,17 +230,14 @@ export function FeedCard({ post, onLike, onClick, variant = 'grid' }: FeedCardPr
 
       {/* Author overlay */}
       <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-background/90 to-transparent">
-        <div className="flex items-center gap-2">
-          <Avatar className="h-6 w-6 border border-border">
-            <AvatarImage src={post.author?.avatar_url || undefined} />
-            <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
-              {getInitials(post.author?.display_name)}
-            </AvatarFallback>
-          </Avatar>
-          <span className="text-xs font-medium text-foreground truncate">
-            {post.author?.display_name || "Anonymous"}
-          </span>
-        </div>
+          <UserProfileLink
+            userId={post.user_id}
+            displayName={post.author?.display_name || null}
+            avatarUrl={post.author?.avatar_url || null}
+            size="sm"
+            avatarClassName="h-6 w-6 border border-border"
+            nameClassName="text-xs truncate"
+          />
       </div>
     </motion.div>
   );
