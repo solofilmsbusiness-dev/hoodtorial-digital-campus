@@ -1,15 +1,16 @@
  import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Eye } from "lucide-react";
+ import { motion } from "framer-motion";
+ import { ArrowLeft, Eye } from "lucide-react";
  import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+ import { Alert, AlertDescription } from "@/components/ui/alert";
  import { PageLayout } from "@/components/layout";
  import { PublicProfileCard } from "@/components/profile/PublicProfileCard";
-import { ProfileWall } from "@/components/profile/ProfileWall";
+ import { ProfileWall } from "@/components/profile/ProfileWall";
  import { usePublicProfile } from "@/hooks/usePublicProfile";
  import { useAuth } from "@/contexts/AuthContext";
  import { useFriendships } from "@/hooks/useFriendships";
  import { useConversations } from "@/hooks/useConversations";
-import { toast } from "sonner";
+ import { toast } from "sonner";
  
  export default function PublicProfile() {
    const { userId } = useParams<{ userId: string }>();
@@ -53,7 +54,7 @@ import { toast } from "sonner";
    if (!user) {
      return (
        <PageLayout>
-         <div className="container max-w-4xl py-8">
+         <div className="container max-w-5xl py-8">
            <div className="text-center py-12">
              <p className="text-muted-foreground mb-4">Please log in to view profiles.</p>
              <Button onClick={() => navigate("/auth")}>Log In</Button>
@@ -66,15 +67,28 @@ import { toast } from "sonner";
    if (isLoading) {
      return (
        <PageLayout>
-         <div className="container max-w-4xl py-8">
-           <div className="animate-pulse space-y-6">
-             <div className="h-48 bg-muted rounded-xl" />
-             <div className="flex gap-6">
-               <div className="h-32 w-32 bg-muted rounded-full" />
-               <div className="flex-1 space-y-4 pt-16">
-                 <div className="h-8 bg-muted rounded w-1/3" />
-                 <div className="h-4 bg-muted rounded w-1/4" />
+         <div className="container max-w-5xl py-8">
+           {/* Enhanced loading skeleton with shimmer */}
+           <div className="space-y-8">
+             <div className="relative h-56 md:h-72 bg-charcoal rounded-xl overflow-hidden">
+               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-charcoal-light/30 to-transparent animate-shimmer" 
+                 style={{ 
+                   backgroundSize: "200% 100%",
+                   animation: "shimmer 1.5s infinite"
+                 }} 
+               />
+             </div>
+             <div className="flex flex-col items-center md:items-start md:flex-row gap-6 -mt-20 px-6">
+               <div className="h-36 w-36 bg-charcoal-light rounded-full animate-pulse ring-4 ring-background" />
+               <div className="flex-1 space-y-4 pt-12 text-center md:text-left">
+                 <div className="h-8 bg-charcoal-light rounded w-1/3 mx-auto md:mx-0 animate-pulse" />
+                 <div className="h-4 bg-charcoal-light rounded w-1/4 mx-auto md:mx-0 animate-pulse" />
                </div>
+             </div>
+             <div className="grid md:grid-cols-2 gap-4 px-6">
+               {[1, 2].map((i) => (
+                 <div key={i} className="h-32 bg-charcoal rounded-lg animate-pulse" />
+               ))}
              </div>
            </div>
          </div>
@@ -85,7 +99,7 @@ import { toast } from "sonner";
    if (error || !profile) {
      return (
        <PageLayout>
-         <div className="container max-w-4xl py-8">
+         <div className="container max-w-5xl py-8">
            <Button
              variant="ghost"
              onClick={() => navigate(-1)}
@@ -104,25 +118,63 @@ import { toast } from "sonner";
  
    return (
      <PageLayout>
-       <div className="container max-w-4xl py-8">
-         <Button
-           variant="ghost"
-           onClick={() => navigate(-1)}
-           className="mb-6"
-         >
-           <ArrowLeft className="h-4 w-4 mr-2" />
-           Back
-         </Button>
+       {/* Background effects */}
+       <div className="fixed inset-0 pointer-events-none overflow-hidden">
+         {/* Animated orbs */}
+         <motion.div
+           className="absolute top-1/4 -left-32 w-96 h-96 rounded-full bg-primary/5 blur-3xl"
+           animate={{ 
+             x: [0, 50, 0],
+             y: [0, 30, 0],
+             opacity: [0.3, 0.5, 0.3]
+           }}
+           transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+         />
+         <motion.div
+           className="absolute bottom-1/4 -right-32 w-80 h-80 rounded-full bg-neon-purple/5 blur-3xl"
+           animate={{ 
+             x: [0, -40, 0],
+             y: [0, -30, 0],
+             opacity: [0.2, 0.4, 0.2]
+           }}
+           transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+         />
+         {/* Grid overlay */}
+         <div className="absolute inset-0 bg-grid opacity-30" />
+       </div>
 
-          {isOwnProfile && (
-            <Alert className="mb-6 bg-muted/50 border-primary/20">
-              <Eye className="h-4 w-4" />
-              <AlertDescription>
-                This is how others see your profile. Edit your profile to make changes.
-              </AlertDescription>
-            </Alert>
-          )}
+       <div className="container max-w-5xl py-8 relative z-10">
+         <motion.div
+           initial={{ opacity: 0, x: -10 }}
+           animate={{ opacity: 1, x: 0 }}
+           transition={{ duration: 0.3 }}
+         >
+           <Button
+             variant="ghost"
+             onClick={() => navigate(-1)}
+             className="mb-6 hover:bg-charcoal-light"
+           >
+             <ArrowLeft className="h-4 w-4 mr-2" />
+             Back
+           </Button>
+         </motion.div>
  
+         {/* Own profile indicator */}
+         {isOwnProfile && (
+           <motion.div
+             initial={{ opacity: 0, y: -10 }}
+             animate={{ opacity: 1, y: 0 }}
+             transition={{ duration: 0.4, delay: 0.2 }}
+           >
+             <Alert className="mb-6 bg-charcoal/80 border-2 border-primary/30 backdrop-blur-sm">
+               <Eye className="h-4 w-4 text-primary" />
+               <AlertDescription className="text-foreground">
+                 This is how others see your profile. Edit your profile to make changes.
+               </AlertDescription>
+             </Alert>
+           </motion.div>
+         )}
+
          <PublicProfileCard
            profile={profile}
            role={role}
@@ -132,15 +184,17 @@ import { toast } from "sonner";
            onMessage={handleMessage}
            isAddingFriend={friendshipLoading}
            hasPendingRequest={hasPendingRequest}
-            onEditProfile={handleEditProfile}
-            onShareProfile={handleShareProfile}
+           onEditProfile={handleEditProfile}
+           onShareProfile={handleShareProfile}
          />
-
-          <ProfileWall 
-            profileUserId={userId!}
-            profileDisplayName={profile.display_name}
-            isOwnProfile={isOwnProfile}
-          />
+ 
+         <div className="px-4 md:px-6 mt-8">
+           <ProfileWall 
+             profileUserId={userId!}
+             profileDisplayName={profile.display_name}
+             isOwnProfile={isOwnProfile}
+           />
+         </div>
        </div>
      </PageLayout>
    );

@@ -1,26 +1,25 @@
+ import { motion } from "framer-motion";
  import { Badge } from "@/components/ui/badge";
  import { Button } from "@/components/ui/button";
- import { Card, CardContent } from "@/components/ui/card";
- import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
  import { 
    Camera, 
    Film, 
    Sparkles, 
-   Globe, 
-   Instagram, 
-   Youtube, 
-   Twitter,
+   Clapperboard,
    GraduationCap,
    Shield,
    FlaskConical,
    UserPlus,
    MessageCircle,
-  ExternalLink,
-  Pencil,
-  Share2
+   Pencil,
+   Share2
  } from "lucide-react";
  import { PublicProfile, UserRole } from "@/hooks/usePublicProfile";
  import { cn } from "@/lib/utils";
+ import { ProfileCoverBanner } from "./ProfileCoverBanner";
+ import { ProfileAvatar } from "./ProfileAvatar";
+ import { ProfileInfoCard } from "./ProfileInfoCard";
+ import { ProfileSocialLinks } from "./ProfileSocialLinks";
  
  interface PublicProfileCardProps {
    profile: PublicProfile;
@@ -31,30 +30,30 @@
    onMessage?: () => void;
    isAddingFriend?: boolean;
    hasPendingRequest?: boolean;
-  onEditProfile?: () => void;
-  onShareProfile?: () => void;
+   onEditProfile?: () => void;
+   onShareProfile?: () => void;
  }
  
  const roleBadges: Record<UserRole, { label: string; icon: React.ReactNode; className: string } | null> = {
    admin: { 
      label: "Admin", 
      icon: <GraduationCap className="h-3 w-3 mr-1" />, 
-     className: "bg-destructive/20 text-destructive" 
+     className: "bg-destructive/20 text-destructive border-destructive/30" 
    },
    professor: { 
      label: "Professor", 
      icon: <GraduationCap className="h-3 w-3 mr-1" />, 
-     className: "bg-primary/20 text-primary" 
+     className: "bg-primary/20 text-primary border-primary/30" 
    },
    moderator: { 
      label: "Moderator", 
      icon: <Shield className="h-3 w-3 mr-1" />, 
-     className: "bg-accent/20 text-accent" 
+     className: "bg-accent/20 text-accent border-accent/30" 
    },
    tester: { 
      label: "Tester", 
      icon: <FlaskConical className="h-3 w-3 mr-1" />, 
-     className: "bg-violet-500/20 text-violet-400" 
+     className: "bg-neon-purple/20 text-neon-purple border-neon-purple/30" 
    },
    student: null,
  };
@@ -68,211 +67,216 @@
    onMessage,
    isAddingFriend,
    hasPendingRequest,
-  onEditProfile,
-  onShareProfile,
+   onEditProfile,
+   onShareProfile,
  }: PublicProfileCardProps) {
-   const getInitials = (name?: string | null) => {
-     if (!name) return "?";
-     return name
-       .split(" ")
-       .map((n) => n.charAt(0))
-       .join("")
-       .toUpperCase()
-       .slice(0, 2);
-   };
- 
    const roleBadge = roleBadges[role];
+   const isSpecialRole = role === "admin" || role === "professor";
  
-   const socialLinks = [
-     { url: profile.portfolio_url, icon: <Globe className="h-4 w-4" />, label: "Portfolio" },
-     { url: profile.instagram_url, icon: <Instagram className="h-4 w-4" />, label: "Instagram" },
-     { url: profile.youtube_url, icon: <Youtube className="h-4 w-4" />, label: "YouTube" },
-     { url: profile.vimeo_url, icon: <Film className="h-4 w-4" />, label: "Vimeo" },
-     { url: profile.twitter_url, icon: <Twitter className="h-4 w-4" />, label: "Twitter" },
-     { url: profile.imdb_url, icon: <ExternalLink className="h-4 w-4" />, label: "IMDb" },
-   ].filter(link => link.url);
+   // Collect info cards data
+   const infoCards = [
+     profile.camera_gear && {
+       icon: <Camera className="h-5 w-5" />,
+       label: "Camera Gear",
+       content: profile.camera_gear
+     },
+     profile.current_project && {
+       icon: <Clapperboard className="h-5 w-5" />,
+       label: "Current Project",
+       content: profile.current_project
+     },
+     profile.influences && {
+       icon: <Sparkles className="h-5 w-5" />,
+       label: "Influences",
+       content: profile.influences
+     },
+     profile.favorite_films && profile.favorite_films.length > 0 && {
+       icon: <Film className="h-5 w-5" />,
+       label: "Favorite Films",
+       content: profile.favorite_films
+     }
+   ].filter(Boolean);
  
    return (
-     <div className="space-y-6">
+     <div className="space-y-8">
        {/* Cover Banner */}
-       <div className="relative h-48 md:h-64 rounded-xl overflow-hidden bg-muted">
-         {profile.cover_banner_url ? (
-           <img
-             src={profile.cover_banner_url}
-             alt="Cover"
-             className="w-full h-full object-cover"
+       <ProfileCoverBanner 
+         coverUrl={profile.cover_banner_url} 
+         accentColor={profile.profile_accent_color}
+       />
+ 
+       {/* Profile Header - Avatar & Identity */}
+       <div className="relative -mt-24 px-4 md:px-6">
+         <div className="flex flex-col items-center md:items-start md:flex-row gap-6">
+           {/* Avatar with glow effects */}
+           <ProfileAvatar
+             avatarUrl={profile.avatar_url}
+             displayName={profile.display_name}
+             accentColor={profile.profile_accent_color}
+             borderStyle={profile.avatar_border_style}
            />
-         ) : (
-           <div className="w-full h-full bg-gradient-to-br from-primary/20 to-accent/20" />
-         )}
-       </div>
  
-       {/* Profile Header */}
-       <div className="flex flex-col md:flex-row gap-6 items-start -mt-20 px-4 md:px-6">
-         <Avatar 
-           className={cn(
-             "h-32 w-32 border-4 border-background shadow-xl",
-             profile.avatar_border_style === "gradient" && "ring-2 ring-primary",
-             profile.avatar_border_style === "gold" && "ring-2 ring-yellow-500"
-           )}
-           style={profile.profile_accent_color ? { borderColor: profile.profile_accent_color } : undefined}
-         >
-           <AvatarImage src={profile.avatar_url || undefined} />
-           <AvatarFallback className="bg-primary/10 text-primary font-bold text-3xl">
-             {getInitials(profile.display_name)}
-           </AvatarFallback>
-         </Avatar>
- 
-         <div className="flex-1 pt-4 md:pt-16">
-           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-             <div>
-               <div className="flex items-center gap-3 flex-wrap">
-                 <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-                   {profile.display_name || "Anonymous"}
-                 </h1>
-                 {roleBadge && (
-                   <Badge className={cn("text-xs", roleBadge.className)}>
-                     {roleBadge.icon}
-                     {roleBadge.label}
-                   </Badge>
-                 )}
-               </div>
-               {profile.filmmaking_style && (
-                 <p className="text-muted-foreground mt-1">
-                   🎬 {profile.filmmaking_style}
-                 </p>
-               )}
-             </div>
- 
-              {isOwnProfile ? (
-                <div className="flex gap-2">
-                  <Button onClick={onEditProfile} variant="default">
-                    <Pencil className="h-4 w-4 mr-2" />
-                    Edit Profile
-                  </Button>
-                  <Button onClick={onShareProfile} variant="outline">
-                    <Share2 className="h-4 w-4 mr-2" />
-                    Share
-                  </Button>
-                </div>
-              ) : (
-               <div className="flex gap-2">
-                 {isFriend ? (
-                   <Button onClick={onMessage} variant="default">
-                     <MessageCircle className="h-4 w-4 mr-2" />
-                     Message
-                   </Button>
-                 ) : (
-                   <Button 
-                     onClick={onAddFriend} 
-                     variant="default"
-                     disabled={isAddingFriend || hasPendingRequest}
-                   >
-                     <UserPlus className="h-4 w-4 mr-2" />
-                     {hasPendingRequest ? "Request Sent" : "Add Friend"}
-                   </Button>
-                 )}
-               </div>
+           {/* Identity & Actions */}
+           <div className="flex-1 text-center md:text-left pt-4 md:pt-12">
+             {/* Role sticker badge - floating style */}
+             {roleBadge && (
+               <motion.div
+                 initial={{ opacity: 0, scale: 0.8, rotate: -5 }}
+                 animate={{ opacity: 1, scale: 1, rotate: -2 }}
+                 transition={{ duration: 0.3, delay: 0.4 }}
+                 className="inline-block mb-3"
+               >
+                 <Badge className={cn(
+                   "text-xs font-black uppercase tracking-wider border px-3 py-1",
+                   roleBadge.className
+                 )}>
+                   {roleBadge.icon}
+                   {roleBadge.label}
+                 </Badge>
+               </motion.div>
              )}
+ 
+             {/* Name with optional gold gradient */}
+             <motion.h1
+               initial={{ opacity: 0, x: -20 }}
+               animate={{ opacity: 1, x: 0 }}
+               transition={{ duration: 0.5, delay: 0.3 }}
+               className={cn(
+                 "text-3xl md:text-4xl font-black tracking-tight",
+                 isSpecialRole ? "text-gold-gradient" : "text-foreground"
+               )}
+             >
+               {profile.display_name || "Anonymous"}
+             </motion.h1>
+ 
+             {/* Filmmaking style */}
+             {profile.filmmaking_style && (
+               <motion.p
+                 initial={{ opacity: 0 }}
+                 animate={{ opacity: 1 }}
+                 transition={{ duration: 0.5, delay: 0.4 }}
+                 className="text-muted-foreground mt-2 flex items-center justify-center md:justify-start gap-2"
+               >
+                 <span className="text-primary">🎬</span> {profile.filmmaking_style}
+               </motion.p>
+             )}
+ 
+             {/* Action buttons */}
+             <motion.div
+               initial={{ opacity: 0, y: 10 }}
+               animate={{ opacity: 1, y: 0 }}
+               transition={{ duration: 0.4, delay: 0.5 }}
+               className="mt-5"
+             >
+               {isOwnProfile ? (
+                 <div className="flex flex-wrap gap-3 justify-center md:justify-start">
+                   <Button 
+                     onClick={onEditProfile} 
+                     className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
+                   >
+                     <Pencil className="h-4 w-4 mr-2" />
+                     Edit Profile
+                   </Button>
+                   <Button 
+                     onClick={onShareProfile} 
+                     variant="outline"
+                     className="border-2 border-border hover:border-primary hover:bg-primary/10"
+                   >
+                     <Share2 className="h-4 w-4 mr-2" />
+                     Share
+                   </Button>
+                 </div>
+               ) : (
+                 <div className="flex flex-wrap gap-3 justify-center md:justify-start">
+                   {isFriend ? (
+                     <Button 
+                       onClick={onMessage}
+                       className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
+                     >
+                       <MessageCircle className="h-4 w-4 mr-2" />
+                       Message
+                     </Button>
+                   ) : (
+                     <Button 
+                       onClick={onAddFriend}
+                       disabled={isAddingFriend || hasPendingRequest}
+                       className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold disabled:opacity-50"
+                     >
+                       <UserPlus className="h-4 w-4 mr-2" />
+                       {hasPendingRequest ? "Request Sent" : "Add Friend"}
+                     </Button>
+                   )}
+                 </div>
+               )}
+             </motion.div>
            </div>
          </div>
        </div>
  
-       {/* Bio */}
+       {/* Bio Section - Quote style */}
        {profile.bio && (
-         <Card className="card-urban">
-           <CardContent className="pt-6">
-             <p className="text-foreground leading-relaxed">{profile.bio}</p>
-           </CardContent>
-         </Card>
+         <motion.div
+           initial={{ opacity: 0, x: -30 }}
+           animate={{ opacity: 1, x: 0 }}
+           transition={{ duration: 0.5, delay: 0.4 }}
+           className="relative px-4 md:px-6"
+         >
+           <div className={cn(
+             "relative p-6 rounded-lg",
+             "bg-charcoal/50 border-l-4 border-primary"
+           )}>
+             {/* Decorative quote mark */}
+             <span className="absolute -top-2 -left-1 text-4xl text-primary/30 font-serif">❝</span>
+             <p className="text-foreground leading-relaxed text-lg italic pl-4">
+               {profile.bio}
+             </p>
+             <span className="absolute -bottom-4 right-4 text-4xl text-primary/30 font-serif">❞</span>
+           </div>
+         </motion.div>
        )}
  
-       {/* Creative Info Grid */}
-       <div className="grid md:grid-cols-2 gap-4">
-         {/* Camera Gear */}
-         {profile.camera_gear && (
-           <Card className="card-urban">
-             <CardContent className="pt-6">
-               <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                 <Camera className="h-4 w-4" />
-                 <span className="text-sm font-medium">Camera Gear</span>
-               </div>
-               <p className="text-foreground">{profile.camera_gear}</p>
-             </CardContent>
-           </Card>
-         )}
+       {/* Creative Info Cards - 3D Tilt Grid */}
+       {infoCards.length > 0 && (
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-4 md:px-6">
+           {infoCards.map((card, index) => (
+             <ProfileInfoCard
+               key={card.label}
+               icon={card.icon}
+               label={card.label}
+               delay={0.4 + (index * 0.1)}
+               accentColor={profile.profile_accent_color || undefined}
+             >
+               {Array.isArray(card.content) ? (
+                 <div className="flex flex-wrap gap-2">
+                   {card.content.map((item, i) => (
+                     <Badge 
+                       key={i} 
+                       variant="secondary" 
+                       className="bg-charcoal-light border border-border text-xs font-medium hover:border-primary/50 transition-colors"
+                     >
+                       {item}
+                     </Badge>
+                   ))}
+                 </div>
+               ) : (
+                 <p>{card.content}</p>
+               )}
+             </ProfileInfoCard>
+           ))}
+         </div>
+       )}
  
-         {/* Current Project */}
-         {profile.current_project && (
-           <Card className="card-urban">
-             <CardContent className="pt-6">
-               <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                 <Film className="h-4 w-4" />
-                 <span className="text-sm font-medium">Current Project</span>
-               </div>
-               <p className="text-foreground">{profile.current_project}</p>
-             </CardContent>
-           </Card>
-         )}
- 
-         {/* Influences */}
-         {profile.influences && (
-           <Card className="card-urban">
-             <CardContent className="pt-6">
-               <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                 <Sparkles className="h-4 w-4" />
-                 <span className="text-sm font-medium">Influences</span>
-               </div>
-               <p className="text-foreground">{profile.influences}</p>
-             </CardContent>
-           </Card>
-         )}
- 
-         {/* Favorite Films */}
-         {profile.favorite_films && profile.favorite_films.length > 0 && (
-           <Card className="card-urban">
-             <CardContent className="pt-6">
-               <div className="flex items-center gap-2 text-muted-foreground mb-3">
-                 <Film className="h-4 w-4" />
-                 <span className="text-sm font-medium">Favorite Films</span>
-               </div>
-               <div className="flex flex-wrap gap-2">
-                 {profile.favorite_films.map((film, index) => (
-                   <Badge key={index} variant="secondary" className="text-xs">
-                     {film}
-                   </Badge>
-                 ))}
-               </div>
-             </CardContent>
-           </Card>
-         )}
+       {/* Social Links - Circular icons with glow */}
+       <div className="px-4 md:px-6">
+         <ProfileSocialLinks
+           portfolioUrl={profile.portfolio_url}
+           instagramUrl={profile.instagram_url}
+           youtubeUrl={profile.youtube_url}
+           vimeoUrl={profile.vimeo_url}
+           twitterUrl={profile.twitter_url}
+           imdbUrl={profile.imdb_url}
+         />
        </div>
- 
-       {/* Social Links */}
-       {socialLinks.length > 0 && (
-         <Card className="card-urban">
-           <CardContent className="pt-6">
-             <div className="flex items-center gap-2 text-muted-foreground mb-4">
-               <Globe className="h-4 w-4" />
-               <span className="text-sm font-medium">Connect</span>
-             </div>
-             <div className="flex flex-wrap gap-3">
-               {socialLinks.map((link, index) => (
-                 <a
-                   key={index}
-                   href={link.url!}
-                   target="_blank"
-                   rel="noopener noreferrer"
-                   className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-muted/80 rounded-lg transition-colors"
-                 >
-                   {link.icon}
-                   <span className="text-sm">{link.label}</span>
-                 </a>
-               ))}
-             </div>
-           </CardContent>
-         </Card>
-       )}
      </div>
    );
  }
