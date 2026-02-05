@@ -20,6 +20,7 @@
  import { ProfileAvatar } from "./ProfileAvatar";
  import { ProfileInfoCard } from "./ProfileInfoCard";
  import { ProfileSocialLinks } from "./ProfileSocialLinks";
+import { FeaturedProjectShowcase } from "./FeaturedProjectShowcase";
  
  interface PublicProfileCardProps {
    profile: PublicProfile;
@@ -235,6 +236,22 @@
          </motion.div>
        )}
  
+    {/* Featured Project - Above Info Cards */}
+    {(profile.featured_project_url || profile.featured_project_thumbnail) && (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.45 }}
+        className="px-4 md:px-6"
+      >
+        <FeaturedProjectShowcase
+          title={profile.featured_project_title || ""}
+          url={profile.featured_project_url || ""}
+          thumbnail={profile.featured_project_thumbnail}
+        />
+      </motion.div>
+    )}
+
        {/* Creative Info Cards - 3D Tilt Grid */}
        {infoCards.length > 0 && (
          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-4 md:px-6">
