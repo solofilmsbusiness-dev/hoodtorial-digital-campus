@@ -1108,9 +1108,51 @@ export type Database = {
         }
         Relationships: []
       }
+      quiz_questions_public: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          options: Json | null
+          question: string | null
+          quiz_id: string | null
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          options?: Json | null
+          question?: string | null
+          quiz_id?: string | null
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          options?: Json | null
+          question?: string | null
+          quiz_id?: string | null
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_questions_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       can_enroll: { Args: { _user_id: string }; Returns: boolean }
+      check_quiz_answer: {
+        Args: { _question_id: string; _selected_answer: number }
+        Returns: Json
+      }
       get_active_enrollment_count: {
         Args: { _user_id: string }
         Returns: number

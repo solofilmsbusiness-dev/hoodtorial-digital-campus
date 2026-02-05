@@ -34,6 +34,15 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Quiz } from "@/data/courses";
 
+// Server-verified answer result
+interface VerifiedAnswer {
+  questionId: string;
+  selectedAnswer: number;
+  correctAnswer: number;
+  isCorrect: boolean;
+  explanation?: string;
+}
+
 interface QuizPlayerProps {
   quiz: Quiz;
   courseCode: string;
@@ -52,20 +61,20 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
     queryKey: ["quiz-questions", quiz.id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("quiz_questions")
-        .select("*")
+        .from("quiz_questions_public")
+        .select("id, quiz_id, question, options, sort_order")
         .eq("quiz_id", quiz.id)
         .order("sort_order");
       
       if (error) throw error;
       
-      // Transform to QuizQuestion format
+      // Transform to QuizQuestion format (correct_answer will be fetched securely on submit)
       return (data || []).map(q => ({
         id: q.id,
         question: q.question,
         options: Array.isArray(q.options) ? q.options as string[] : JSON.parse(q.options as string) as string[],
-        correctAnswer: q.correct_answer,
-        explanation: q.explanation || undefined,
+        correctAnswer: -1, // Will be verified server-side
+        explanation: undefined, // Will be fetched after submission
       })) as QuizQuestion[];
     },
   });
@@ -89,6 +98,10 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
   const [questionStartTime, setQuestionStartTime] = useState<number | null>(null);
   const [questionRemainingTime, setQuestionRemainingTime] = useState<number>(0);
   const isAutoAdvancing = useRef(false);
+  
+  // Server-verified results (populated after quiz submission)
+  const [verifiedResults, setVerifiedResults] = useState<VerifiedAnswer[]>([]);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   // Timer mode configuration - ALWAYS use per-question mode with 60 seconds
   const usePerQuestionMode = true;
@@ -102,15 +115,15 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
 
   const currentQuestion = shuffledQuestions[currentIndex];
   const selectedAnswer = currentQuestion ? answers[currentQuestion.id] : undefined;
-  // Raw correct count for database storage
+  // Raw correct count - calculated from server-verified results after submission
   const correctCount = useMemo(() => 
-    shuffledQuestions.filter(q => answers[q.id] === q.shuffledCorrectAnswer).length,
-    [answers, shuffledQuestions]
+    verifiedResults.filter(r => r.isCorrect).length,
+    [verifiedResults]
   );
   // Score as percentage for display and pass/fail logic
   const scorePercent = useMemo(() => 
-    shuffledQuestions.length > 0 ? Math.round((correctCount / shuffledQuestions.length) * 100) : 0,
-    [correctCount, shuffledQuestions.length]
+    verifiedResults.length > 0 ? Math.round((correctCount / verifiedResults.length) * 100) : 0,
+    [correctCount, verifiedResults.length]
   );
   const passed = scorePercent >= quiz.passingScore;
   
@@ -118,6 +131,72 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
   const isTimeWarning = usePerQuestionMode 
     ? questionRemainingTime > 0 && questionRemainingTime <= 10
     : remainingTime > 0 && remainingTime <= 120;
+
+  // Verify answers server-side using the secure RPC function
+  const verifyAnswersServerSide = useCallback(async (
+    questionsToVerify: ShuffledQuestion[],
+    userAnswers: Record<string, number>
+  ): Promise<VerifiedAnswer[]> => {
+    const results: VerifiedAnswer[] = [];
+    
+    for (const question of questionsToVerify) {
+      const shuffledAnswer = userAnswers[question.id];
+      // Map shuffled answer back to original option index
+      const originalAnswer = shuffledAnswer !== undefined && shuffledAnswer >= 0
+        ? question.optionMapping[shuffledAnswer]
+        : -1;
+      
+      if (originalAnswer < 0) {
+        // Skipped question
+        results.push({
+          questionId: question.id,
+          selectedAnswer: -1,
+          correctAnswer: -1, // Will be revealed in review
+          isCorrect: false,
+          explanation: undefined,
+        });
+        continue;
+      }
+      
+      try {
+        const { data, error } = await supabase.rpc('check_quiz_answer', {
+          _question_id: question.id,
+          _selected_answer: originalAnswer,
+        });
+        
+        if (error) {
+          console.error('Error verifying answer:', error);
+          results.push({
+            questionId: question.id,
+            selectedAnswer: originalAnswer,
+            correctAnswer: -1,
+            isCorrect: false,
+            explanation: undefined,
+          });
+        } else {
+          const result = data as { correct_answer: number; is_correct: boolean; explanation: string | null };
+          results.push({
+            questionId: question.id,
+            selectedAnswer: originalAnswer,
+            correctAnswer: result.correct_answer,
+            isCorrect: result.is_correct,
+            explanation: result.explanation ?? undefined,
+          });
+        }
+      } catch (err) {
+        console.error('Error calling check_quiz_answer:', err);
+        results.push({
+          questionId: question.id,
+          selectedAnswer: originalAnswer,
+          correctAnswer: -1,
+          isCorrect: false,
+          explanation: undefined,
+        });
+      }
+    }
+    
+    return results;
+  }, []);
 
   // Initialize shuffled questions when quiz starts
   const handleStartQuiz = useCallback(() => {
@@ -138,53 +217,71 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
 
   // Handle finishing the quiz
   const handleFinishQuiz = useCallback(async () => {
-    setState("results");
+    setIsVerifying(true);
     
-    // Set motivational message based on pass/fail
-    const messageType = passed ? "success" : "failure";
-    setMotivationalMessage(getRandomMotivationalMessage(messageType));
-    
-    // Save to database if user is logged in
-    if (user && startTime) {
-      setIsSaving(true);
-      const timeTaken = Math.round((Date.now() - startTime) / 1000);
-      const gradingData = getGradingData(answers, shuffledQuestions);
+    try {
+      // Verify all answers server-side
+      const verified = await verifyAnswersServerSide(shuffledQuestions, answers);
+      setVerifiedResults(verified);
       
-      // Convert shuffled questions back to original for saving
-      const originalQuestionsForSave = shuffledQuestions.map(sq => ({
-        id: sq.id,
-        question: sq.question,
-        options: sq.originalOptions,
-        correctAnswer: sq.originalCorrectAnswer,
-        explanation: sq.explanation,
-      }));
+      // Calculate results from verified data
+      const verifiedCorrectCount = verified.filter(r => r.isCorrect).length;
+      const verifiedScorePercent = verified.length > 0 
+        ? Math.round((verifiedCorrectCount / verified.length) * 100) 
+        : 0;
+      const verifiedPassed = verifiedScorePercent >= quiz.passingScore;
       
-      // Convert shuffled answers to original indices
-      const originalAnswers: Record<string, number> = {};
-      gradingData.forEach(gd => {
-        if (gd.selectedAnswer >= 0) {
-          originalAnswers[gd.questionId] = gd.selectedAnswer;
-        }
-      });
+      setState("results");
       
-      await saveQuizResult(
-        {
-          quiz_id: quiz.id,
-          course_code: courseCode,
-          score: correctCount, // Store raw correct count, not percentage
-          total_questions: shuffledQuestions.length,
-          passed,
-          time_taken_seconds: timeTaken,
-        },
-        originalQuestionsForSave as QuizQuestion[],
-        originalAnswers
-      );
+      // Set motivational message based on pass/fail
+      const messageType = verifiedPassed ? "success" : "failure";
+      setMotivationalMessage(getRandomMotivationalMessage(messageType));
       
-      setIsSaving(false);
+      // Save to database if user is logged in
+      if (user && startTime) {
+        setIsSaving(true);
+        const timeTaken = Math.round((Date.now() - startTime) / 1000);
+        
+        // Convert verified results to the format expected by saveQuizResult
+        const originalQuestionsForSave = shuffledQuestions.map(sq => {
+          const verifiedResult = verified.find(v => v.questionId === sq.id);
+          return {
+            id: sq.id,
+            question: sq.question,
+            options: sq.originalOptions,
+            correctAnswer: verifiedResult?.correctAnswer ?? -1,
+            explanation: verifiedResult?.explanation,
+          };
+        });
+        
+        const originalAnswers: Record<string, number> = {};
+        verified.forEach(v => {
+          if (v.selectedAnswer >= 0) {
+            originalAnswers[v.questionId] = v.selectedAnswer;
+          }
+        });
+        
+        await saveQuizResult(
+          {
+            quiz_id: quiz.id,
+            course_code: courseCode,
+            score: verifiedCorrectCount,
+            total_questions: shuffledQuestions.length,
+            passed: verifiedPassed,
+            time_taken_seconds: timeTaken,
+          },
+          originalQuestionsForSave as QuizQuestion[],
+          originalAnswers
+        );
+        
+        setIsSaving(false);
+      }
+      
+      onComplete?.(verifiedScorePercent, verifiedPassed);
+    } finally {
+      setIsVerifying(false);
     }
-    
-    onComplete?.(scorePercent, passed);
-  }, [user, startTime, quiz.id, courseCode, correctCount, shuffledQuestions, passed, saveQuizResult, onComplete, answers, scorePercent]);
+  }, [user, startTime, quiz.id, courseCode, shuffledQuestions, quiz.passingScore, saveQuizResult, onComplete, answers, verifyAnswersServerSide]);
 
   // Handle question timeout (per-question mode)
   const handleQuestionTimeout = useCallback(() => {
@@ -212,54 +309,64 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
 
   // Handle global time expired
   const handleTimeExpired = useCallback(async () => {
-    setState("expired");
+    setIsVerifying(true);
     
-    // Save with current answers
-    if (user && startTime) {
-      setIsSaving(true);
-      const timeTaken = timeLimitSeconds;
-      const gradingData = getGradingData(answers, shuffledQuestions);
-      // Calculate raw correct count for database storage
-      const finalCorrectCount = calculateCorrectCount(answers, shuffledQuestions);
-      const finalScorePercent = shuffledQuestions.length > 0 
-        ? Math.round((finalCorrectCount / shuffledQuestions.length) * 100) 
+    try {
+      // Verify all answers server-side
+      const verified = await verifyAnswersServerSide(shuffledQuestions, answers);
+      setVerifiedResults(verified);
+      
+      const finalCorrectCount = verified.filter(r => r.isCorrect).length;
+      const finalScorePercent = verified.length > 0 
+        ? Math.round((finalCorrectCount / verified.length) * 100) 
         : 0;
       const didPass = finalScorePercent >= quiz.passingScore;
       
-      // Convert shuffled questions back to original for saving
-      const originalQuestionsForSave = shuffledQuestions.map(sq => ({
-        id: sq.id,
-        question: sq.question,
-        options: sq.originalOptions,
-        correctAnswer: sq.originalCorrectAnswer,
-        explanation: sq.explanation,
-      }));
+      setState("expired");
       
-      // Convert shuffled answers to original indices
-      const originalAnswers: Record<string, number> = {};
-      gradingData.forEach(gd => {
-        if (gd.selectedAnswer >= 0) {
-          originalAnswers[gd.questionId] = gd.selectedAnswer;
-        }
-      });
-      
-      await saveQuizResult(
-        {
-          quiz_id: quiz.id,
-          course_code: courseCode,
-          score: finalCorrectCount, // Store raw count, not percentage
-          total_questions: shuffledQuestions.length,
-          passed: didPass,
-          time_taken_seconds: timeTaken,
-        },
-        originalQuestionsForSave as QuizQuestion[],
-        originalAnswers
-      );
-      
-      setIsSaving(false);
-      onComplete?.(finalScorePercent, didPass);
+      // Save with current answers
+      if (user && startTime) {
+        setIsSaving(true);
+        const timeTaken = timeLimitSeconds;
+        
+        const originalQuestionsForSave = shuffledQuestions.map(sq => {
+          const verifiedResult = verified.find(v => v.questionId === sq.id);
+          return {
+            id: sq.id,
+            question: sq.question,
+            options: sq.originalOptions,
+            correctAnswer: verifiedResult?.correctAnswer ?? -1,
+            explanation: verifiedResult?.explanation,
+          };
+        });
+        
+        const originalAnswers: Record<string, number> = {};
+        verified.forEach(v => {
+          if (v.selectedAnswer >= 0) {
+            originalAnswers[v.questionId] = v.selectedAnswer;
+          }
+        });
+        
+        await saveQuizResult(
+          {
+            quiz_id: quiz.id,
+            course_code: courseCode,
+            score: finalCorrectCount,
+            total_questions: shuffledQuestions.length,
+            passed: didPass,
+            time_taken_seconds: timeTaken,
+          },
+          originalQuestionsForSave as QuizQuestion[],
+          originalAnswers
+        );
+        
+        setIsSaving(false);
+        onComplete?.(finalScorePercent, didPass);
+      }
+    } finally {
+      setIsVerifying(false);
     }
-  }, [user, startTime, timeLimitSeconds, answers, shuffledQuestions, quiz, courseCode, saveQuizResult, onComplete]);
+  }, [user, startTime, timeLimitSeconds, answers, shuffledQuestions, quiz.passingScore, quiz.id, courseCode, saveQuizResult, onComplete, verifyAnswersServerSide]);
 
   // Per-question countdown timer
   useEffect(() => {
@@ -350,6 +457,8 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
     setQuestionRemainingTime(0);
     setIsSaving(false);
     setShuffledQuestions([]);
+    setVerifiedResults([]);
+    setIsVerifying(false);
     setState("intro");
   }, []);
 
@@ -404,9 +513,22 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
     );
   }
 
+  // Verifying answers state
+  if (isVerifying) {
+    return (
+      <div className="border-2 border-border bg-card p-8 text-center">
+        <Loader2 className="w-12 h-12 text-primary mx-auto mb-4 animate-spin" />
+        <h3 className="heading-4 text-foreground mb-2">Verifying Your Answers...</h3>
+        <p className="text-muted-foreground mb-6">Please wait while we grade your quiz.</p>
+      </div>
+    );
+  }
+
   // Time Expired screen
   if (state === "expired") {
-    const expiredScore = calculateShuffledScore(answers, shuffledQuestions);
+    const expiredScore = verifiedResults.length > 0 
+      ? Math.round((verifiedResults.filter(r => r.isCorrect).length / verifiedResults.length) * 100)
+      : 0;
     const expiredPassed = expiredScore >= quiz.passingScore;
     
     return (
@@ -428,16 +550,16 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
             {expiredScore}%
           </div>
           <p className="text-muted-foreground mb-4">
-            {shuffledQuestions.filter(q => answers[q.id] === q.shuffledCorrectAnswer).length} of {shuffledQuestions.length} correct
+            {verifiedResults.filter(r => r.isCorrect).length} of {verifiedResults.length} correct
           </p>
           <p className="text-sm text-muted-foreground mb-6">
-            {answeredCount} of {shuffledQuestions.length} questions answered
+            {verifiedResults.filter(r => r.selectedAnswer >= 0).length} of {verifiedResults.length} questions answered
           </p>
 
-          {isSaving && (
+          {(isSaving || isVerifying) && (
             <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4">
               <Loader2 className="w-4 h-4 animate-spin" />
-              Saving your progress...
+              {isVerifying ? "Verifying answers..." : "Saving your progress..."}
             </div>
           )}
 
@@ -744,8 +866,15 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
         <div className="space-y-3">
           {currentQuestion?.shuffledOptions.map((option, index) => {
             const isSelected = selectedAnswer === index;
-            const isCorrect = index === currentQuestion.shuffledCorrectAnswer;
             const showResult = state === "review";
+            
+            // In review mode, get the correct answer from verified results
+            const verifiedResult = verifiedResults.find(r => r.questionId === currentQuestion.id);
+            // Map the server's correct answer (original index) back to shuffled index for display
+            const correctShuffledIndex = verifiedResult 
+              ? currentQuestion.optionMapping.indexOf(verifiedResult.correctAnswer)
+              : -1;
+            const isCorrect = showResult && index === correctShuffledIndex;
 
             return (
               <button
@@ -792,13 +921,18 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
         </div>
 
         {/* Explanation - only show in review mode */}
-        {state === "review" && currentQuestion?.explanation && (
+        {state === "review" && (() => {
+          const verifiedResult = verifiedResults.find(r => r.questionId === currentQuestion?.id);
+          return verifiedResult?.explanation;
+        })() && (
           <div className="mt-6 p-4 border border-accent/50 bg-accent/5 animate-fade-in">
             <div className="flex items-start gap-3">
               <CheckCircle2 className="w-5 h-5 text-accent shrink-0 mt-0.5" />
               <div>
                 <div className="text-xs font-bold uppercase tracking-wide text-accent mb-1">Explanation</div>
-                <p className="text-sm text-muted-foreground">{currentQuestion.explanation}</p>
+                <p className="text-sm text-muted-foreground">
+                  {verifiedResults.find(r => r.questionId === currentQuestion?.id)?.explanation}
+                </p>
               </div>
             </div>
           </div>
