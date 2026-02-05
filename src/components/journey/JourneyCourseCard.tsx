@@ -1,6 +1,6 @@
  import { Link } from "react-router-dom";
  import { motion } from "framer-motion";
- import { Lock, Play, CheckCircle2, Zap, BookOpen, GraduationCap } from "lucide-react";
+ import { Lock, Play, CheckCircle2, Zap, BookOpen, GraduationCap, Sparkles } from "lucide-react";
  import { cn } from "@/lib/utils";
  import { Progress } from "@/components/ui/progress";
  import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@
    };
    prerequisites: string[];
    index: number;
+   isRecommended?: boolean;
  }
  
  export function JourneyCourseCard({
@@ -36,6 +37,7 @@
    progress,
    prerequisites,
    index,
+   isRecommended,
  }: JourneyCourseCardProps) {
    const isLocked = status === "locked";
    const isComplete = status === "complete";
@@ -66,7 +68,15 @@
          {/* Header row */}
          <div className="flex items-start justify-between mb-2">
            <div>
-             <span className="text-xs font-mono text-muted-foreground">{code}</span>
+               <div className="flex items-center gap-2">
+                 <span className="text-xs font-mono text-muted-foreground">{code}</span>
+                 {isRecommended && status !== "complete" && (
+                   <span className="inline-flex items-center gap-1 text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">
+                     <Sparkles className="w-2.5 h-2.5" />
+                     For You
+                   </span>
+                 )}
+               </div>
              <h3 className="font-semibold text-foreground line-clamp-2 mt-0.5">{title}</h3>
            </div>
            <div className="flex items-center gap-1 bg-background/50 px-2 py-1 rounded-full">

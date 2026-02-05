@@ -648,8 +648,10 @@ export type Database = {
           is_demo: boolean
           location: string | null
           membership_tier: Database["public"]["Enums"]["membership_tier"]
+          onboarding_completed: boolean | null
           portfolio_url: string | null
           profile_accent_color: string | null
+          recommended_degree_path: string | null
           subscription_ends_at: string | null
           subscription_started_at: string | null
           subscription_status: string | null
@@ -687,8 +689,10 @@ export type Database = {
           is_demo?: boolean
           location?: string | null
           membership_tier?: Database["public"]["Enums"]["membership_tier"]
+          onboarding_completed?: boolean | null
           portfolio_url?: string | null
           profile_accent_color?: string | null
+          recommended_degree_path?: string | null
           subscription_ends_at?: string | null
           subscription_started_at?: string | null
           subscription_status?: string | null
@@ -726,8 +730,10 @@ export type Database = {
           is_demo?: boolean
           location?: string | null
           membership_tier?: Database["public"]["Enums"]["membership_tier"]
+          onboarding_completed?: boolean | null
           portfolio_url?: string | null
           profile_accent_color?: string | null
+          recommended_degree_path?: string | null
           subscription_ends_at?: string | null
           subscription_started_at?: string | null
           subscription_status?: string | null

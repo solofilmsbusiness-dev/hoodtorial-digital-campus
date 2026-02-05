@@ -1,4 +1,5 @@
  import { useMemo } from "react";
+ import { useAssessmentResults } from "@/hooks/useAssessmentResults";
  import { useUserProgress } from "@/hooks/useUserProgress";
  import { courses, departments } from "@/data/courses";
  import type { DegreePath } from "@/hooks/useSkillTree";
@@ -23,6 +24,7 @@
      percentage: number;
    };
    prerequisites: string[];
+   isRecommended?: boolean;
  }
  
  export interface JourneyMilestone {
@@ -106,7 +108,13 @@
  
  export function useJourneyData(path: DegreePath): JourneyData {
    const { progress, getTotalCredits } = useUserProgress();
+   const { latestResult } = useAssessmentResults();
    const config = pathConfigs[path];
+ 
+   // Get recommended courses from assessment
+   const recommendedCourses = useMemo(() => {
+     return new Set(latestResult?.recommended_courses || []);
+   }, [latestResult]);
  
    // Get completed course codes from progress
    const completedCourseCodes = useMemo(() => {
@@ -211,6 +219,7 @@
              percentage,
            },
            prerequisites,
+             isRecommended: recommendedCourses.has(code),
          };
        });
      };
@@ -305,7 +314,7 @@
      return {
        levels,
      };
-   }, [config, completedCourseCodes, inProgressCourseCodes, getTotalCredits, path, progress]);
+   }, [config, completedCourseCodes, inProgressCourseCodes, getTotalCredits, path, progress, recommendedCourses]);
  
    const totalCourses = pathConfigs[path].courseCodes.length;
    const completedCourses = journeyData.levels.reduce((sum, l) => sum + l.completedCount, 0);
