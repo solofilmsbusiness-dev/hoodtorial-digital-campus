@@ -21,6 +21,104 @@
  import { ProfileInfoCard } from "./ProfileInfoCard";
  import { ProfileSocialLinks } from "./ProfileSocialLinks";
 import { FeaturedProjectShowcase } from "./FeaturedProjectShowcase";
+  
+ // Extracted section components for dynamic rendering
+ const BioSection = ({ profile, delay }: { profile: PublicProfile; delay: number }) => (
+   <motion.div
+     initial={{ opacity: 0, x: -30 }}
+     animate={{ opacity: 1, x: 0 }}
+     transition={{ duration: 0.5, delay }}
+     className="relative px-4 md:px-6"
+   >
+     <div className={cn(
+       "relative p-6 rounded-lg",
+       "bg-charcoal/50 border-l-4 border-primary"
+     )}>
+       <span className="absolute -top-2 -left-1 text-4xl text-primary/30 font-serif">❝</span>
+       <p className="text-foreground leading-relaxed text-lg italic pl-4">
+         {profile.bio}
+       </p>
+       <span className="absolute -bottom-4 right-4 text-4xl text-primary/30 font-serif">❞</span>
+     </div>
+   </motion.div>
+ );
+ 
+ const FeaturedProjectSection = ({ profile, delay }: { profile: PublicProfile; delay: number }) => (
+   <motion.div
+     initial={{ opacity: 0, y: 20 }}
+     animate={{ opacity: 1, y: 0 }}
+     transition={{ duration: 0.5, delay }}
+     className="px-4 md:px-6"
+   >
+     <FeaturedProjectShowcase
+       title={profile.featured_project_title || ""}
+       url={profile.featured_project_url || ""}
+       thumbnail={profile.featured_project_thumbnail}
+     />
+   </motion.div>
+ );
+ 
+ interface InfoCardsData {
+   icon: React.ReactNode;
+   label: string;
+   content: string | string[];
+ }
+ 
+ const InfoCardsSection = ({ 
+   infoCards, 
+   accentColor,
+   delay 
+ }: { 
+   infoCards: InfoCardsData[];
+   accentColor: string | null;
+   delay: number;
+ }) => (
+   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-4 md:px-6">
+     {infoCards.map((card, index) => (
+       <ProfileInfoCard
+         key={card.label}
+         icon={card.icon}
+         label={card.label}
+         delay={delay + (index * 0.1)}
+         accentColor={accentColor || undefined}
+       >
+         {Array.isArray(card.content) ? (
+           <div className="flex flex-wrap gap-2">
+             {card.content.map((item, i) => (
+               <Badge 
+                 key={i} 
+                 variant="secondary" 
+                 className="bg-charcoal-light border border-border text-xs font-medium hover:border-primary/50 transition-colors"
+               >
+                 {item}
+               </Badge>
+             ))}
+           </div>
+         ) : (
+           <p>{card.content}</p>
+         )}
+       </ProfileInfoCard>
+     ))}
+   </div>
+ );
+ 
+ const SocialLinksSection = ({ profile, delay }: { profile: PublicProfile; delay: number }) => (
+   <motion.div
+     initial={{ opacity: 0, y: 20 }}
+     animate={{ opacity: 1, y: 0 }}
+     transition={{ duration: 0.5, delay }}
+     className="px-4 md:px-6"
+   >
+     <ProfileSocialLinks
+       portfolioUrl={profile.portfolio_url}
+       instagramUrl={profile.instagram_url}
+       youtubeUrl={profile.youtube_url}
+       vimeoUrl={profile.vimeo_url}
+       twitterUrl={profile.twitter_url}
+       imdbUrl={profile.imdb_url}
+     />
+   </motion.div>
+ );
  
  interface PublicProfileCardProps {
    profile: PublicProfile;
@@ -74,6 +172,10 @@ import { FeaturedProjectShowcase } from "./FeaturedProjectShowcase";
    const roleBadge = roleBadges[role];
    const isSpecialRole = role === "admin" || role === "professor";
  
+   // Get section order from profile or use default
+   const cardSectionOrder = profile.card_section_order ?? 
+     ["bio", "featured_project", "info_cards", "social_links"];
+ 
    // Collect info cards data
    const infoCards = [
      profile.camera_gear && {
@@ -97,6 +199,33 @@ import { FeaturedProjectShowcase } from "./FeaturedProjectShowcase";
        content: profile.favorite_films
      }
    ].filter(Boolean);
+ 
+   // Render a single card section by ID
+   const renderCardSection = (sectionId: string, index: number) => {
+     const delay = 0.4 + index * 0.05;
+     
+     switch (sectionId) {
+       case "bio":
+         return profile.bio ? <BioSection key={sectionId} profile={profile} delay={delay} /> : null;
+       case "featured_project":
+         return (profile.featured_project_url || profile.featured_project_thumbnail) ? (
+           <FeaturedProjectSection key={sectionId} profile={profile} delay={delay} />
+         ) : null;
+       case "info_cards":
+         return infoCards.length > 0 ? (
+           <InfoCardsSection 
+             key={sectionId} 
+             infoCards={infoCards as InfoCardsData[]} 
+             accentColor={profile.profile_accent_color} 
+             delay={delay} 
+           />
+         ) : null;
+       case "social_links":
+         return <SocialLinksSection key={sectionId} profile={profile} delay={delay} />;
+       default:
+         return null;
+     }
+   };
  
    return (
      <div className="space-y-8">
@@ -214,86 +343,8 @@ import { FeaturedProjectShowcase } from "./FeaturedProjectShowcase";
          </div>
        </div>
  
-       {/* Bio Section - Quote style */}
-       {profile.bio && (
-         <motion.div
-           initial={{ opacity: 0, x: -30 }}
-           animate={{ opacity: 1, x: 0 }}
-           transition={{ duration: 0.5, delay: 0.4 }}
-           className="relative px-4 md:px-6"
-         >
-           <div className={cn(
-             "relative p-6 rounded-lg",
-             "bg-charcoal/50 border-l-4 border-primary"
-           )}>
-             {/* Decorative quote mark */}
-             <span className="absolute -top-2 -left-1 text-4xl text-primary/30 font-serif">❝</span>
-             <p className="text-foreground leading-relaxed text-lg italic pl-4">
-               {profile.bio}
-             </p>
-             <span className="absolute -bottom-4 right-4 text-4xl text-primary/30 font-serif">❞</span>
-           </div>
-         </motion.div>
-       )}
- 
-    {/* Featured Project - Above Info Cards */}
-    {(profile.featured_project_url || profile.featured_project_thumbnail) && (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.45 }}
-        className="px-4 md:px-6"
-      >
-        <FeaturedProjectShowcase
-          title={profile.featured_project_title || ""}
-          url={profile.featured_project_url || ""}
-          thumbnail={profile.featured_project_thumbnail}
-        />
-      </motion.div>
-    )}
-
-       {/* Creative Info Cards - 3D Tilt Grid */}
-       {infoCards.length > 0 && (
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-4 md:px-6">
-           {infoCards.map((card, index) => (
-             <ProfileInfoCard
-               key={card.label}
-               icon={card.icon}
-               label={card.label}
-               delay={0.4 + (index * 0.1)}
-               accentColor={profile.profile_accent_color || undefined}
-             >
-               {Array.isArray(card.content) ? (
-                 <div className="flex flex-wrap gap-2">
-                   {card.content.map((item, i) => (
-                     <Badge 
-                       key={i} 
-                       variant="secondary" 
-                       className="bg-charcoal-light border border-border text-xs font-medium hover:border-primary/50 transition-colors"
-                     >
-                       {item}
-                     </Badge>
-                   ))}
-                 </div>
-               ) : (
-                 <p>{card.content}</p>
-               )}
-             </ProfileInfoCard>
-           ))}
-         </div>
-       )}
- 
-       {/* Social Links - Circular icons with glow */}
-       <div className="px-4 md:px-6">
-         <ProfileSocialLinks
-           portfolioUrl={profile.portfolio_url}
-           instagramUrl={profile.instagram_url}
-           youtubeUrl={profile.youtube_url}
-           vimeoUrl={profile.vimeo_url}
-           twitterUrl={profile.twitter_url}
-           imdbUrl={profile.imdb_url}
-         />
-       </div>
+       {/* Dynamic: Reorderable sections within card */}
+       {cardSectionOrder.map((sectionId, index) => renderCardSection(sectionId, index))}
      </div>
    );
  }
