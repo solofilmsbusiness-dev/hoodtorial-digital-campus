@@ -1,37 +1,28 @@
 
 
-# Fix: Login Failure and Waitlist Approval Password Overwrite
+# Fix: Site Crashing on Mobile Phones
 
-## Problem Summary
+## Problem
 
-There are two related issues:
-
-1. **Login not working for bangoutfilms@gmail.com**: The `approve-waitlist` Edge Function overwrote this user's existing password with a random temporary password when it was approved. The user is trying to log in with their original password ("Killab513"), which no longer works.
-
-2. **Site "crashing"**: The site loads correctly -- the login page renders fine. The perceived crash is the inability to get past the login screen due to the password mismatch.
+When users visit hoodtorialuniversity.com on their phones, the site loads briefly then crashes. The site works fine on desktop.
 
 ## Root Cause
 
-In the recent fix to `approve-waitlist`, when a user already exists in the auth system, the function calls `updateUserById` and sets a **new random temporary password**, destroying the user's original password. This is wrong for users who already registered themselves -- their existing password should be preserved.
+The login page loads a **full-resolution background video** from the server. On mobile phones with limited memory and slower cellular connections, this large video causes the browser tab to run out of memory and crash. Mobile Safari is especially aggressive about killing tabs that use too much memory for video playback.
 
 ## Solution
 
-### Step 1: Reset the user's password (immediate fix)
+### 1. Disable background video on mobile devices
 
-Use the admin API to update the password for `bangoutfilms@gmail.com` back to `Killab513` so the user can log in immediately.
+On phones, replace the video with a **static gradient or image background** instead. This dramatically reduces memory usage and prevents the crash. The video will still play on desktop/tablet where there's enough memory.
 
-### Step 2: Fix the approve-waitlist function (prevent future issues)
+### 2. Add lazy loading for the video
 
-Update the Edge Function so that when an existing user is found, it does NOT overwrite their password. It should only:
-- Confirm their email (set `email_confirm: true`)
-- Update metadata if needed
-- Skip password replacement entirely
+Even on desktop, defer video loading until after the page content has rendered, so users see the login form immediately.
 
-The temp password and welcome email with credentials should only be sent for **newly created** users.
+### 3. Add a poster frame fallback
 
-### Step 3: Add a "Forgot Password" link on the login page
-
-The Auth page currently has no visible password reset option. Adding a "Forgot Password?" link will let users self-service password resets in the future, preventing this class of issue from requiring admin intervention.
+Set a `poster` attribute on the video element so a static image shows while the video loads (for tablets and desktops).
 
 ---
 
@@ -39,36 +30,39 @@ The Auth page currently has no visible password reset option. Adding a "Forgot P
 
 | File | Change |
 |------|--------|
-| `supabase/functions/approve-waitlist/index.ts` | Stop overwriting passwords for existing users |
-| `src/pages/Auth.tsx` | Add a "Forgot Password?" link/flow to the sign-in form |
-
-## Database Change
-
-- Reset password for `bangoutfilms@gmail.com` to the user's expected password via admin API
-
----
+| `src/pages/Auth.tsx` | Conditionally hide background video on mobile; add poster fallback; lazy-load video |
+| `src/hooks/use-mobile.tsx` | Already exists, will be reused for mobile detection |
 
 ## Technical Details
 
-**approve-waitlist change** (existing user path):
+**Auth.tsx changes:**
 
-Before:
-```typescript
-await supabaseAdmin.auth.admin.updateUserById(existingUser.id, {
-  password: tempPassword,  // <-- destroys existing password
-  email_confirm: true,
-  user_metadata: { display_name: name || username }
-});
+```tsx
+// Import mobile hook
+import { useIsMobile } from "@/hooks/use-mobile";
+
+// Inside the component
+const isMobile = useIsMobile();
+
+// Replace the video element with conditional rendering:
+{!isMobile && (
+  <video
+    autoPlay
+    loop
+    muted
+    playsInline
+    className="absolute inset-0 w-full h-full object-cover"
+    poster="/placeholder.svg"
+    key={videoUrl}
+  >
+    <source src={videoUrl} type="video/mp4" />
+  </video>
+)}
+
+{/* Mobile-friendly animated gradient background */}
+{isMobile && (
+  <div className="absolute inset-0 bg-gradient-to-br from-charcoal-dark via-charcoal to-charcoal-dark" />
+)}
 ```
 
-After:
-```typescript
-await supabaseAdmin.auth.admin.updateUserById(existingUser.id, {
-  email_confirm: true,  // only confirm email, don't touch password
-  user_metadata: { display_name: name || username }
-});
-// Skip sending temp password email for existing users
-```
-
-**Auth.tsx change**: Add a "Forgot Password?" button below the password field that triggers `supabase.auth.resetPasswordForEmail()` and shows a confirmation toast.
-
+This keeps the cinematic video experience on desktop while preventing the crash on phones. The dark gradient background on mobile maintains the brand aesthetic without the memory cost.
