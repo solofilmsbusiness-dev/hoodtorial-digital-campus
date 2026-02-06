@@ -1,137 +1,93 @@
 
-# Fix Plan: Path Selection & Edit Profile Issues
+# Fix: Video Preview Not Updating in Site Customization
 
-## Problems Identified
+## Problem Identified
 
-### Problem 1: Wrong Navigation Route After Path Selection
-The Assessment page navigates to `/journey/{path}` after selecting a degree path, but the actual route is `/skill-tree/:path`. This causes a 404 page.
+The video preview in the Admin Settings > Site Customization section is not properly updating when a new video is uploaded. The user sees an "old image" instead of the newly uploaded video.
 
-**File:** `src/pages/Assessment.tsx` (line 308)
-```typescript
-// Current (broken)
-navigate(`/journey/${path}`);
+## Root Cause
 
-// Should be
-navigate(`/skill-tree/${path}`);
-```
+The `<video>` element in `SiteCustomization.tsx` is missing a `key` prop. Without this prop, React reuses the same video element when the `src` changes, which can cause the browser to show cached content or fail to reload the video.
 
-### Problem 2: Stale ProfileContext Causes Redirect Loop
-After updating the profile (setting `degree_path` and `onboarding_completed`), the navigation happens immediately. When the new page loads, the `AssessmentRequiredRoute` guard checks the ProfileContext, which may still have stale data. This causes users to be redirected back to `/assessment` even after completing the flow.
-
-**Root Cause:** The `updateProfile` function in ProfileContext updates local state, but when navigating to a new page, the ProfileContext re-initializes and fetches fresh data. However, there's a race condition where the guard checks the (loading) state before the fetch completes.
-
-## Solution
-
-### Fix 1: Correct Navigation Route
-Update the Assessment page to navigate to the correct route.
-
-**File:** `src/pages/Assessment.tsx`
-- Change `navigate(\`/journey/${path}\`)` to `navigate(\`/skill-tree/${path}\`)`
-
-### Fix 2: Add Route Alias for /journey
-To handle any existing bookmarks or users mid-flow, add a redirect route.
-
-**File:** `src/App.tsx`
-- Add `<Route path="/journey/:path" element={<Navigate to="/skill-tree/:path" replace />} />` as a redirect
-
-### Fix 3: Force Profile Refetch After Update (Optional Enhancement)
-After calling `updateProfile`, explicitly call `refetch()` before navigating to ensure the context is synced.
-
-**File:** `src/pages/Assessment.tsx`
-```typescript
-const handleSelectDegreePath = async (path: DegreePath, department?: string) => {
-  // ... existing code ...
-  const { error } = await updateProfile({
-    degree_path: path,
-    certificate_department: ...,
-    recommended_degree_path: path,
-    onboarding_completed: true,
-  });
-  
-  if (!error) {
-    // Refetch to ensure context is synced before navigation
-    await refetch();
-    navigate(`/skill-tree/${path}`);
-  }
-};
-```
-
-### Fix 4: Handle Skip Scenario
-The `handleSkipDegreeSelection` function also needs the same treatment.
-
----
-
-## Files to Modify
-
-| File | Change |
-|------|--------|
-| `src/pages/Assessment.tsx` | Fix navigation route from `/journey/` to `/skill-tree/`, add refetch before navigate |
-| `src/App.tsx` | Add redirect route `/journey/:path` → `/skill-tree/:path` |
-
----
-
-## Technical Details
-
-### Change 1: `src/pages/Assessment.tsx`
-
-```typescript
-// Around line 293-314
-const handleSelectDegreePath = async (path: DegreePath, department?: string) => {
-  setSavingDegreePath(true);
-  
-  try {
-    const primaryStrength = finalResults?.roadmap?.primaryStrength || interests[0];
-    
-    const { error } = await updateProfile({
-      degree_path: path,
-      certificate_department: path === "certificate" ? (department || primaryStrength) : null,
-      recommended_degree_path: path,
-      onboarding_completed: true,
-    });
-    
-    if (!error) {
-      // Navigate to correct route
-      navigate(`/skill-tree/${path}`);
-    }
-  } catch (error) {
-    console.error("Failed to save degree path:", error);
-  } finally {
-    setSavingDegreePath(false);
-  }
-};
-```
-
-### Change 2: `src/App.tsx`
-
-Add a redirect route in the Routes section:
-
+**Current Code (line 374-381):**
 ```tsx
-<Route 
-  path="/journey/:path" 
-  element={<Navigate to="/skill-tree/:path" replace />} 
+<video
+  src={settings.login_video_url}
+  className="w-full h-full object-cover"
+  muted
+  loop
+  autoPlay
+  playsInline
 />
 ```
 
-Wait - this won't work because React Router doesn't interpolate params in Navigate `to`. We need a component:
-
+**Compare to Auth.tsx (which works correctly):**
 ```tsx
-// Add this redirect component
-function JourneyRedirect() {
-  const { path } = useParams();
-  return <Navigate to={`/skill-tree/${path}`} replace />;
-}
+<video
+  autoPlay
+  loop
+  muted
+  playsInline
+  className="absolute inset-0 w-full h-full object-cover"
+  key={videoUrl}  // Forces re-render when URL changes
+>
+  <source src={videoUrl} type="video/mp4" />
+</video>
+```
 
-// Then in routes:
-<Route path="/journey/:path" element={<JourneyRedirect />} />
+## Solution
+
+Add a `key` prop to the video element in SiteCustomization.tsx to force React to create a new video element when the URL changes.
+
+---
+
+## Technical Changes
+
+### File: `src/components/admin/SiteCustomization.tsx`
+
+**Change:** Add `key={settings.login_video_url}` to the video element
+
+**Before:**
+```tsx
+<video
+  src={settings.login_video_url}
+  className="w-full h-full object-cover"
+  muted
+  loop
+  autoPlay
+  playsInline
+/>
+```
+
+**After:**
+```tsx
+<video
+  key={settings.login_video_url}
+  src={settings.login_video_url}
+  className="w-full h-full object-cover"
+  muted
+  loop
+  autoPlay
+  playsInline
+/>
 ```
 
 ---
 
-## Summary
+## Why This Fixes the Issue
 
-This fix addresses:
-1. Users unable to choose degree paths (wrong route navigation)
-2. Users stuck in redirect loops after path selection (navigation to 404)
-3. Edit profile not working (users redirected back to assessment due to stale context check)
+1. **React's Reconciliation**: When a `key` prop changes, React treats it as a completely new element
+2. **Fresh Video Load**: A new `<video>` element is created with the new source URL
+3. **No Cache Issues**: The browser loads the video fresh from the new URL
+4. **Consistent Behavior**: This matches how Auth.tsx handles dynamic video URLs
 
-The core fix is changing the navigation route from `/journey/` to `/skill-tree/`. The redirect component ensures backward compatibility for any users who may have bookmarked or be mid-flow with the old route.
+---
+
+## Testing Steps
+
+After the fix:
+1. Go to Admin Settings > Site Customization
+2. Upload a new video
+3. Verify the preview immediately shows the new video (not the old one)
+4. Click "Preview Login Page" to confirm the video plays on the actual auth page
+
