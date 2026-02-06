@@ -1,82 +1,101 @@
 
 
-# Make Skill Tree Levels and Progression Flow Logically
+# Auto-Enroll Courses When a User Picks a Degree Path
 
-## Problem
+## Overview
 
-The Learning Journey uses generic level names ("Foundations", "Intermediate", "Advanced") and rank titles ("Newcomer", "Apprentice", etc.) that don't match the academic structure of a film school. The naming should reflect traditional academic years and make sense for each degree path.
+When a user selects a degree path (on the Degrees page), the first 3 courses in that path will be automatically enrolled as active courses. When those are completed, the next batch of courses auto-enrolls. This keeps the Student Center populated and the experience seamless.
+
+## How It Works
+
+```text
+User picks package (Checkout)
+        |
+        v
+User selects degree path (Degrees page)
+        |
+        v
+System auto-enrolls first 3 courses from path
+        |
+        v
+Courses appear in Student Center as "Active"
+        |
+        v
+User completes a course
+        |
+        v
+System checks for open slots, auto-enrolls next course in path
+```
 
 ## Changes
 
-### 1. Academic-Year Level Names Per Degree Path
+### 1. Auto-Enroll on Degree Path Selection
 
-Update level naming in `src/hooks/useJourneyData.ts` to use contextually appropriate names:
+**File: `src/hooks/useDegreeSelection.ts`**
 
-| Degree Path | Level 100 | Level 200 | Level 300 |
-|-------------|-----------|-----------|-----------|
-| **Associate** | Freshman | Sophomore | -- (no 300-level courses) |
-| **Bachelor** | Freshman | Sophomore | Senior |
-| **Certificate** | Core Studies | -- | -- (only 100/200 courses) |
+After successfully saving the degree path to the profile, automatically enroll the user in the first 3 courses from that path's course list. This uses the existing `pathConfigs` course code lists (from `useJourneyData.ts`) and inserts enrollment records directly.
 
-### 2. Academic Rank Titles
+- Import the path-to-course-code mapping
+- After the profile update succeeds, query existing enrollments to avoid duplicates
+- Insert up to 3 new "active" enrollments for the first courses in the path that aren't already enrolled
+- Show a toast like "Auto-enrolled in 3 courses!"
 
-Update the `getRank()` function in `useJourneyData.ts` to use film-school-appropriate academic ranks:
+### 2. Auto-Enroll Next Courses on Course Completion
 
-| Progress | Current | New |
-|----------|---------|-----|
-| 0% | NEWCOMER | FRESHMAN |
-| 10% | APPRENTICE | SOPHOMORE |
-| 20% | JUNIOR FILMMAKER | JUNIOR |
-| 40% | ASSOCIATE PRODUCER | SENIOR |
-| 60% | LEAD CREATIVE | HONORS STUDENT |
-| 80% | SENIOR DIRECTOR | DEAN'S LIST |
-| 100% | MASTER FILMMAKER | GRADUATE |
+**File: `src/hooks/useEnrollments.ts`**
 
-### 3. Header Level Name Sync
+In the `completeCourse` function, after marking a course as completed:
 
-Update the `levelNames` array in `src/components/journey/JourneyHeader.tsx` to dynamically derive level labels from the `pathName` prop rather than a hardcoded array. Pass the actual level names from the journey data so the header stays in sync.
+- Read the user's degree path and certificate department from their profile
+- Determine which courses are in the path's curriculum
+- Count current active enrollments
+- Find the next un-enrolled course in the path sequence
+- If there's an open slot (under the 3-course limit), auto-enroll the next course
+- Show a toast: "Next course auto-enrolled: [Course Title]"
 
-## Files to Modify
+### 3. Shared Path Config
 
-| File | Change |
-|------|--------|
-| `src/hooks/useJourneyData.ts` | Update level name configs per path and rank titles |
-| `src/components/journey/JourneyHeader.tsx` | Accept dynamic level name from journey data |
-| `src/components/journey/JourneyView.tsx` | Pass current level name to header |
+**File: `src/lib/degreePathCourses.ts`** (new file)
 
-## Technical Details
-
-**useJourneyData.ts** -- Replace the static `levelConfigs` block (line 228) with a path-aware mapping:
+Extract the path-to-course-codes mapping into a shared utility so both `useDegreeSelection` and `useEnrollments` can reference the same ordered course lists without circular imports:
 
 ```typescript
-const levelNamesByPath: Record<DegreePath, Record<number, string>> = {
-  associate: { 1: "Freshman", 2: "Sophomore" },
-  bachelor:  { 1: "Freshman", 2: "Sophomore", 3: "Senior" },
-  certificate: { 1: "Core Studies", 2: "Specialization" },
+export const DEGREE_PATH_COURSES = {
+  associate: ["HU-101", "HU-102", "HU-103", "HU-104", "HU-105", "HU-106"],
+  bachelor: [
+    "HU-101", "HU-102", "HU-103", "HU-104", "HU-105", "HU-106",
+    "HU-201", "HU-202", "HU-203", "HU-204",
+    "HU-301", "HU-302", "HU-303", "HU-304",
+  ],
+  certificate: ["HU-101", "HU-102", "HU-201"],
 };
 ```
 
-Use `levelNamesByPath[path][levelConfig.number]` when building each level object.
+For certificate paths with a department, also use the `DEPARTMENT_CONFIG` courses from `useDegreeProgress.ts`.
 
-Update `getRank()`:
+### 4. Update useJourneyData to Use Shared Config
 
-```typescript
-function getRank(percentage: number): string {
-  if (percentage >= 100) return "GRADUATE";
-  if (percentage >= 80) return "DEAN'S LIST";
-  if (percentage >= 60) return "HONORS STUDENT";
-  if (percentage >= 40) return "SENIOR";
-  if (percentage >= 20) return "JUNIOR";
-  if (percentage >= 10) return "SOPHOMORE";
-  return "FRESHMAN";
-}
-```
+**File: `src/hooks/useJourneyData.ts`**
 
-**JourneyView.tsx** -- Compute `currentLevelName` from `levels` and pass it to `JourneyHeader`:
+Replace the inline `pathConfigs` course code arrays with imports from the new shared file to keep everything in sync.
 
-```typescript
-const currentLevelName = levels.find(l => l.status !== "complete")?.name || "Graduate";
-```
+## Edge Cases Handled
 
-**JourneyHeader.tsx** -- Accept a `currentLevelName` prop and display it instead of looking up from a hardcoded array.
+| Scenario | Behavior |
+|----------|----------|
+| User already enrolled in some courses | Skip those, only enroll new ones |
+| User changes degree path | Auto-enroll first 3 of the new path (respecting slot limits) |
+| Certificate path | Uses department-specific course list |
+| Trial user (2-slot limit) | Only auto-enrolls up to 2 courses |
+| All courses in path already enrolled | No action taken |
+| Course completed but slots full | Waits until a slot opens (won't exceed limit) |
+
+## Files Summary
+
+| File | Action |
+|------|--------|
+| `src/lib/degreePathCourses.ts` | New -- shared course code mapping |
+| `src/hooks/useDegreeSelection.ts` | Add auto-enrollment after path selection |
+| `src/hooks/useEnrollments.ts` | Add auto-enroll-next on course completion |
+| `src/hooks/useJourneyData.ts` | Import shared config instead of inline |
 
