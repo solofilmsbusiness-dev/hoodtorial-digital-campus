@@ -8,14 +8,12 @@ const footerLinks = {
     { name: "Faculty", href: "/faculty" },
   ],
   resources: [
-    { name: "Student Center", href: "/student-center" },
+    { name: "Student Center", href: "/student" },
     { name: "Shop", href: "/shop" },
-    { name: "Contact", href: "/contact" },
+    { name: "Community", href: "/community" },
   ],
   legal: [
-    { name: "Privacy", href: "/privacy" },
-    { name: "Terms", href: "/terms" },
-    { name: "Academic Integrity", href: "/integrity" },
+    { name: "About", href: "/about" },
   ],
 };
 

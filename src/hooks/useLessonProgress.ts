@@ -92,15 +92,8 @@ export function useLessonProgress(course: Course | undefined) {
           const lesson = module.lessons[li];
           const lessonData = lessonMap.get(lesson.id);
 
-          // Video lessons need 90%+ watched OR marked complete
-          if (lesson.type === "video") {
-            const isWatched =
-              lessonData?.completed || (lessonData?.watchPercentage || 0) >= WATCH_THRESHOLD;
-            if (!isWatched) return false;
-          } else {
-            // Non-video lessons just need to be marked complete
-            if (!lessonData?.completed) return false;
-          }
+          // All lessons just need to be marked complete
+          if (!lessonData?.completed) return false;
         }
 
         // Check module quiz if exists (except for current module if we're checking a lesson)
@@ -200,11 +193,7 @@ export function useLessonProgress(course: Course | undefined) {
 
       module.lessons.forEach((lesson) => {
         const data = lessonMap.get(lesson.id);
-        if (lesson.type === "video") {
-          if (data?.completed || (data?.watchPercentage || 0) >= WATCH_THRESHOLD) {
-            completed++;
-          }
-        } else if (data?.completed) {
+        if (data?.completed) {
           completed++;
         }
       });
@@ -228,7 +217,7 @@ export function useLessonProgress(course: Course | undefined) {
       if (isTestModeEnabled) return true;
       const data = courseProgress.lessonMap.get(lessonId);
       if (!data) return false;
-      return data.completed || data.watchPercentage >= WATCH_THRESHOLD;
+      return data.completed;
     },
     [courseProgress, isTestModeEnabled]
   );

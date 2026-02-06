@@ -94,7 +94,7 @@ export function useVideoProgress({ courseCode, lessonId, onComplete }: UseVideoP
       }
 
       const watchPercentage = Math.round((watchedSeconds / durationSeconds) * 100);
-      const shouldComplete = forceComplete || watchPercentage >= WATCH_THRESHOLD;
+      const shouldComplete = forceComplete; // No auto-complete from watch percentage
 
       console.log("[VideoProgress] Saving:", { 
         watchedSeconds: Math.round(watchedSeconds), 
@@ -143,19 +143,18 @@ export function useVideoProgress({ courseCode, lessonId, onComplete }: UseVideoP
       if (durationSeconds <= 0) return;
 
       const watchPercentage = Math.round((watchedSeconds / durationSeconds) * 100);
-      const shouldComplete = watchPercentage >= WATCH_THRESHOLD;
 
       setState((prev) => ({
         ...prev,
         watchedSeconds,
         durationSeconds,
         watchPercentage,
-        isCompleted: prev.isCompleted || shouldComplete,
+        isCompleted: prev.isCompleted,
       }));
 
       // Debounce saves to every 5 seconds
       const now = Date.now();
-      if (now - lastSaveRef.current >= SAVE_INTERVAL || shouldComplete) {
+      if (now - lastSaveRef.current >= SAVE_INTERVAL) {
         lastSaveRef.current = now;
 
         // Clear any pending save

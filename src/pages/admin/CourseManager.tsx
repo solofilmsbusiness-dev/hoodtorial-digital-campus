@@ -66,10 +66,10 @@ export default function CourseManager() {
     },
   });
 
-  // Use static courses if no DB courses exist
-  const courses: Course[] = dbCourses && dbCourses.length > 0
-    ? dbCourses
-    : staticCourses.map((c) => ({
+  // Merge DB courses with static courses (show all)
+  const courses: Course[] = useMemo(() => {
+    if (!dbCourses || dbCourses.length === 0) {
+      return staticCourses.map((c) => ({
         id: c.code,
         code: c.code,
         title: c.title,
@@ -79,6 +79,28 @@ export default function CourseManager() {
         is_published: true,
         is_locked: false,
       }));
+    }
+
+    const merged: Course[] = [...dbCourses];
+    const dbCodes = new Set(dbCourses.map((c) => c.code));
+
+    staticCourses.forEach((c) => {
+      if (!dbCodes.has(c.code)) {
+        merged.push({
+          id: c.code,
+          code: c.code,
+          title: c.title,
+          department_id: c.departmentId,
+          credits: c.credits,
+          level: c.level,
+          is_published: true,
+          is_locked: false,
+        });
+      }
+    });
+
+    return merged;
+  }, [dbCourses]);
 
   // Get unique departments for filter
   const departments = useMemo(() => {
