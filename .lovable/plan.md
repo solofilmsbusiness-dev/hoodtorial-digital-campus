@@ -1,193 +1,57 @@
 
-# Complete Waitlist Approval Flow with Email & Auto-Account Creation
+# Fix: Waitlist Approval Authentication Error
 
-## Overview
+## Problem
 
-When users join the waitlist, they'll provide their desired username. When an admin approves them, an acceptance letter email is sent and the user's account is automatically created so they can log in immediately.
+The edge function is failing with "AuthSessionMissingError: Auth session missing!" because it's using `auth.getUser()` on a client created with a JWT token in the header, which doesn't work the same way as a browser session.
 
----
+## Root Cause
 
-## Current State
+The current code creates a Supabase client with the anon key and passes the Authorization header, then calls `auth.getUser()`. However, this approach doesn't properly extract the user from a JWT token in an edge function context.
 
-| Component | Status |
-|-----------|--------|
-| Waitlist table | Has: id, email, name, status, notes, created_at, updated_at |
-| Waitlist signup form | Collects: email, name (optional) |
-| Admin approval | Updates status only, no email sent |
-| Email infrastructure | **Not set up** (no RESEND_API_KEY) |
+## Solution
 
----
+Update the edge function to properly validate the JWT token by using the service role client with `auth.getUser(token)` method, which accepts the JWT token directly.
 
-## Required Changes
+### Change in `supabase/functions/approve-waitlist/index.ts`
 
-### 1. Database: Add Username Field to Waitlist
+**Current (broken):**
+```typescript
+const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+  global: { headers: { Authorization: authHeader } },
+});
 
-Add a `desired_username` column so admins have all info needed to create accounts:
-
-```sql
-ALTER TABLE public.waitlist 
-ADD COLUMN desired_username text;
-
-ALTER TABLE public.waitlist
-ADD COLUMN password_token text;
-
-ALTER TABLE public.waitlist
-ADD COLUMN approved_at timestamp with time zone;
+const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
 ```
 
-### 2. Waitlist Signup Form Update
+**Fixed:**
+```typescript
+// Extract the JWT token from the Authorization header
+const token = authHeader.replace("Bearer ", "");
 
-**File:** `src/pages/Auth.tsx`
-
-Add a required "Desired Username" field to the waitlist form:
-- Add state: `waitlistUsername`
-- Add input field with validation (required, 3+ chars, alphanumeric + underscores)
-- Update insert to include `desired_username`
-
-### 3. Email Infrastructure Setup
-
-**Secret Required:** `RESEND_API_KEY`
-
-You'll need to:
-1. Create a Resend account at https://resend.com
-2. Verify your email domain at https://resend.com/domains
-3. Generate an API key at https://resend.com/api-keys
-
-### 4. New Edge Function: `approve-waitlist`
-
-**File:** `supabase/functions/approve-waitlist/index.ts`
-
-This function will:
-1. Verify admin authentication
-2. Create the user account in Supabase Auth
-3. Create their profile with the approved username
-4. Send the branded acceptance email with login link
-5. Update waitlist status to "approved"
-
-```text
-┌──────────────────────┐
-│   Admin clicks       │
-│   "Approve" button   │
-└──────────┬───────────┘
-           │
-           ▼
-┌──────────────────────┐
-│  approve-waitlist    │
-│   edge function      │
-├──────────────────────┤
-│ 1. Create auth user  │
-│ 2. Create profile    │
-│ 3. Send acceptance   │
-│    email via Resend  │
-│ 4. Update waitlist   │
-└──────────┬───────────┘
-           │
-           ▼
-┌──────────────────────┐
-│  User receives       │
-│  acceptance letter   │
-│  with login link     │
-└──────────────────────┘
+// Use service role client to validate the token and get user
+const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
 ```
 
-### 5. Acceptance Letter Email Template
+### Complete Changes
 
-Branded "Hoodtorial University Acceptance Letter" email featuring:
-- Hoodtorial logo
-- Gold accents matching brand
-- Personalized greeting with their name
-- Their username
-- Temporary password (or magic link)
-- Direct login link to the platform
-- Urban "Hood" personality tone
-
-### 6. Update Admin WaitlistManager
-
-**File:** `src/pages/admin/WaitlistManager.tsx`
-
-- Display username column in table
-- Change approve button to call the new edge function
-- Show loading state during approval
-- Handle success/error feedback
-
-### 7. Update useWaitlist Hook
-
-**File:** `src/hooks/useWaitlist.ts`
-
-- Add `desired_username` to the interface
-- Update mutation to call edge function instead of direct update
-- Add approval-specific loading state
+1. Remove the separate `supabaseAuth` client (not needed)
+2. Extract the JWT token from the Authorization header
+3. Use `supabaseAdmin.auth.getUser(token)` to validate the user
+4. Use the service role client for the admin role check (already has bypass RLS)
 
 ---
 
-## Files to Create/Modify
+## Files to Modify
 
-| File | Action |
+| File | Change |
 |------|--------|
-| Database migration | Create - Add columns to waitlist |
-| `supabase/functions/approve-waitlist/index.ts` | Create - Handle approval + user creation + email |
-| `supabase/config.toml` | Modify - Add function config |
-| `src/pages/Auth.tsx` | Modify - Add username field to waitlist form |
-| `src/pages/admin/WaitlistManager.tsx` | Modify - Show username, use edge function |
-| `src/hooks/useWaitlist.ts` | Modify - Add username, approval mutation |
-
----
-
-## User Flow After Implementation
-
-### Waitlist Signup
-1. User visits login page (with signup disabled)
-2. Clicks "Join Waiting List"
-3. Enters: Name, Desired Username, Email
-4. Submits → "You're on the list!" confirmation
-
-### Admin Approval
-1. Admin goes to `/admin/waitlist`
-2. Sees pending entries with email, name, desired username
-3. Clicks approve button
-4. System automatically:
-   - Creates auth account
-   - Creates profile with display name & username
-   - Sends acceptance email
-   - Updates status to approved
-
-### User Login
-1. User receives acceptance email
-2. Clicks login link or uses provided credentials
-3. Signs in with their email + temp password
-4. Gets prompted to complete profile/change password (optional)
+| `supabase/functions/approve-waitlist/index.ts` | Fix JWT validation approach |
 
 ---
 
 ## Technical Details
 
-### Email Content Structure
+The `auth.getUser(token)` method accepts an optional JWT token parameter. When called without a parameter, it looks for an active session. When called with a token, it validates that specific JWT and returns the user data.
 
-```text
-Subject: 🎬 Welcome to Hoodtorial University - You're IN!
-
-Body:
-- Logo header
-- "ACCEPTANCE LETTER" title
-- "Congratulations, [Name]!"
-- "The wait is over. You've been accepted to Hoodtorial University."
-- Username: @[username]
-- Your temporary password: [password]
-- [LOGIN NOW] button
-- "Where Hustle Meets Hollywood" tagline
-- Footer with links
-```
-
-### Password Strategy
-
-Two options:
-1. **Temporary password** - Generate random password, include in email, prompt reset on first login
-2. **Magic link** - Send passwordless login link (cleaner UX)
-
-Recommendation: Temporary password with reset prompt for the "official letter" feel
-
-### Security Considerations
-- Edge function validates admin role before processing
-- Temporary passwords are cryptographically random
-- Email is sent before marking as approved (atomic operation)
-- RLS prevents unauthorized waitlist access
+This is the standard pattern for authenticating users in Supabase Edge Functions.
