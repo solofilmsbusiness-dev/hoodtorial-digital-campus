@@ -24,6 +24,10 @@ export interface AssessmentResult {
   experienceLevel: string;
   interests: string[];
   totalScore: number;
+  departmentScores: Record<string, number>;
+  recommendedCourses: string[];
+  timeTakenSeconds: number | null;
+  completedAt: string | null;
 }
 
 export interface StudentSummary {
@@ -242,7 +246,7 @@ export function useStudentDetails(userId: string | null) {
       // Fetch assessment results
       const { data: assessment, error: assessmentError } = await supabase
         .from("assessment_results")
-        .select("experience_level, interests, total_score")
+        .select("*")
         .eq("user_id", userId)
         .maybeSingle();
 
@@ -310,6 +314,10 @@ export function useStudentDetails(userId: string | null) {
               experienceLevel: assessment.experience_level,
               interests: assessment.interests,
               totalScore: assessment.total_score,
+              departmentScores: (assessment.department_scores as Record<string, number>) || {},
+              recommendedCourses: assessment.recommended_courses || [],
+              timeTakenSeconds: assessment.time_taken_seconds,
+              completedAt: assessment.completed_at,
             }
           : null,
         lessonsCompleted,

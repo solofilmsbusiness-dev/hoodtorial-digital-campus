@@ -3,10 +3,16 @@ import { AdminSidebar } from "./AdminSidebar";
 import { AdminBackground } from "./AdminBackground";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { LogOut, Menu } from "lucide-react";
+import { LogOut, Menu, ExternalLink, Home, BookOpen, Users, ShoppingBag, MessageSquare } from "lucide-react";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { CommandPalette } from "./CommandPalette";
 import { AdminNotifications } from "./AdminNotifications";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -98,6 +104,31 @@ export function AdminLayout({ children, title, description, pageKey }: AdminLayo
             <div className="flex-1" />
             
             <div className="flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="hidden sm:flex">
+                    <ExternalLink className="h-4 w-4 mr-1.5" />
+                    View Site
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => navigate("/")}>
+                    <Home className="h-4 w-4 mr-2" /> Home
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/academics")}>
+                    <BookOpen className="h-4 w-4 mr-2" /> Courses
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/community")}>
+                    <MessageSquare className="h-4 w-4 mr-2" /> Community
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/student")}>
+                    <Users className="h-4 w-4 mr-2" /> Student Center
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/shop")}>
+                    <ShoppingBag className="h-4 w-4 mr-2" /> Shop
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <CommandPalette />
               <AdminNotifications />
               <Separator orientation="vertical" className="h-6 hidden sm:block" />

@@ -10,6 +10,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -434,18 +435,53 @@ export function StudentDetailSheet({
                     Assessment Results
                   </h4>
                   {student.assessmentResult ? (
-                    <div className="p-3 rounded-lg bg-muted/50 space-y-2">
+                    <div className="p-3 rounded-lg bg-muted/50 space-y-3">
+                      {/* Experience & Score row */}
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">Experience Level</span>
                         <Badge variant="secondary">{student.assessmentResult.experienceLevel}</Badge>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Score</span>
+                        <span className="text-sm text-muted-foreground">Total Score</span>
                         <span className="font-medium">{student.assessmentResult.totalScore}/100</span>
                       </div>
+
+                      {/* Department Scores */}
+                      {Object.keys(student.assessmentResult.departmentScores).length > 0 && (
+                        <div className="space-y-2">
+                          <span className="text-sm font-medium">Department Scores</span>
+                          {Object.entries(student.assessmentResult.departmentScores)
+                            .sort(([, a], [, b]) => b - a)
+                            .map(([dept, score]) => (
+                              <div key={dept} className="space-y-1">
+                                <div className="flex items-center justify-between text-xs">
+                                  <span className="text-muted-foreground capitalize">{dept.replace(/-/g, " ")}</span>
+                                  <span className="font-medium">{score}%</span>
+                                </div>
+                                <Progress value={score} className="h-2" />
+                              </div>
+                            ))}
+                        </div>
+                      )}
+
+                      {/* Recommended Courses */}
+                      {student.assessmentResult.recommendedCourses.length > 0 && (
+                        <div>
+                          <span className="text-sm font-medium">Recommended Courses</span>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {student.assessmentResult.recommendedCourses.map((code) => (
+                              <Badge key={code} variant="secondary" className="text-xs">
+                                {code}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Interests */}
                       {student.assessmentResult.interests.length > 0 && (
                         <div>
-                          <span className="text-sm text-muted-foreground">Interests</span>
+                          <span className="text-sm font-medium">Interests</span>
                           <div className="flex flex-wrap gap-1 mt-1">
                             {student.assessmentResult.interests.map((interest) => (
                               <Badge key={interest} variant="outline" className="text-xs">
@@ -455,6 +491,21 @@ export function StudentDetailSheet({
                           </div>
                         </div>
                       )}
+
+                      {/* Time & Completion */}
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1 border-t border-border">
+                        {student.assessmentResult.timeTakenSeconds != null && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {Math.floor(student.assessmentResult.timeTakenSeconds / 60)}m {student.assessmentResult.timeTakenSeconds % 60}s
+                          </span>
+                        )}
+                        {student.assessmentResult.completedAt && (
+                          <span>
+                            Completed {format(new Date(student.assessmentResult.completedAt), "MMM d, yyyy")}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted/50">
