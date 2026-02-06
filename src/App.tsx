@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ChatWidget } from "@/components/chat";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ProfileProvider } from "@/contexts/ProfileContext";
@@ -58,6 +58,12 @@ function RootRedirect() {
   return <Navigate to={user ? "/student" : "/auth"} replace />;
 }
 
+// Redirect component for legacy /journey/:path routes
+function JourneyRedirect() {
+  const { path } = useParams();
+  return <Navigate to={`/skill-tree/${path}`} replace />;
+}
+
  // Wrapper component to access hooks inside providers
  function AppContent() {
    const { isTesterRole, isTestModeEnabled } = useTestMode();
@@ -71,10 +77,11 @@ function RootRedirect() {
        <BrowserRouter>
          <DemoModeBanner />
          <ChatWidget />
-         <Routes>
-           <Route path="/" element={<RootRedirect />} />
-           <Route path="/degrees" element={<Degrees />} />
-           <Route path="/skill-tree/:path" element={<SkillTree />} />
+          <Routes>
+            <Route path="/" element={<RootRedirect />} />
+            <Route path="/degrees" element={<Degrees />} />
+            <Route path="/skill-tree/:path" element={<SkillTree />} />
+            <Route path="/journey/:path" element={<JourneyRedirect />} />
            <Route path="/academics" element={<Academics />} />
            <Route path="/course/:code" element={
              <PaidRoute>
