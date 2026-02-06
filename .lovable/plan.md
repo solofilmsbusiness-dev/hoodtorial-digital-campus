@@ -1,57 +1,76 @@
 
-# Fix: Waitlist Approval Authentication Error
+# Admin Delete User Feature
 
-## Problem
+## Overview
+Add the ability for admins to permanently delete users from the platform. This is a destructive action that will remove the user from auth.users and cascade to all related data.
 
-The edge function is failing with "AuthSessionMissingError: Auth session missing!" because it's using `auth.getUser()` on a client created with a JWT token in the header, which doesn't work the same way as a browser session.
+## Implementation Approach
 
-## Root Cause
-
-The current code creates a Supabase client with the anon key and passes the Authorization header, then calls `auth.getUser()`. However, this approach doesn't properly extract the user from a JWT token in an edge function context.
-
-## Solution
-
-Update the edge function to properly validate the JWT token by using the service role client with `auth.getUser(token)` method, which accepts the JWT token directly.
-
-### Change in `supabase/functions/approve-waitlist/index.ts`
-
-**Current (broken):**
-```typescript
-const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
-  global: { headers: { Authorization: authHeader } },
-});
-
-const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
-```
-
-**Fixed:**
-```typescript
-// Extract the JWT token from the Authorization header
-const token = authHeader.replace("Bearer ", "");
-
-// Use service role client to validate the token and get user
-const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-```
-
-### Complete Changes
-
-1. Remove the separate `supabaseAuth` client (not needed)
-2. Extract the JWT token from the Authorization header
-3. Use `supabaseAdmin.auth.getUser(token)` to validate the user
-4. Use the service role client for the admin role check (already has bypass RLS)
+Since deleting a user from `auth.users` requires admin privileges that cannot be performed from the client-side Supabase SDK, we need to create a backend function that uses the service role key to call `auth.admin.deleteUser()`.
 
 ---
 
-## Files to Modify
+## Changes Required
 
-| File | Change |
+### 1. Create Delete User Edge Function
+
+Create a new backend function `supabase/functions/delete-user/index.ts` that:
+- Validates the caller has admin role (using the same JWT validation pattern as approve-waitlist)
+- Uses `supabaseAdmin.auth.admin.deleteUser(userId)` to delete the user
+- All related data will cascade automatically due to `ON DELETE CASCADE` foreign keys
+
+### 2. Add Delete User Hook
+
+Update `src/hooks/useAdminQuizManagement.ts` to add a `deleteUser` function that:
+- Calls the new edge function with the user ID
+- Passes the Authorization header for admin verification
+- Handles success/error responses
+- Invalidates relevant queries
+
+### 3. Update UserManager UI
+
+Modify `src/pages/admin/UserManager.tsx` to:
+- Add "Delete User" option to the dropdown menu (with Trash2 icon)
+- Prevent deleting yourself (current user check)
+- Add new confirmation dialog type for user deletion
+- Show destructive styling for the delete option
+
+### 4. Update StudentDetailSheet
+
+Modify `src/components/admin/StudentDetailSheet.tsx` to:
+- Add "Delete User" button in the actions section
+- Add new `deleteUser` confirmation dialog type
+- Show strong warning about permanent data loss
+
+---
+
+## UI/UX Details
+
+- **Dropdown Menu**: Add a red "Delete User" option with Trash2 icon at the bottom of the menu, separated by a divider
+- **Confirmation Dialog**: Show a strong warning that this action is irreversible and will permanently delete all user data including:
+  - Account and login credentials
+  - Profile information
+  - Course enrollments and progress
+  - Quiz results
+  - Community posts and comments
+  - Messages and friendships
+- **Self-deletion Prevention**: Hide the delete option if the user is the currently logged-in admin
+
+---
+
+## Files to Modify/Create
+
+| File | Action |
 |------|--------|
-| `supabase/functions/approve-waitlist/index.ts` | Fix JWT validation approach |
+| `supabase/functions/delete-user/index.ts` | Create new edge function |
+| `src/hooks/useAdminQuizManagement.ts` | Add `deleteUser` function |
+| `src/pages/admin/UserManager.tsx` | Add dropdown menu item and dialog |
+| `src/components/admin/StudentDetailSheet.tsx` | Add delete button and dialog handling |
 
 ---
 
-## Technical Details
+## Technical Notes
 
-The `auth.getUser(token)` method accepts an optional JWT token parameter. When called without a parameter, it looks for an active session. When called with a token, it validates that specific JWT and returns the user data.
-
-This is the standard pattern for authenticating users in Supabase Edge Functions.
+- The edge function uses the same authentication pattern as approve-waitlist (JWT claims validation)
+- Cascade deletes are already configured in the database schema for user-related tables
+- The edge function needs service role access since `auth.admin.deleteUser()` is an admin-only operation
