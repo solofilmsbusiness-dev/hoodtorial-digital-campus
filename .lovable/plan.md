@@ -1,75 +1,87 @@
 
-# Admin Quick Navigation + Student Assessment Details
 
-## 1. Quick "Back to Site" Links in Admin Header
+# Online Status Indicators in Admin User Manager
 
-Add a dropdown menu in the admin header bar (next to the command palette) with direct links to key student-facing pages:
+## Overview
 
-**File: `src/components/admin/AdminLayout.tsx`**
-- Add a dropdown button (e.g., "View Site" with an ExternalLink icon) in the header toolbar area
-- Links to: Home (/), Courses (/academics), Community (/community), Student Center (/student), Shop (/shop)
-- Opens in same tab so admin can quickly check the student experience
+Add a real-time online/offline indicator (green dot) next to each student's avatar in the admin User Manager table. This uses the same Supabase Presence channel (`online-users`) that the existing `LivePresenceIndicator` already uses.
 
-## 2. Expanded Assessment Data in Student Detail Sheet
+## How It Works
 
-Currently the admin can only see experience level, total score, and interests. This will be expanded to show the full assessment picture.
+The existing presence system tracks users with random keys (`user-${random}`). To identify *which* users are online, the presence `track()` call needs to include the user's ID. Then on the admin side, we subscribe to the same channel and read the presence state to build a set of online user IDs.
 
-### Data Changes
+## Changes
 
-**File: `src/hooks/useAdminStudents.ts`**
-- Expand the `assessment_results` query in `useStudentDetails` to fetch all columns: `department_scores`, `recommended_courses`, `time_taken_seconds`, `created_at`, `completed_at`
-- Update the `AssessmentResult` interface to include these new fields
-- Update the `StudentDetails` mapping to pass this data through
+### 1. `src/components/animations/LivePresenceIndicator.tsx`
+- Update the `track()` payload to include `user_id` from the auth context (alongside the existing `online_at` field)
+- This allows the admin to know *who* is online, not just a count
+- The presence key will use the actual user ID when authenticated, falling back to the random key for anonymous visitors
 
-### UI Changes
+### 2. New Hook: `src/hooks/useOnlineUsers.ts`
+- Subscribe to the `online-users` presence channel (read-only, no tracking)
+- On `sync` events, extract all `user_id` values from the presence state into a `Set<string>`
+- Returns `{ onlineUserIds: Set<string>, onlineCount: number }`
+- Cleans up the channel subscription on unmount
 
-**File: `src/components/admin/StudentDetailSheet.tsx`**
+### 3. `src/pages/admin/UserManager.tsx`
+- Import `useOnlineUsers` hook
+- Add a small green/gray dot indicator on each student's avatar showing online/offline status
+- Add an "Online" filter option to the existing filter controls (or a simple toggle)
+- Add an "Online" column header or integrate the dot into the existing Student column
+- Show online count in the header stats area (e.g., "12 students -- 3 online")
 
-Replace the minimal assessment section with a rich, expandable view showing:
-
-- **Department Scores**: A visual breakdown of scores per department (e.g., Cinematography: 75%, Directing: 45%) using small progress bars
-- **Recommended Courses**: List of course codes the assessment recommended
-- **Time Taken**: How long the student spent on the assessment
-- **Completion Date**: When they finished
-- **Experience Level + Interests**: Already shown, kept as-is
-
-All within the existing "Assessment Results" section, no new pages needed.
+### 4. `src/components/admin/StudentFilters.tsx`
+- Add an "Online Status" filter: All / Online / Offline
 
 ## Technical Details
 
-### Updated `AssessmentResult` interface (in `useAdminStudents.ts`):
+### Updated `track()` in LivePresenceIndicator:
 ```typescript
-export interface AssessmentResult {
-  experienceLevel: string;
-  interests: string[];
-  totalScore: number;
-  departmentScores: Record<string, number>;
-  recommendedCourses: string[];
-  timeTakenSeconds: number | null;
-  completedAt: string | null;
+// Before
+await channel.track({ online_at: new Date().toISOString() });
+
+// After  
+const { data: { user } } = await supabase.auth.getUser();
+await channel.track({
+  online_at: new Date().toISOString(),
+  user_id: user?.id || null,
+});
+```
+
+### `useOnlineUsers` hook:
+```typescript
+export function useOnlineUsers() {
+  const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const channel = supabase.channel("online-users");
+    channel.on("presence", { event: "sync" }, () => {
+      const state = channel.presenceState();
+      const ids = new Set<string>();
+      Object.values(state).forEach(presences => {
+        presences.forEach((p: any) => {
+          if (p.user_id) ids.add(p.user_id);
+        });
+      });
+      setOnlineUserIds(ids);
+    }).subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  return { onlineUserIds, onlineCount: onlineUserIds.size };
 }
 ```
 
-### Updated query (line ~245):
-Change from:
-```typescript
-.select("experience_level, interests, total_score")
-```
-To:
-```typescript
-.select("*")
-```
-
-### Assessment UI in StudentDetailSheet:
-- Department scores shown as labeled progress bars sorted highest to lowest
-- Recommended courses as a row of Badge components
-- Time taken formatted as "X min Y sec"
-- Assessment date formatted nicely
+### Avatar indicator in UserManager:
+A small absolute-positioned dot on the avatar (green pulse for online, nothing for offline), similar to common chat apps.
 
 ## Files Summary
 
 | File | Change |
 |------|--------|
-| `src/components/admin/AdminLayout.tsx` | Add "View Site" dropdown with links to student pages |
-| `src/hooks/useAdminStudents.ts` | Expand assessment query + update interface |
-| `src/components/admin/StudentDetailSheet.tsx` | Rich assessment details UI with department scores, recommendations, timing |
+| `src/components/animations/LivePresenceIndicator.tsx` | Include `user_id` in presence track payload |
+| `src/hooks/useOnlineUsers.ts` | New hook -- subscribes to presence, returns set of online user IDs |
+| `src/pages/admin/UserManager.tsx` | Show green/gray dot on avatars, show online count in header |
+| `src/components/admin/StudentFilters.tsx` | Add Online/Offline filter option |
+
