@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
 import { Lightbulb, Send } from "lucide-react";
 import { ImageUploader } from "./ImageUploader";
 import { MentionInput } from "./MentionInput";
@@ -75,31 +76,60 @@ export function CritiqueCommentForm({
     setMediaUrls([]);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey && content.trim()) {
+      e.preventDefault();
+      handleSubmit(e as any);
+    }
+  };
+
+  // Simple inline form for non-project posts
+  if (!isProjectPost) {
+    return (
+      <form onSubmit={handleSubmit} className="flex items-center gap-2 p-3 border border-border rounded-lg bg-card">
+        <Input
+          placeholder="Write a comment..."
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={isSubmitting}
+          className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+        />
+        <Button
+          type="submit"
+          size="icon"
+          variant="ghost"
+          disabled={isSubmitting || !content.trim()}
+          className="h-8 w-8 shrink-0 text-primary hover:text-primary"
+        >
+          <Send className="h-4 w-4" />
+        </Button>
+      </form>
+    );
+  }
+
+  // Full structured critique form for project posts
   return (
     <Card className="card-urban">
       <CardContent className="p-4">
-        {isProjectPost && (
-          <div className="flex items-center gap-2 p-3 mb-4 bg-primary/10 rounded-lg border border-primary/30">
-            <Lightbulb className="h-5 w-5 text-primary flex-shrink-0" />
-            <p className="text-sm text-primary">
-              <strong>Critique Prompt:</strong> Help your peer by providing structured, professional feedback.
-            </p>
-          </div>
-        )}
+        <div className="flex items-center gap-2 p-3 mb-4 bg-primary/10 rounded-lg border border-primary/30">
+          <Lightbulb className="h-5 w-5 text-primary flex-shrink-0" />
+          <p className="text-sm text-primary">
+            <strong>Critique Prompt:</strong> Help your peer by providing structured, professional feedback.
+          </p>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {isProjectPost && (
-            <div className="flex items-center justify-between pb-3 border-b border-border">
-              <Label htmlFor="structured" className="text-sm font-medium">
-                Use structured feedback format
-              </Label>
-              <Switch
-                id="structured"
-                checked={useStructuredFeedback}
-                onCheckedChange={setUseStructuredFeedback}
-              />
-            </div>
-          )}
+          <div className="flex items-center justify-between pb-3 border-b border-border">
+            <Label htmlFor="structured" className="text-sm font-medium">
+              Use structured feedback format
+            </Label>
+            <Switch
+              id="structured"
+              checked={useStructuredFeedback}
+              onCheckedChange={setUseStructuredFeedback}
+            />
+          </div>
 
           {useStructuredFeedback ? (
             <div className="space-y-4">

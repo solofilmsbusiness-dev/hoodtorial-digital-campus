@@ -318,7 +318,25 @@ export function useCommunityPosts(filters?: {
           .insert({ post_id: postId, user_id: user.id });
       }
     },
-    onSuccess: () => {
+    onMutate: async (postId: string) => {
+      await queryClient.cancelQueries({ queryKey: ['community-posts'] });
+      const previousPosts = queryClient.getQueryData(['community-posts', filters, showDemoData]);
+      queryClient.setQueryData(['community-posts', filters, showDemoData], (old: CommunityPost[] | undefined) => {
+        if (!old) return old;
+        return old.map(p => p.id === postId ? {
+          ...p,
+          user_has_liked: !p.user_has_liked,
+          likes_count: (p.likes_count || 0) + (p.user_has_liked ? -1 : 1),
+        } : p);
+      });
+      return { previousPosts };
+    },
+    onError: (_err, _postId, context) => {
+      if (context?.previousPosts) {
+        queryClient.setQueryData(['community-posts', filters, showDemoData], context.previousPosts);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['community-posts'] });
     },
   });

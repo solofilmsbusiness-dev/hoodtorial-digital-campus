@@ -9,9 +9,10 @@ interface FeedGridProps {
   onLike: (postId: string) => void;
   onSave?: (postId: string) => void;
   onClick: (post: CommunityPost) => void;
+  onInlineComment?: (postId: string, content: string) => void;
 }
 
-export function FeedGrid({ posts, variant, onLike, onSave, onClick }: FeedGridProps) {
+export function FeedGrid({ posts, variant, onLike, onSave, onClick, onInlineComment }: FeedGridProps) {
   if (variant === 'timeline') {
     return (
       <div className="space-y-4 max-w-2xl mx-auto">
@@ -27,6 +28,7 @@ export function FeedGrid({ posts, variant, onLike, onSave, onClick }: FeedGridPr
               onLike={() => onLike(post.id)}
               onSave={() => onSave?.(post.id)}
               onClick={() => onClick(post)}
+              onInlineComment={onInlineComment}
             />
           </motion.div>
         ))}

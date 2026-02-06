@@ -222,7 +222,30 @@ export function useCommunityComments(postId: string | null) {
           .insert({ comment_id: commentId, user_id: user.id });
       }
     },
-    onSuccess: () => {
+    onMutate: async (commentId: string) => {
+      await queryClient.cancelQueries({ queryKey: ['community-comments', postId] });
+      const previousComments = queryClient.getQueryData(['community-comments', postId]);
+      
+      const toggleInTree = (comments: CommunityComment[]): CommunityComment[] =>
+        comments.map(c => ({
+          ...c,
+          user_has_liked: c.id === commentId ? !c.user_has_liked : c.user_has_liked,
+          likes_count: c.id === commentId ? (c.likes_count || 0) + (c.user_has_liked ? -1 : 1) : (c.likes_count || 0),
+          replies: c.replies ? toggleInTree(c.replies) : [],
+        }));
+
+      queryClient.setQueryData(['community-comments', postId], (old: CommunityComment[] | undefined) => {
+        if (!old) return old;
+        return toggleInTree(old);
+      });
+      return { previousComments };
+    },
+    onError: (_err, _commentId, context) => {
+      if (context?.previousComments) {
+        queryClient.setQueryData(['community-comments', postId], context.previousComments);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['community-comments', postId] });
     },
   });
