@@ -132,7 +132,7 @@
            )}
            {isAvailable && (
              <Button asChild size="sm" className="w-full">
-               <Link to={`/courses/${code}`}>
+              <Link to={`/course/${code}`}>
                  <Play className="w-4 h-4 mr-2" />
                  Start Course
                </Link>
@@ -140,7 +140,7 @@
            )}
            {isInProgress && (
              <Button asChild size="sm" className="w-full">
-               <Link to={`/courses/${code}`}>
+              <Link to={`/course/${code}`}>
                  <BookOpen className="w-4 h-4 mr-2" />
                  Continue
                </Link>
@@ -148,7 +148,7 @@
            )}
            {isComplete && (
              <Button asChild variant="outline" size="sm" className="w-full border-primary text-primary">
-               <Link to={`/courses/${code}`}>
+               <Link to={`/course/${code}`}>
                  <CheckCircle2 className="w-4 h-4 mr-2" />
                  Review
                </Link>
