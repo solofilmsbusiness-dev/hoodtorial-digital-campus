@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { AdminLayout } from "@/components/admin";
-import { StudentFilters, type SubscriptionFilter, type TierFilter, type RoleFilter, type SortOption } from "@/components/admin/StudentFilters";
+import { StudentFilters, type SubscriptionFilter, type TierFilter, type RoleFilter, type SortOption, type OnlineFilter } from "@/components/admin/StudentFilters";
+import { useOnlineUsers } from "@/hooks/useOnlineUsers";
 import { StudentDetailSheet } from "@/components/admin/StudentDetailSheet";
 import { useAdminStudents, type StudentSummary } from "@/hooks/useAdminStudents";
 import { useManageRoles } from "@/hooks/useManageRoles";
@@ -50,6 +51,7 @@ import {
   FlaskConical,
   Trash2,
   Loader2,
+  Wifi,
 } from "lucide-react";
 import { useAdminQuizManagement } from "@/hooks/useAdminQuizManagement";
 import { toast } from "sonner";
@@ -67,6 +69,7 @@ export default function UserManager() {
   const { data: students, isLoading } = useAdminStudents();
   const { addRole, removeRole } = useManageRoles();
   const { deleteUser, isDeleting } = useAdminQuizManagement();
+  const { onlineUserIds, onlineCount } = useOnlineUsers();
 
   // Filters state
   const [searchQuery, setSearchQuery] = useState("");
@@ -74,6 +77,7 @@ export default function UserManager() {
   const [tierFilter, setTierFilter] = useState<TierFilter>("all");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [sortOption, setSortOption] = useState<SortOption>("newest");
+  const [onlineFilter, setOnlineFilter] = useState<OnlineFilter>("all");
 
   // Sheet state
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
@@ -125,6 +129,13 @@ export default function UserManager() {
       result = result.filter((s) => s.roles.includes(roleFilter));
     }
 
+    // Online filter
+    if (onlineFilter === "online") {
+      result = result.filter((s) => onlineUserIds.has(s.id));
+    } else if (onlineFilter === "offline") {
+      result = result.filter((s) => !onlineUserIds.has(s.id));
+    }
+
     // Sort
     switch (sortOption) {
       case "oldest":
@@ -148,7 +159,7 @@ export default function UserManager() {
     }
 
     return result;
-  }, [students, searchQuery, subscriptionFilter, tierFilter, roleFilter, sortOption]);
+  }, [students, searchQuery, subscriptionFilter, tierFilter, roleFilter, onlineFilter, onlineUserIds, sortOption]);
 
   const handleViewDetails = (userId: string) => {
     setSelectedStudentId(userId);
@@ -266,9 +277,15 @@ export default function UserManager() {
             <Download className="h-4 w-4 mr-2" />
             Export CSV
           </Button>
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Users className="h-5 w-5" />
-            <span>{students?.length || 0} students</span>
+          <div className="flex items-center gap-4 text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              <span>{students?.length || 0} students</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Wifi className="h-4 w-4 text-green-500" />
+              <span className="text-green-500 font-medium">{onlineCount} online</span>
+            </div>
           </div>
         </div>
 
@@ -283,6 +300,8 @@ export default function UserManager() {
           onRoleChange={setRoleFilter}
           sortOption={sortOption}
           onSortChange={setSortOption}
+          onlineFilter={onlineFilter}
+          onOnlineChange={setOnlineFilter}
         />
 
         <div className="border rounded-lg overflow-x-auto">
@@ -336,6 +355,13 @@ export default function UserManager() {
                               <div className="absolute -bottom-1 -right-1 bg-destructive rounded-full p-0.5">
                                 <Ban className="h-3 w-3 text-destructive-foreground" />
                               </div>
+                            )}
+                            {!student.isBanned && (
+                              <span className={`absolute -bottom-0.5 -right-0.5 block h-3 w-3 rounded-full border-2 border-background ${onlineUserIds.has(student.id) ? "bg-green-500" : "bg-muted-foreground/30"}`}>
+                                {onlineUserIds.has(student.id) && (
+                                  <span className="absolute inset-0 rounded-full bg-green-500 animate-ping opacity-50" />
+                                )}
+                              </span>
                             )}
                           </div>
                           <div className="min-w-0">

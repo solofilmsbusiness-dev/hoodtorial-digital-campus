@@ -8,37 +8,52 @@ export function LivePresenceIndicator() {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    const channel = supabase.channel("online-users", {
-      config: {
-        presence: {
-          key: `user-${Math.random().toString(36).substring(7)}`,
-        },
-      },
-    });
+    let presenceKey = `anon-${Math.random().toString(36).substring(7)}`;
 
-    channel
-      .on("presence", { event: "sync" }, () => {
-        const state = channel.presenceState();
-        const count = Object.keys(state).length;
-        setOnlineCount(count);
-        setIsConnected(true);
-      })
-      .on("presence", { event: "join" }, () => {
-        setOnlineCount((prev) => prev + 1);
-      })
-      .on("presence", { event: "leave" }, () => {
-        setOnlineCount((prev) => Math.max(0, prev - 1));
-      })
-      .subscribe(async (status) => {
-        if (status === "SUBSCRIBED") {
-          await channel.track({
-            online_at: new Date().toISOString(),
-          });
-        }
+    const setupChannel = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.id) presenceKey = user.id;
+
+      const channel = supabase.channel("online-users", {
+        config: {
+          presence: {
+            key: presenceKey,
+          },
+        },
       });
 
+      channel
+        .on("presence", { event: "sync" }, () => {
+          const state = channel.presenceState();
+          const count = Object.keys(state).length;
+          setOnlineCount(count);
+          setIsConnected(true);
+        })
+        .on("presence", { event: "join" }, () => {
+          setOnlineCount((prev) => prev + 1);
+        })
+        .on("presence", { event: "leave" }, () => {
+          setOnlineCount((prev) => Math.max(0, prev - 1));
+        })
+        .subscribe(async (status) => {
+          if (status === "SUBSCRIBED") {
+            await channel.track({
+              online_at: new Date().toISOString(),
+              user_id: user?.id || null,
+            });
+          }
+        });
+
+      return channel;
+    };
+
+    let channelRef: ReturnType<typeof supabase.channel> | null = null;
+    setupChannel().then((ch) => { channelRef = ch; });
+
     return () => {
-      supabase.removeChannel(channel);
+      if (channelRef) {
+        supabase.removeChannel(channelRef);
+      }
     };
   }, []);
 
