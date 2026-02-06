@@ -102,14 +102,31 @@ export default function Assessment() {
        setExperienceLevel(latestResult.experience_level);
        setStep("degree-recommendation");
      }
-   }, [searchParams, hasCompletedAssessment, latestResult, latestRoadmap]);
+    }, [searchParams, hasCompletedAssessment, latestResult, latestRoadmap]);
+
+  const [isRetaking, setIsRetaking] = useState(false);
+
+  // Auto-skip welcome for returning users who already completed the assessment
+  useEffect(() => {
+    if (!resultsLoading && hasCompletedAssessment && latestResult && latestRoadmap && step === "welcome" && !isRetaking) {
+      setFinalResults({
+        departmentScores: latestResult.department_scores as Record<string, number>,
+        totalScore: latestResult.total_score,
+        recommendedCourses: latestResult.recommended_courses,
+        roadmap: latestRoadmap,
+      });
+      setInterests(latestResult.interests);
+      setExperienceLevel(latestResult.experience_level);
+      setStep("results");
+    }
+  }, [resultsLoading, hasCompletedAssessment, latestResult, latestRoadmap, step, isRetaking]);
+
   const [interests, setInterests] = useState<string[]>([]);
   const [experienceLevel, setExperienceLevel] = useState<string>("");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [startTime, setStartTime] = useState<number>(0);
   const [saving, setSaving] = useState(false);
-  const [isRetaking, setIsRetaking] = useState(false);
   const [shuffledQuestions, setShuffledQuestions] = useState<ShuffledAssessmentQuestion[]>([]);
   
   // Per-question timer state
