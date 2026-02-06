@@ -1451,6 +1451,7 @@ export type Database = {
       }
       get_unread_message_count: { Args: { _user_id: string }; Returns: number }
       get_user_email: { Args: { _user_id: string }; Returns: string }
+      has_community_access: { Args: { _user_id: string }; Returns: boolean }
       has_paid_access: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
