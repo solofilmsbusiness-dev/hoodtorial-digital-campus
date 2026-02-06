@@ -1,211 +1,131 @@
 
 
-# Implement Waiting List Feature
+# Fix: Community Access for New Users & Add View Profile to Admin
 
-## Problem
-When signup is disabled via the admin Access Control settings, visitors have no way to express interest in joining the platform. Currently, they just see a sign-in form with no signup option and no way to get notified when access opens.
+## Issues Identified
 
-## Solution Overview
-Create a complete "waiting list" system that:
-1. Shows a "Join Waiting List" option when signup is disabled
-2. Collects visitor emails in a database table
-3. Allows admins to view and manage waiting list entries
-4. Sends a welcome email when admin approves an entry (future enhancement)
+### Issue 1: Community Blocking New Users
+
+**Location:** `src/pages/Community.tsx` (lines 149-167)
+
+**Current Behavior:**
+The Community page requires at least one active enrollment to access. New users who have completed their assessment but haven't enrolled in any courses are redirected to `/academics` with the message:
+> "The Student Community is available to enrolled students only."
+
+**Problem:**
+This is too restrictive. New users should be able to browse the community, view posts, and engage with the platform even before enrolling in courses. This creates a poor onboarding experience.
+
+### Issue 2: Missing "View Profile" in Admin User Management
+
+**Location:** `src/components/admin/StudentDetailSheet.tsx`
+
+**Current Behavior:**
+When viewing a student's details in the admin panel, there's no way to navigate to their public profile page.
+
+**Expected Behavior:**
+Admins should be able to click "View Profile" to see the student's public profile at `/profile/:userId`.
 
 ---
 
-## Technical Implementation
+## Solution
 
-### Part 1: Database Table
+### Part 1: Remove Enrollment Requirement from Community
 
-Create a new `waitlist` table to store interested visitors:
+**File:** `src/pages/Community.tsx`
 
-```sql
-CREATE TABLE public.waitlist (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  email text NOT NULL UNIQUE,
-  name text,
-  status text DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
-  notes text,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
-);
+Remove or modify the enrollment check that blocks access:
 
--- RLS: Public can INSERT (to join), only admins can SELECT/UPDATE/DELETE
-ALTER TABLE public.waitlist ENABLE ROW LEVEL SECURITY;
-
--- Anyone can join the waiting list
-CREATE POLICY "Anyone can join waitlist"
-  ON public.waitlist FOR INSERT
-  WITH CHECK (true);
-
--- Only admins can view waitlist entries
-CREATE POLICY "Admins can manage waitlist"
-  ON public.waitlist FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM user_roles 
-      WHERE user_id = auth.uid() AND role = 'admin'
-    )
-  );
+```diff
+- if (!hasActiveEnrollment) {
+-   return (
+-     <PageLayout>
+-       <div className="min-h-[60vh] flex items-center justify-center">
+-         ...
+-         <Button asChild className="btn-brutal">
+-           <a href="/academics">Browse Courses</a>
+-         </Button>
+-       </div>
+-     </PageLayout>
+-   );
+- }
 ```
 
-### Part 2: Auth Page Updates
+**Alternative (recommended):** Instead of removing the check entirely, allow viewing but restrict posting:
 
-**File: `src/pages/Auth.tsx`**
+- Allow all authenticated users to view the community feed
+- Show a subtle prompt to enroll if they want to create posts
+- Keep the ability to like/comment open (builds engagement)
 
-Add a "Join Waiting List" mode when signup is disabled:
+### Part 2: Add "View Profile" to StudentDetailSheet
 
-```typescript
-// New state for waitlist mode
-const [isWaitlistMode, setIsWaitlistMode] = useState(false);
-const [waitlistName, setWaitlistName] = useState("");
-const [waitlistSuccess, setWaitlistSuccess] = useState(false);
+**File:** `src/components/admin/StudentDetailSheet.tsx`
 
-// Handle waitlist submission
-const handleWaitlistSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
-  
-  try {
-    const { error } = await supabase
-      .from("waitlist")
-      .insert({ email, name: waitlistName });
-    
-    if (error) {
-      if (error.code === "23505") { // Unique violation
-        toast({
-          variant: "destructive",
-          title: "Already on the list",
-          description: "This email is already on the waiting list.",
-        });
-      } else {
-        throw error;
-      }
-    } else {
-      setWaitlistSuccess(true);
-      toast({
-        title: "You're on the list!",
-        description: "We'll notify you when registration opens.",
-      });
-    }
-  } catch (err) {
-    toast({
-      variant: "destructive",
-      title: "Error",
-      description: "Failed to join waiting list. Please try again.",
-    });
-  } finally {
-    setLoading(false);
-  }
-};
-```
-
-**UI Changes:**
-- When `signupDisabled === true`, show a "Join Waiting List" link below the sign-in form
-- Clicking it switches to a waitlist form with email and optional name fields
-- On successful submission, show a success message
-
-### Part 3: Admin Waiting List Manager
-
-**New File: `src/pages/admin/WaitlistManager.tsx`**
-
-Create a new admin page to manage waiting list entries:
+Add a "View Profile" button in the profile header section that navigates to the public profile:
 
 ```typescript
-// Features:
-// - Table showing all waitlist entries
-// - Filter by status (pending/approved/rejected)
-// - Bulk actions (approve, reject)
-// - Export to CSV
-// - Quick action to manually create user account from waitlist entry
-```
+import { Link } from "react-router-dom";
 
-**Update: `src/components/admin/AdminSidebar.tsx`**
-
-Add navigation link to waitlist manager:
-```typescript
-{ title: "Waiting List", url: "/admin/waitlist", icon: Clock }
-```
-
-### Part 4: Pending Items Integration
-
-**Update: `src/hooks/useAdminActivity.ts`**
-
-Add pending waitlist entries to the admin dashboard:
-
-```typescript
-// Add to useAdminPendingItems
-const { data: pendingWaitlist } = useQuery({
-  queryKey: ["admin-pending-waitlist"],
-  queryFn: async () => {
-    const { count } = await supabase
-      .from("waitlist")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "pending");
-    return count || 0;
-  },
-});
-
-// Add to pendingItems array:
-if (pendingWaitlist > 0) {
-  pendingItems.push({
-    type: "waitlist",
-    count: pendingWaitlist,
-    items: [],
-  });
-}
+// In the Profile Header section (around line 325-365):
+<div className="flex items-start gap-4">
+  <Avatar className="h-16 w-16">
+    ...
+  </Avatar>
+  <div className="flex-1 min-w-0">
+    <div className="flex items-center justify-between">
+      <h3 className="font-semibold text-lg truncate">
+        {student.displayName || "Unnamed Student"}
+      </h3>
+      <Button variant="outline" size="sm" asChild>
+        <Link to={`/profile/${student.id}`}>
+          <ExternalLink className="h-4 w-4 mr-1.5" />
+          View Profile
+        </Link>
+      </Button>
+    </div>
+    ...
+  </div>
+</div>
 ```
 
 ---
 
-## Files to Create/Modify
+## Files to Modify
 
-| File | Action | Description |
-|------|--------|-------------|
-| Database migration | Create | `waitlist` table with RLS policies |
-| `src/pages/Auth.tsx` | Modify | Add waitlist mode UI when signup disabled |
-| `src/pages/admin/WaitlistManager.tsx` | Create | Admin page to manage waitlist entries |
-| `src/hooks/useWaitlist.ts` | Create | Hook for fetching/managing waitlist entries |
-| `src/components/admin/AdminSidebar.tsx` | Modify | Add waitlist navigation link |
-| `src/hooks/useAdminActivity.ts` | Modify | Include pending waitlist in dashboard |
-| `src/App.tsx` | Modify | Add route for `/admin/waitlist` |
+| File | Changes |
+|------|---------|
+| `src/pages/Community.tsx` | Remove enrollment gate or make it show-only for non-enrolled users |
+| `src/components/admin/StudentDetailSheet.tsx` | Add "View Profile" button linking to `/profile/:userId` |
 
 ---
 
-## User Flow
+## Implementation Details
 
-### Visitor Experience:
-```
-1. Visitor goes to /auth
-2. Sees sign-in form (signup is disabled)
-3. Clicks "Join Waiting List" link below form
-4. Enters email (and optional name)
-5. Clicks "Join List" button
-6. Sees success message: "You're on the list!"
-```
+### Community.tsx Changes
 
-### Admin Experience:
-```
-1. Admin sees "X waiting list entries" in dashboard pending items
-2. Clicks to go to Waiting List page
-3. Views all pending entries
-4. Can approve/reject entries
-5. Approved entries get notified (future: email integration)
-```
+1. Remove the early return that blocks non-enrolled users
+2. Keep the `hasActiveEnrollment` variable for conditional UI (e.g., disabling post creation)
+3. Show a "Join a course to start posting" banner instead of blocking access entirely
+
+### StudentDetailSheet.tsx Changes
+
+1. Import `Link` from `react-router-dom`
+2. Add a "View Profile" button next to the student's name in the header
+3. Use the `ExternalLink` icon (already imported) to indicate it opens in a new context
 
 ---
 
-## Expected Behavior After Implementation
+## Expected Behavior After Fix
 
-**Login Page (signup disabled):**
-- Shows "Join Waiting List" link below sign-in form
-- Clicking switches to waitlist form
-- User can enter email and name
-- Submitting shows success confirmation
+**For New Users (Community):**
+1. Complete assessment and select degree path
+2. Navigate to Community
+3. Can view all posts, daily challenges, and leaderboard
+4. Can like and comment on posts
+5. See subtle prompt: "Enroll in a course to create your first post" (optional enhancement)
 
-**Admin Dashboard:**
-- Pending Items card shows waitlist count
-- New sidebar link: "Waiting List"
-- Full management page with approve/reject actions
+**For Admins (View Profile):**
+1. Go to Admin > User Management
+2. Click on any user to open the detail sheet
+3. See "View Profile" button in the header
+4. Click to navigate to `/profile/:userId` and see the student's public profile
 
