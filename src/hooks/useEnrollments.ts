@@ -4,6 +4,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useTestModeContext } from "@/contexts/TestModeContext";
+import { getPathCourses } from "@/lib/degreePathCourses";
+import type { DegreePath, CertificateDepartment } from "@/hooks/useDegreeSelection";
 
 export interface Enrollment {
   id: string;
@@ -365,6 +367,79 @@ export function useEnrollments() {
     [user, enrollments, toast, isInGracePeriod, getRemainingSwaps]
   );
 
+  // Auto-enroll next course in degree path after a completion
+  const autoEnrollNextCourse = useCallback(
+    async (userId: string) => {
+      try {
+        // Fetch user's degree path
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("degree_path, certificate_department")
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        const path = profile?.degree_path as DegreePath;
+        if (!path) return;
+
+        const department = profile?.certificate_department as CertificateDepartment;
+        const courseCodes = getPathCourses(path, department);
+
+        // Fetch current enrollments
+        const { data: currentEnrollments } = await supabase
+          .from("enrollments")
+          .select("course_code, status")
+          .eq("user_id", userId);
+
+        const activeCount = (currentEnrollments || []).filter(e => e.status === "active").length;
+        const enrolledCodes = new Set(
+          (currentEnrollments || [])
+            .filter(e => e.status === "active" || e.status === "completed")
+            .map(e => e.course_code)
+        );
+
+        const availableSlots = Math.max(0, maxCourses - activeCount);
+        if (availableSlots <= 0) return;
+
+        // Find next un-enrolled course in path sequence
+        const nextCourse = courseCodes.find(code => !enrolledCodes.has(code));
+        if (!nextCourse) return;
+
+        const { error: insertError } = await supabase
+          .from("enrollments")
+          .upsert(
+            {
+              user_id: userId,
+              course_code: nextCourse,
+              status: "active",
+              enrolled_at: new Date().toISOString(),
+              swaps_used: 0,
+              dropped_at: null,
+            },
+            { onConflict: "user_id,course_code" }
+          );
+
+        if (insertError) throw insertError;
+
+        // Refresh local state
+        const { data: refreshed } = await supabase
+          .from("enrollments")
+          .select("*")
+          .eq("user_id", userId)
+          .order("enrolled_at", { ascending: false });
+
+        setEnrollments((refreshed || []) as Enrollment[]);
+
+        toast({
+          title: "Next course unlocked! 🎓",
+          description: `Auto-enrolled in the next course in your degree path.`,
+        });
+      } catch (err) {
+        console.error("Auto-enroll next course failed:", err);
+      }
+    },
+    [maxCourses, toast]
+  );
+
   const completeCourse = useCallback(
     async (courseCode: string) => {
       if (!user) return { error: new Error("Not authenticated"), data: null };
@@ -391,6 +466,9 @@ export function useEnrollments() {
           title: "Course Completed! 🎉",
           description: "Congratulations on completing this course!",
         });
+
+        // Auto-enroll next course in the degree path
+        await autoEnrollNextCourse(user.id);
 
         return { error: null, data: data as Enrollment };
       } catch (err) {
