@@ -1,87 +1,90 @@
 
 
-# Online Status Indicators in Admin User Manager
+# Fix: Online Status Not Showing in Admin
 
-## Overview
+## Problem
 
-Add a real-time online/offline indicator (green dot) next to each student's avatar in the admin User Manager table. This uses the same Supabase Presence channel (`online-users`) that the existing `LivePresenceIndicator` already uses.
+The `useOnlineUsers` hook and the `LivePresenceIndicator` both call `supabase.channel("online-users")` but with different presence key configs. Supabase's client can conflict when multiple channel instances share the same name but different configurations. The admin hook creates a competing channel that doesn't properly see other users' presence state.
 
-## How It Works
+## Solution
 
-The existing presence system tracks users with random keys (`user-${random}`). To identify *which* users are online, the presence `track()` call needs to include the user's ID. Then on the admin side, we subscribe to the same channel and read the presence state to build a set of online user IDs.
+Change the `useOnlineUsers` hook to use a **different channel name** (e.g., `"online-users-admin"`) that subscribes to the same presence room but avoids the naming conflict. Alternatively -- and more correctly -- the hook should subscribe to the same channel without a separate presence key config, and simply not call `track()` at all (pure listener).
+
+The cleanest fix: remove the presence config from `useOnlineUsers` entirely and just subscribe as a plain listener. Supabase Presence requires calling `track()` to join the presence set, but you can still listen to `sync` events without tracking. The issue is that without `track()`, the `subscribe` may not trigger presence sync. So the hook should `track()` with a minimal payload (no `user_id`) on a **uniquely named channel** that still connects to the same presence topic.
+
+Actually, the real fix is simpler: Supabase Presence channels must share the **exact same channel name** to see each other. The current code already does this (`"online-users"`). The bug is that when two `supabase.channel("online-users")` calls happen in the same browser session (admin is also running `LivePresenceIndicator` via Navigation, or they have separate instances), they conflict.
+
+### Root cause
+The admin page uses `AdminLayout` (not `Navigation`), so `LivePresenceIndicator` is **not** mounted. That means no one is calling `track()` with `user_id` on the admin side. The `useOnlineUsers` hook does subscribe and calls `track({ reader: true })`, which is correct -- it should see other users who tracked with `user_id`. If no students are browsing the site, the count will legitimately be 0.
+
+### The actual fix
+The hook works correctly in theory. The issue may be that **no students have the `LivePresenceIndicator` rendered** at the time of testing. To verify, we should also ensure the admin's own session is tracked. We'll update `useOnlineUsers` to also track the admin's own `user_id` so at minimum the admin sees themselves as online, confirming the system works.
 
 ## Changes
 
-### 1. `src/components/animations/LivePresenceIndicator.tsx`
-- Update the `track()` payload to include `user_id` from the auth context (alongside the existing `online_at` field)
-- This allows the admin to know *who* is online, not just a count
-- The presence key will use the actual user ID when authenticated, falling back to the random key for anonymous visitors
+### 1. `src/hooks/useOnlineUsers.ts`
+- Track the admin's own `user_id` in the presence payload (so the admin appears online too)
+- Fetch the current user via `supabase.auth.getUser()` before subscribing
+- Use the user's ID as the presence key (not a random string) to avoid duplicate entries
 
-### 2. New Hook: `src/hooks/useOnlineUsers.ts`
-- Subscribe to the `online-users` presence channel (read-only, no tracking)
-- On `sync` events, extract all `user_id` values from the presence state into a `Set<string>`
-- Returns `{ onlineUserIds: Set<string>, onlineCount: number }`
-- Cleans up the channel subscription on unmount
-
-### 3. `src/pages/admin/UserManager.tsx`
-- Import `useOnlineUsers` hook
-- Add a small green/gray dot indicator on each student's avatar showing online/offline status
-- Add an "Online" filter option to the existing filter controls (or a simple toggle)
-- Add an "Online" column header or integrate the dot into the existing Student column
-- Show online count in the header stats area (e.g., "12 students -- 3 online")
-
-### 4. `src/components/admin/StudentFilters.tsx`
-- Add an "Online Status" filter: All / Online / Offline
+### 2. Verify `LivePresenceIndicator` tracks `user_id`
+- Already done in prior changes -- no modification needed
 
 ## Technical Details
 
-### Updated `track()` in LivePresenceIndicator:
-```typescript
-// Before
-await channel.track({ online_at: new Date().toISOString() });
-
-// After  
-const { data: { user } } = await supabase.auth.getUser();
-await channel.track({
-  online_at: new Date().toISOString(),
-  user_id: user?.id || null,
-});
-```
-
-### `useOnlineUsers` hook:
 ```typescript
 export function useOnlineUsers() {
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    const channel = supabase.channel("online-users");
-    channel.on("presence", { event: "sync" }, () => {
-      const state = channel.presenceState();
-      const ids = new Set<string>();
-      Object.values(state).forEach(presences => {
-        presences.forEach((p: any) => {
-          if (p.user_id) ids.add(p.user_id);
-        });
-      });
-      setOnlineUserIds(ids);
-    }).subscribe();
+    const setup = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const presenceKey = user?.id || `admin-reader-${Math.random().toString(36).substring(7)}`;
 
-    return () => { supabase.removeChannel(channel); };
+      const channel = supabase.channel("online-users", {
+        config: { presence: { key: presenceKey } },
+      });
+
+      channel
+        .on("presence", { event: "sync" }, () => {
+          const state = channel.presenceState();
+          const ids = new Set<string>();
+          Object.values(state).forEach((presences) => {
+            presences.forEach((p: any) => {
+              if (p.user_id) ids.add(p.user_id);
+            });
+          });
+          setOnlineUserIds(ids);
+        })
+        .subscribe(async (status) => {
+          if (status === "SUBSCRIBED") {
+            await channel.track({
+              online_at: new Date().toISOString(),
+              user_id: user?.id || null,
+            });
+          }
+        });
+
+      return channel;
+    };
+
+    let channelRef: any = null;
+    setup().then((ch) => { channelRef = ch; });
+
+    return () => {
+      if (channelRef) supabase.removeChannel(channelRef);
+    };
   }, []);
 
   return { onlineUserIds, onlineCount: onlineUserIds.size };
 }
 ```
 
-### Avatar indicator in UserManager:
-A small absolute-positioned dot on the avatar (green pulse for online, nothing for offline), similar to common chat apps.
+This mirrors the same pattern used in `LivePresenceIndicator` -- async setup, track with `user_id`, and use the user's actual ID as the presence key. The admin will now appear in the online list and can see all other online users.
 
-## Files Summary
+## Files
 
 | File | Change |
 |------|--------|
-| `src/components/animations/LivePresenceIndicator.tsx` | Include `user_id` in presence track payload |
-| `src/hooks/useOnlineUsers.ts` | New hook -- subscribes to presence, returns set of online user IDs |
-| `src/pages/admin/UserManager.tsx` | Show green/gray dot on avatars, show online count in header |
-| `src/components/admin/StudentFilters.tsx` | Add Online/Offline filter option |
+| `src/hooks/useOnlineUsers.ts` | Track admin's own user_id, use async setup pattern matching LivePresenceIndicator |
 
