@@ -372,6 +372,7 @@ export function SiteCustomization() {
             <AspectRatio ratio={16 / 9}>
               {settings.login_video_url ? (
                 <video
+                  key={settings.login_video_url}
                   src={settings.login_video_url}
                   className="w-full h-full object-cover"
                   muted
