@@ -4,10 +4,11 @@
  import { Progress } from "@/components/ui/progress";
  import { CountingNumber } from "@/components/animations";
  
- interface JourneyHeaderProps {
-   pathName: string;
-   currentLevel: number;
-   totalSkillPoints: number;
+interface JourneyHeaderProps {
+    pathName: string;
+    currentLevel: number;
+    currentLevelName: string;
+    totalSkillPoints: number;
    earnedSkillPoints: number;
    totalCredits: number;
    earnedCredits: number;
@@ -16,18 +17,17 @@
  }
  
  export function JourneyHeader({
-   pathName,
-   currentLevel,
-   totalSkillPoints,
+  pathName,
+    currentLevel,
+    currentLevelName,
+    totalSkillPoints,
    earnedSkillPoints,
    totalCredits,
    earnedCredits,
    overallPercentage,
    rank,
- }: JourneyHeaderProps) {
-   const levelNames = ["", "Foundations", "Intermediate", "Advanced", "Master"];
- 
-   return (
+}: JourneyHeaderProps) {
+    return (
      <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border">
        {/* Top bar with back button and title */}
        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
@@ -56,7 +56,7 @@
                <span className="text-xs text-muted-foreground uppercase tracking-wider">Level</span>
              </div>
              <div className="text-2xl font-bold text-foreground">{currentLevel}</div>
-             <div className="text-xs text-muted-foreground">{levelNames[currentLevel] || "Complete"}</div>
+             <div className="text-xs text-muted-foreground">{currentLevelName}</div>
            </motion.div>
  
            {/* Skill Points */}

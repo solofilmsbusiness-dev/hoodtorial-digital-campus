@@ -96,15 +96,15 @@
  };
  
  // Rank titles based on progress
- function getRank(percentage: number): string {
-   if (percentage >= 100) return "MASTER FILMMAKER";
-   if (percentage >= 80) return "SENIOR DIRECTOR";
-   if (percentage >= 60) return "LEAD CREATIVE";
-   if (percentage >= 40) return "ASSOCIATE PRODUCER";
-   if (percentage >= 20) return "JUNIOR FILMMAKER";
-   if (percentage >= 10) return "APPRENTICE";
-   return "NEWCOMER";
- }
+function getRank(percentage: number): string {
+    if (percentage >= 100) return "GRADUATE";
+    if (percentage >= 80) return "DEAN'S LIST";
+    if (percentage >= 60) return "HONORS STUDENT";
+    if (percentage >= 40) return "SENIOR";
+    if (percentage >= 20) return "JUNIOR";
+    if (percentage >= 10) return "SOPHOMORE";
+    return "FRESHMAN";
+  }
  
  export function useJourneyData(path: DegreePath): JourneyData {
    const { progress, getTotalCredits } = useUserProgress();
@@ -225,11 +225,17 @@
      };
  
      // Build levels
-     const levelConfigs = [
-       { id: "level-1", name: "Foundations", number: 1, codes: level100Codes },
-       { id: "level-2", name: "Intermediate", number: 2, codes: level200Codes },
-       { id: "level-3", name: "Advanced", number: 3, codes: level300Codes },
-     ];
+      const levelNamesByPath: Record<DegreePath, Record<number, string>> = {
+        associate: { 1: "Freshman", 2: "Sophomore" },
+        bachelor: { 1: "Freshman", 2: "Sophomore", 3: "Senior" },
+        certificate: { 1: "Core Studies", 2: "Specialization" },
+      };
+
+      const levelConfigs = [
+        { id: "level-1", name: levelNamesByPath[path][1] || "Level 1", number: 1, codes: level100Codes },
+        { id: "level-2", name: levelNamesByPath[path][2] || "Level 2", number: 2, codes: level200Codes },
+        { id: "level-3", name: levelNamesByPath[path][3] || "Level 3", number: 3, codes: level300Codes },
+      ];
  
      let earnedSP = 0;
      let totalSP = 0;
