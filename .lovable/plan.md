@@ -1,101 +1,79 @@
 
+# Admin-Managed Faculty Directory
 
-# Auto-Enroll Courses When a User Picks a Degree Path
+## What Changes
 
-## Overview
+Currently, faculty members are hardcoded in the Faculty page. This plan moves them into the database so admins can add, edit, and delete faculty members from the admin panel.
 
-When a user selects a degree path (on the Degrees page), the first 3 courses in that path will be automatically enrolled as active courses. When those are completed, the next batch of courses auto-enrolls. This keeps the Student Center populated and the experience seamless.
+## New Database Table
 
-## How It Works
+A `faculty_members` table will store all faculty data:
 
-```text
-User picks package (Checkout)
-        |
-        v
-User selects degree path (Degrees page)
-        |
-        v
-System auto-enrolls first 3 courses from path
-        |
-        v
-Courses appear in Student Center as "Active"
-        |
-        v
-User completes a course
-        |
-        v
-System checks for open slots, auto-enrolls next course in path
-```
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid (PK) | Auto-generated |
+| name | text | Required |
+| role | text | Required (e.g. "Head of Cinematography") |
+| department | text | Required (Cinematography, Post-Production, Directing, Production) |
+| expertise | text[] | Array of skill tags |
+| bio | text | Optional longer description |
+| featured | boolean | Default false -- marks department heads |
+| display_order | integer | Default 0 -- controls sort order |
+| image_url | text | Optional photo URL |
+| created_at | timestamptz | Auto-set |
 
-## Changes
+RLS: Public read access (anyone can view the faculty page), admin-only write access.
 
-### 1. Auto-Enroll on Degree Path Selection
+The 8 existing hardcoded faculty members will be seeded into the table via the migration.
 
-**File: `src/hooks/useDegreeSelection.ts`**
+## New Files
 
-After successfully saving the degree path to the profile, automatically enroll the user in the first 3 courses from that path's course list. This uses the existing `pathConfigs` course code lists (from `useJourneyData.ts`) and inserts enrollment records directly.
+### 1. `src/pages/admin/FacultyManager.tsx`
+Admin page following the same pattern as ChallengeManager:
+- Table listing all faculty with name, role, department, featured status
+- "Add Faculty" button opening a dialog form
+- Edit button on each row opening the same dialog pre-filled
+- Delete button with confirmation
+- Fields: name, role, department (dropdown), bio, expertise (comma-separated input), featured toggle, display order
 
-- Import the path-to-course-code mapping
-- After the profile update succeeds, query existing enrollments to avoid duplicates
-- Insert up to 3 new "active" enrollments for the first courses in the path that aren't already enrolled
-- Show a toast like "Auto-enrolled in 3 courses!"
+### 2. `src/hooks/useFacultyMembers.ts`
+- `useFacultyMembers()` -- fetches all faculty ordered by display_order, then name
+- `useCreateFacultyMember()` -- insert mutation
+- `useUpdateFacultyMember()` -- update mutation
+- `useDeleteFacultyMember()` -- delete mutation
 
-### 2. Auto-Enroll Next Courses on Course Completion
+## Modified Files
 
-**File: `src/hooks/useEnrollments.ts`**
+### 3. `src/pages/Faculty.tsx`
+- Remove the hardcoded `facultyMembers` array
+- Import and use `useFacultyMembers()` hook to fetch from database
+- Add loading and empty states
+- Everything else (layout, styling, department filter) stays the same but the filter will now actually work with state
 
-In the `completeCourse` function, after marking a course as completed:
+### 4. `src/components/admin/AdminSidebar.tsx`
+- Add a "Faculty" nav item with a `GraduationCap` icon linking to `/admin/faculty`
 
-- Read the user's degree path and certificate department from their profile
-- Determine which courses are in the path's curriculum
-- Count current active enrollments
-- Find the next un-enrolled course in the path sequence
-- If there's an open slot (under the 3-course limit), auto-enroll the next course
-- Show a toast: "Next course auto-enrolled: [Course Title]"
+### 5. `src/App.tsx`
+- Add route: `/admin/faculty` wrapped in `AdminRoute`
 
-### 3. Shared Path Config
+## Technical Details
 
-**File: `src/lib/degreePathCourses.ts`** (new file)
+**Migration SQL** will:
+1. Create the `faculty_members` table
+2. Enable RLS
+3. Add public SELECT policy
+4. Add admin INSERT/UPDATE/DELETE policies (using `has_role` function)
+5. Seed the 8 existing faculty members
 
-Extract the path-to-course-codes mapping into a shared utility so both `useDegreeSelection` and `useEnrollments` can reference the same ordered course lists without circular imports:
+**FacultyManager page** will include:
+- A dialog form with inputs for all fields
+- Department as a Select dropdown (Cinematography, Post-Production, Directing, Production)
+- Expertise as a text input (comma-separated, parsed into array)
+- Featured as a Switch toggle
+- Edit pre-fills the form; save calls upsert
+- Delete uses an AlertDialog for confirmation
 
-```typescript
-export const DEGREE_PATH_COURSES = {
-  associate: ["HU-101", "HU-102", "HU-103", "HU-104", "HU-105", "HU-106"],
-  bachelor: [
-    "HU-101", "HU-102", "HU-103", "HU-104", "HU-105", "HU-106",
-    "HU-201", "HU-202", "HU-203", "HU-204",
-    "HU-301", "HU-302", "HU-303", "HU-304",
-  ],
-  certificate: ["HU-101", "HU-102", "HU-201"],
-};
-```
-
-For certificate paths with a department, also use the `DEPARTMENT_CONFIG` courses from `useDegreeProgress.ts`.
-
-### 4. Update useJourneyData to Use Shared Config
-
-**File: `src/hooks/useJourneyData.ts`**
-
-Replace the inline `pathConfigs` course code arrays with imports from the new shared file to keep everything in sync.
-
-## Edge Cases Handled
-
-| Scenario | Behavior |
-|----------|----------|
-| User already enrolled in some courses | Skip those, only enroll new ones |
-| User changes degree path | Auto-enroll first 3 of the new path (respecting slot limits) |
-| Certificate path | Uses department-specific course list |
-| Trial user (2-slot limit) | Only auto-enrolls up to 2 courses |
-| All courses in path already enrolled | No action taken |
-| Course completed but slots full | Waits until a slot opens (won't exceed limit) |
-
-## Files Summary
-
-| File | Action |
-|------|--------|
-| `src/lib/degreePathCourses.ts` | New -- shared course code mapping |
-| `src/hooks/useDegreeSelection.ts` | Add auto-enrollment after path selection |
-| `src/hooks/useEnrollments.ts` | Add auto-enroll-next on course completion |
-| `src/hooks/useJourneyData.ts` | Import shared config instead of inline |
-
+**Faculty.tsx** will:
+- Call `useFacultyMembers()` and render the same UI
+- Department filter buttons will use `useState` to filter the fetched list
+- Show a skeleton loader while loading
