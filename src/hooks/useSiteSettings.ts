@@ -117,11 +117,20 @@ export function useSiteSettings() {
   }, [user?.id]);
 
   const uploadAsset = useCallback(async (file: File, assetType: 'video' | 'logo' | 'music'): Promise<string> => {
+    console.log("[uploadAsset] Starting upload:", { 
+      type: assetType, 
+      size: `${(file.size / 1024 / 1024).toFixed(2)}MB`, 
+      name: file.name,
+      mimeType: file.type 
+    });
+    
     const fileExt = file.name.split('.').pop();
     const fileName = `${assetType}-${Date.now()}.${fileExt}`;
     const filePath = `login/${fileName}`;
 
-    const { error: uploadError } = await supabase.storage
+    console.log("[uploadAsset] Uploading to path:", filePath);
+
+    const { error: uploadError, data: uploadData } = await supabase.storage
       .from('site-assets')
       .upload(filePath, file, {
         cacheControl: '3600',
@@ -129,14 +138,17 @@ export function useSiteSettings() {
       });
 
     if (uploadError) {
-      console.error("Error uploading asset:", uploadError);
-      throw uploadError;
+      console.error("[uploadAsset] Storage upload error:", uploadError);
+      throw new Error(`Upload failed: ${uploadError.message}`);
     }
+
+    console.log("[uploadAsset] Upload successful:", uploadData);
 
     const { data: urlData } = supabase.storage
       .from('site-assets')
       .getPublicUrl(filePath);
 
+    console.log("[uploadAsset] Public URL generated:", urlData.publicUrl);
     return urlData.publicUrl;
   }, []);
 
