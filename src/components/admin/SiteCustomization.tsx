@@ -77,7 +77,9 @@ export function SiteCustomization() {
       console.error("Error uploading video:", error);
       toast({
         title: "Upload failed",
-        description: "Failed to upload video. Please try again.",
+        description: error instanceof Error 
+          ? error.message 
+          : "Failed to upload video. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -133,7 +135,9 @@ export function SiteCustomization() {
       console.error("Error uploading logo:", error);
       toast({
         title: "Upload failed",
-        description: "Failed to upload logo. Please try again.",
+        description: error instanceof Error 
+          ? error.message 
+          : "Failed to upload logo. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -187,7 +191,9 @@ export function SiteCustomization() {
       console.error("Error uploading music:", error);
       toast({
         title: "Upload failed",
-        description: "Failed to upload music. Please try again.",
+        description: error instanceof Error 
+          ? error.message 
+          : "Failed to upload music. Please try again.",
         variant: "destructive",
       });
     } finally {

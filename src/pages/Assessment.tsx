@@ -55,17 +55,38 @@ export default function Assessment() {
 
   const [step, setStep] = useState<Step>("welcome");
    
+  const [autoFixing, setAutoFixing] = useState(false);
+  
   // Detect and fix corrupted profile state (degree_path set without assessment)
   useEffect(() => {
-    if (!resultsLoading && !hasCompletedAssessment && profile?.degree_path) {
-      console.warn("Detected corrupted profile state: degree_path set without assessment");
-      updateProfile({
-        degree_path: null,
-        certificate_department: null,
-        recommended_degree_path: null,
-      });
-    }
-  }, [resultsLoading, hasCompletedAssessment, profile?.degree_path, updateProfile]);
+    const fixCorruptedProfile = async () => {
+      if (!resultsLoading && !hasCompletedAssessment && profile?.degree_path && !autoFixing) {
+        console.warn("Detected corrupted profile state: degree_path set without assessment");
+        setAutoFixing(true);
+        
+        try {
+          const { error } = await updateProfile({
+            degree_path: null,
+            certificate_department: null,
+            recommended_degree_path: null,
+          });
+          
+          if (!error) {
+            console.log("Profile state auto-fixed successfully");
+            await refetch();
+          } else {
+            console.error("Failed to auto-fix profile:", error);
+          }
+        } catch (err) {
+          console.error("Error during profile auto-fix:", err);
+        } finally {
+          setAutoFixing(false);
+        }
+      }
+    };
+    
+    fixCorruptedProfile();
+  }, [resultsLoading, hasCompletedAssessment, profile?.degree_path, updateProfile, refetch, autoFixing]);
 
    // Check for query param to jump to degree recommendation
    useEffect(() => {
