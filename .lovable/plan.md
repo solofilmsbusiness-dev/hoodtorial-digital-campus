@@ -1,49 +1,22 @@
 
-
-# Fix: Welcome Screen Should Only Show Once for New Users
+# Fix: "Start Course" Links in Learning Journey
 
 ## Problem
 
-The "Welcome to Your Assessment" page appears every time a user visits `/assessment`, even after they have already completed it. It should only appear once for brand new users taking the assessment for the first time.
+The course action buttons (Start Course, Continue, Review) in the Learning Journey view link to `/courses/{code}`, but the actual route defined in the app is `/course/{code}` (without the "s"). This causes a 404 "Page not found" error when clicking any course button.
 
 ## Root Cause
 
-In `src/pages/Assessment.tsx`, the initial `step` state is always set to `"welcome"` (line 56). There is no logic to automatically skip past the welcome screen when the user has already completed the assessment. Currently, returning users see a "You've already completed" card on the welcome page, but the welcome page itself still renders.
+A typo in `src/components/journey/JourneyCourseCard.tsx` -- all three `Link` components use `/courses/` instead of `/course/`.
 
-## Solution
+## Fix
 
-Add an effect that checks `hasCompletedAssessment` once loading is done. If the user has already completed the assessment, automatically jump to the `"results"` step (populating `finalResults` from `latestResult`) instead of lingering on `"welcome"`.
+Update three lines in `src/components/journey/JourneyCourseCard.tsx`:
 
-## File to Modify
+| Line | Current | Fixed |
+|------|---------|-------|
+| 135 | `/courses/${code}` | `/course/${code}` |
+| 143 | `/courses/${code}` | `/course/${code}` |
+| 151 | `/courses/${code}` | `/course/${code}` |
 
-| File | Change |
-|------|--------|
-| `src/pages/Assessment.tsx` | Add a `useEffect` that auto-skips the welcome step for returning users |
-
-## Technical Details
-
-Add a new `useEffect` after the existing ones (around line 105) that runs when `resultsLoading` finishes:
-
-```tsx
-// Auto-skip welcome for returning users
-useEffect(() => {
-  if (!resultsLoading && hasCompletedAssessment && latestResult && latestRoadmap && step === "welcome" && !isRetaking) {
-    setFinalResults({
-      departmentScores: latestResult.department_scores as Record<string, number>,
-      totalScore: latestResult.total_score,
-      recommendedCourses: latestResult.recommended_courses,
-      roadmap: latestRoadmap,
-    });
-    setInterests(latestResult.interests);
-    setExperienceLevel(latestResult.experience_level);
-    setStep("results");
-  }
-}, [resultsLoading, hasCompletedAssessment, latestResult, latestRoadmap, step, isRetaking]);
-```
-
-This ensures:
-- First-time users see the welcome screen as normal
-- Returning users are taken directly to their results
-- The "Retake Assessment" button still works (guarded by `!isRetaking`)
-- The `?step=degree-recommendation` query param still works (handled by existing effect)
-
+That's it -- a one-file, three-line fix.
