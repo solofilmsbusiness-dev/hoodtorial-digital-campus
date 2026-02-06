@@ -1,79 +1,75 @@
 
-# Admin-Managed Faculty Directory
+# Admin Quick Navigation + Student Assessment Details
 
-## What Changes
+## 1. Quick "Back to Site" Links in Admin Header
 
-Currently, faculty members are hardcoded in the Faculty page. This plan moves them into the database so admins can add, edit, and delete faculty members from the admin panel.
+Add a dropdown menu in the admin header bar (next to the command palette) with direct links to key student-facing pages:
 
-## New Database Table
+**File: `src/components/admin/AdminLayout.tsx`**
+- Add a dropdown button (e.g., "View Site" with an ExternalLink icon) in the header toolbar area
+- Links to: Home (/), Courses (/academics), Community (/community), Student Center (/student), Shop (/shop)
+- Opens in same tab so admin can quickly check the student experience
 
-A `faculty_members` table will store all faculty data:
+## 2. Expanded Assessment Data in Student Detail Sheet
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid (PK) | Auto-generated |
-| name | text | Required |
-| role | text | Required (e.g. "Head of Cinematography") |
-| department | text | Required (Cinematography, Post-Production, Directing, Production) |
-| expertise | text[] | Array of skill tags |
-| bio | text | Optional longer description |
-| featured | boolean | Default false -- marks department heads |
-| display_order | integer | Default 0 -- controls sort order |
-| image_url | text | Optional photo URL |
-| created_at | timestamptz | Auto-set |
+Currently the admin can only see experience level, total score, and interests. This will be expanded to show the full assessment picture.
 
-RLS: Public read access (anyone can view the faculty page), admin-only write access.
+### Data Changes
 
-The 8 existing hardcoded faculty members will be seeded into the table via the migration.
+**File: `src/hooks/useAdminStudents.ts`**
+- Expand the `assessment_results` query in `useStudentDetails` to fetch all columns: `department_scores`, `recommended_courses`, `time_taken_seconds`, `created_at`, `completed_at`
+- Update the `AssessmentResult` interface to include these new fields
+- Update the `StudentDetails` mapping to pass this data through
 
-## New Files
+### UI Changes
 
-### 1. `src/pages/admin/FacultyManager.tsx`
-Admin page following the same pattern as ChallengeManager:
-- Table listing all faculty with name, role, department, featured status
-- "Add Faculty" button opening a dialog form
-- Edit button on each row opening the same dialog pre-filled
-- Delete button with confirmation
-- Fields: name, role, department (dropdown), bio, expertise (comma-separated input), featured toggle, display order
+**File: `src/components/admin/StudentDetailSheet.tsx`**
 
-### 2. `src/hooks/useFacultyMembers.ts`
-- `useFacultyMembers()` -- fetches all faculty ordered by display_order, then name
-- `useCreateFacultyMember()` -- insert mutation
-- `useUpdateFacultyMember()` -- update mutation
-- `useDeleteFacultyMember()` -- delete mutation
+Replace the minimal assessment section with a rich, expandable view showing:
 
-## Modified Files
+- **Department Scores**: A visual breakdown of scores per department (e.g., Cinematography: 75%, Directing: 45%) using small progress bars
+- **Recommended Courses**: List of course codes the assessment recommended
+- **Time Taken**: How long the student spent on the assessment
+- **Completion Date**: When they finished
+- **Experience Level + Interests**: Already shown, kept as-is
 
-### 3. `src/pages/Faculty.tsx`
-- Remove the hardcoded `facultyMembers` array
-- Import and use `useFacultyMembers()` hook to fetch from database
-- Add loading and empty states
-- Everything else (layout, styling, department filter) stays the same but the filter will now actually work with state
-
-### 4. `src/components/admin/AdminSidebar.tsx`
-- Add a "Faculty" nav item with a `GraduationCap` icon linking to `/admin/faculty`
-
-### 5. `src/App.tsx`
-- Add route: `/admin/faculty` wrapped in `AdminRoute`
+All within the existing "Assessment Results" section, no new pages needed.
 
 ## Technical Details
 
-**Migration SQL** will:
-1. Create the `faculty_members` table
-2. Enable RLS
-3. Add public SELECT policy
-4. Add admin INSERT/UPDATE/DELETE policies (using `has_role` function)
-5. Seed the 8 existing faculty members
+### Updated `AssessmentResult` interface (in `useAdminStudents.ts`):
+```typescript
+export interface AssessmentResult {
+  experienceLevel: string;
+  interests: string[];
+  totalScore: number;
+  departmentScores: Record<string, number>;
+  recommendedCourses: string[];
+  timeTakenSeconds: number | null;
+  completedAt: string | null;
+}
+```
 
-**FacultyManager page** will include:
-- A dialog form with inputs for all fields
-- Department as a Select dropdown (Cinematography, Post-Production, Directing, Production)
-- Expertise as a text input (comma-separated, parsed into array)
-- Featured as a Switch toggle
-- Edit pre-fills the form; save calls upsert
-- Delete uses an AlertDialog for confirmation
+### Updated query (line ~245):
+Change from:
+```typescript
+.select("experience_level, interests, total_score")
+```
+To:
+```typescript
+.select("*")
+```
 
-**Faculty.tsx** will:
-- Call `useFacultyMembers()` and render the same UI
-- Department filter buttons will use `useState` to filter the fetched list
-- Show a skeleton loader while loading
+### Assessment UI in StudentDetailSheet:
+- Department scores shown as labeled progress bars sorted highest to lowest
+- Recommended courses as a row of Badge components
+- Time taken formatted as "X min Y sec"
+- Assessment date formatted nicely
+
+## Files Summary
+
+| File | Change |
+|------|--------|
+| `src/components/admin/AdminLayout.tsx` | Add "View Site" dropdown with links to student pages |
+| `src/hooks/useAdminStudents.ts` | Expand assessment query + update interface |
+| `src/components/admin/StudentDetailSheet.tsx` | Rich assessment details UI with department scores, recommendations, timing |
