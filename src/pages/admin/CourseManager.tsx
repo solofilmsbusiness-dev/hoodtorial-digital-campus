@@ -234,7 +234,7 @@ export default function CourseManager() {
   );
 
   return (
-    <AdminLayout title="Course Manager" description="Manage your curriculum">
+    <AdminLayout title="Course Manager" description="Manage your curriculum" pageKey="courses">
       <div className="space-y-6">
         {isUsingStaticData && (
           <Card className="border-yellow-500/50 bg-yellow-500/10">

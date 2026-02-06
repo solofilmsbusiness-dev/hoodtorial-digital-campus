@@ -206,7 +206,7 @@ export default function ChallengeManager() {
   };
 
   return (
-    <AdminLayout title="Challenge Manager" description="Create and manage daily challenges">
+    <AdminLayout title="Challenge Manager" description="Create and manage daily challenges" pageKey="challenges">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">

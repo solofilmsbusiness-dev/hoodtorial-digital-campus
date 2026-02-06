@@ -97,7 +97,7 @@ export default function CommunityManager() {
   };
 
   return (
-    <AdminLayout title="Community Moderation" description="Manage posts, pin announcements, and highlight exemplary content">
+    <AdminLayout title="Community Moderation" description="Manage posts, pin announcements, and highlight exemplary content" pageKey="community">
       <div className="space-y-6">
 
         {/* Stats */}

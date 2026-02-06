@@ -22,7 +22,7 @@ export default function SupportManager() {
 
   if (isLoading) {
     return (
-      <AdminLayout title="Support">
+      <AdminLayout title="Support" pageKey="support">
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -31,7 +31,7 @@ export default function SupportManager() {
   }
 
   return (
-    <AdminLayout title="Support">
+    <AdminLayout title="Support" pageKey="support">
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Support</h1>

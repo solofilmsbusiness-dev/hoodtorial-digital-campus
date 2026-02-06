@@ -7,6 +7,21 @@ interface SiteSettings {
   login_logo_url: string | null;
   login_music_url: string | null;
   signup_disabled: string | null;
+  // Admin background settings
+  admin_bg_dashboard_video: string | null;
+  admin_bg_dashboard_overlay: string | null;
+  admin_bg_courses_video: string | null;
+  admin_bg_courses_overlay: string | null;
+  admin_bg_challenges_video: string | null;
+  admin_bg_challenges_overlay: string | null;
+  admin_bg_community_video: string | null;
+  admin_bg_community_overlay: string | null;
+  admin_bg_support_video: string | null;
+  admin_bg_support_overlay: string | null;
+  admin_bg_users_video: string | null;
+  admin_bg_users_overlay: string | null;
+  admin_bg_settings_video: string | null;
+  admin_bg_settings_overlay: string | null;
   [key: string]: string | null;
 }
 
@@ -16,6 +31,20 @@ export function useSiteSettings() {
     login_logo_url: null,
     login_music_url: null,
     signup_disabled: null,
+    admin_bg_dashboard_video: null,
+    admin_bg_dashboard_overlay: null,
+    admin_bg_courses_video: null,
+    admin_bg_courses_overlay: null,
+    admin_bg_challenges_video: null,
+    admin_bg_challenges_overlay: null,
+    admin_bg_community_video: null,
+    admin_bg_community_overlay: null,
+    admin_bg_support_video: null,
+    admin_bg_support_overlay: null,
+    admin_bg_users_video: null,
+    admin_bg_users_overlay: null,
+    admin_bg_settings_video: null,
+    admin_bg_settings_overlay: null,
   });
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
@@ -36,6 +65,20 @@ export function useSiteSettings() {
         login_logo_url: null,
         login_music_url: null,
         signup_disabled: null,
+        admin_bg_dashboard_video: null,
+        admin_bg_dashboard_overlay: null,
+        admin_bg_courses_video: null,
+        admin_bg_courses_overlay: null,
+        admin_bg_challenges_video: null,
+        admin_bg_challenges_overlay: null,
+        admin_bg_community_video: null,
+        admin_bg_community_overlay: null,
+        admin_bg_support_video: null,
+        admin_bg_support_overlay: null,
+        admin_bg_users_video: null,
+        admin_bg_users_overlay: null,
+        admin_bg_settings_video: null,
+        admin_bg_settings_overlay: null,
       };
       
       data?.forEach((s) => {

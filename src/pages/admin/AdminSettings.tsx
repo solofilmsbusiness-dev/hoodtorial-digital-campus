@@ -13,6 +13,7 @@ import { SiteCustomization } from "@/components/admin/SiteCustomization";
 import { TestModeSettingsCard } from "@/components/admin/TestModeSettingsCard";
 import { DemoModeSettingsCard } from "@/components/admin/DemoModeSettingsCard";
 import { TestMessagesCard } from "@/components/admin/TestMessagesCard";
+import { AdminBackgroundSettings } from "@/components/admin/AdminBackgroundSettings";
 
 type DisplayDensity = "comfortable" | "compact" | "cozy";
 
@@ -90,7 +91,7 @@ export default function AdminSettings() {
   const isDark = resolvedTheme === "dark";
 
   return (
-    <AdminLayout title="Settings" description="Configure your admin preferences">
+    <AdminLayout title="Settings" description="Configure your admin preferences" pageKey="settings">
       <div className="grid gap-6 max-w-2xl">
         {/* Test Mode Settings */}
         <TestModeSettingsCard />
@@ -103,6 +104,9 @@ export default function AdminSettings() {
 
         {/* Site Customization - Login Page Media */}
         <SiteCustomization />
+
+        {/* Admin Page Backgrounds */}
+        <AdminBackgroundSettings />
 
         {/* Appearance Settings */}
         <Card>
