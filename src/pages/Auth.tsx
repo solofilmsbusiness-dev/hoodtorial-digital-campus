@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,7 @@ export default function Auth() {
   
   const audioRef = useRef<HTMLAudioElement>(null);
   
+  const isMobile = useIsMobile();
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -388,17 +390,22 @@ export default function Auth() {
         </motion.button>
       )}
 
-      {/* Full-screen Background Video */}
-      <video
-        autoPlay
-        loop
-        muted
-        playsInline
-        className="absolute inset-0 w-full h-full object-cover"
-        key={videoUrl}
-      >
-        <source src={videoUrl} type="video/mp4" />
-      </video>
+      {/* Full-screen Background: Video on desktop, gradient on mobile */}
+      {!isMobile ? (
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+          poster="/placeholder.svg"
+          key={videoUrl}
+        >
+          <source src={videoUrl} type="video/mp4" />
+        </video>
+      ) : (
+        <div className="absolute inset-0 bg-gradient-to-br from-charcoal-dark via-charcoal to-charcoal-dark" />
+      )}
 
       {/* Dark overlay for readability */}
       <div className="absolute inset-0 bg-background/80 z-[5]" />
