@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { format } from "date-fns";
+import { Link } from "react-router-dom";
 import {
   Sheet,
   SheetContent,
@@ -330,9 +331,17 @@ export function StudentDetailSheet({
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-lg truncate">
-                      {student.displayName || "Unnamed Student"}
-                    </h3>
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="font-semibold text-lg truncate">
+                        {student.displayName || "Unnamed Student"}
+                      </h3>
+                      <Button variant="outline" size="sm" asChild>
+                        <Link to={`/profile/${student.id}`}>
+                          <ExternalLink className="h-4 w-4 mr-1.5" />
+                          View Profile
+                        </Link>
+                      </Button>
+                    </div>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       {student.location && (
                         <>
