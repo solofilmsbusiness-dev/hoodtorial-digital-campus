@@ -303,9 +303,9 @@ export function useAdminQuizManagement() {
         throw new Error(response.data.error);
       }
 
-      // Invalidate all relevant queries
-      queryClient.invalidateQueries({ queryKey: ["admin-students"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-student-detail"] });
+      // Invalidate all relevant queries (use exact: false to match keys with additional params like showDemoData)
+      queryClient.invalidateQueries({ queryKey: ["admin-students"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["admin-student-detail"], exact: false });
 
       return { success: true };
     } catch (error) {
