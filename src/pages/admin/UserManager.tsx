@@ -242,7 +242,7 @@ export default function UserManager() {
   };
 
   return (
-    <AdminLayout title="Student Management" description="View and manage all students, their enrollments, and performance">
+    <AdminLayout title="Student Management" description="View and manage all students, their enrollments, and performance" pageKey="users">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <Button variant="outline" size="sm" onClick={exportToCSV} disabled={filteredStudents.length === 0}>

@@ -1,5 +1,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { AdminSidebar } from "./AdminSidebar";
+import { AdminBackground } from "./AdminBackground";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { LogOut, Menu } from "lucide-react";
@@ -20,6 +21,7 @@ interface AdminLayoutProps {
   children: React.ReactNode;
   title: string;
   description?: string;
+  pageKey?: string;
 }
 
 // Map of route paths to breadcrumb labels
@@ -31,7 +33,7 @@ const routeLabels: Record<string, string> = {
   "/admin/settings": "Settings",
 };
 
-export function AdminLayout({ children, title, description }: AdminLayoutProps) {
+export function AdminLayout({ children, title, description, pageKey }: AdminLayoutProps) {
   const { signOut, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -110,14 +112,16 @@ export function AdminLayout({ children, title, description }: AdminLayoutProps) 
           </header>
 
           <main className="flex-1 p-4 md:p-6 lg:p-8">
-            {/* Page header on desktop */}
-            <div className="hidden md:block mb-6">
-              <h1 className="text-2xl font-bold">{title}</h1>
-              {description && (
-                <p className="text-muted-foreground">{description}</p>
-              )}
-            </div>
-            {children}
+            <AdminBackground pageKey={pageKey || "dashboard"}>
+              {/* Page header on desktop */}
+              <div className="hidden md:block mb-6">
+                <h1 className="text-2xl font-bold">{title}</h1>
+                {description && (
+                  <p className="text-muted-foreground">{description}</p>
+                )}
+              </div>
+              {children}
+            </AdminBackground>
           </main>
         </SidebarInset>
       </div>

@@ -1,5 +1,7 @@
 export { AdminLayout } from "./AdminLayout";
 export { AdminSidebar } from "./AdminSidebar";
+export { AdminBackground } from "./AdminBackground";
+export { AdminBackgroundSettings } from "./AdminBackgroundSettings";
 export { TestModeBanner } from "./TestModeBanner";
 export { DemoModeBanner } from "./DemoModeBanner";
 export { DemoModeSettingsCard } from "./DemoModeSettingsCard";

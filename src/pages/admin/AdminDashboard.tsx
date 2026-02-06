@@ -93,7 +93,7 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <AdminLayout title="Dashboard" description="Overview of your learning platform">
+    <AdminLayout title="Dashboard" description="Overview of your learning platform" pageKey="dashboard">
       <div className="space-y-6">
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
