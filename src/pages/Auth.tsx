@@ -22,6 +22,8 @@ const passwordSchema = z.string().min(4, "Password must be at least 4 characters
 
 export default function Auth() {
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -119,6 +121,16 @@ export default function Auth() {
     return () => document.removeEventListener('click', handleInteraction);
   }, [musicUrl, isMusicEnabled]);
 
+  // Listen for PASSWORD_RECOVERY event
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsRecoveryMode(true);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
   // Force sign-in mode if signup is disabled
   useEffect(() => {
     if (signupDisabled && isSignUp) {
@@ -140,8 +152,32 @@ export default function Auth() {
     }
   };
 
-  // Redirect if already logged in
-  if (user) {
+  // Handle password reset submission
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const pwResult = passwordSchema.safeParse(newPassword);
+    if (!pwResult.success) {
+      toast({ variant: "destructive", title: "Invalid password", description: pwResult.error.errors[0].message });
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) {
+        toast({ variant: "destructive", title: "Error", description: error.message });
+      } else {
+        toast({ title: "Password updated!", description: "You can now sign in with your new password." });
+        setIsRecoveryMode(false);
+        setNewPassword("");
+        navigate("/student", { replace: true });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Redirect if already logged in (but not in recovery mode)
+  if (user && !isRecoveryMode) {
     const from = (location.state as { from?: { pathname: string } })?.from?.pathname || "/student";
     navigate(from, { replace: true });
     return null;
@@ -457,8 +493,62 @@ export default function Auth() {
             <div className="absolute -inset-[1px] bg-gradient-to-r from-primary via-neon-purple to-primary rounded-lg opacity-30 blur-sm animate-border-flow" />
             
             <div className="relative backdrop-blur-xl bg-card/70 border border-border/50 rounded-lg p-6 md:p-8 shadow-2xl">
-              {/* Waitlist Success State */}
-              {waitlistSuccess ? (
+              {/* Password Recovery Mode */}
+              {isRecoveryMode ? (
+                <>
+                  <div className="text-center mb-6">
+                    <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Lock className="w-8 h-8 text-primary" />
+                    </div>
+                    <h2 className="text-xl font-bold mb-2">Set New Password</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Enter your new password below.
+                    </p>
+                  </div>
+                  <form onSubmit={handlePasswordReset} className="space-y-5">
+                    <div className="space-y-2">
+                      <Label htmlFor="newPassword" className="text-xs font-bold uppercase tracking-wide">
+                        New Password
+                      </Label>
+                      <div className="relative group">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                        <Input
+                          id="newPassword"
+                          type={showPassword ? "text" : "password"}
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="pl-10 pr-10 bg-background/50 border-2 border-border focus:border-primary transition-all"
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </div>
+                    <Button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full btn-brutal group relative overflow-hidden"
+                    >
+                      <span className="relative z-10">
+                        {loading ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Updating...
+                          </span>
+                        ) : (
+                          "Update Password"
+                        )}
+                      </span>
+                    </Button>
+                  </form>
+                </>
+              ) : waitlistSuccess ? (
                 <div className="text-center py-6">
                   <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Mail className="w-8 h-8 text-primary" />
