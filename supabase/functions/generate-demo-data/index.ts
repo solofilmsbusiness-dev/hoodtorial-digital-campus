@@ -224,33 +224,43 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY")!;
     
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
-    // Verify admin role from auth header
+    // Verify auth from header
     const authHeader = req.headers.get("authorization");
-    if (!authHeader) {
+    if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
     
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    // Create auth client with user's token to verify
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
     
-    if (userError || !user) {
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
+    
+    if (claimsError || !claimsData?.claims) {
+      console.error("Token validation error:", claimsError);
       return new Response(JSON.stringify({ error: "Invalid token" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
     
+    const userId = claimsData.claims.sub as string;
+    
+    // Create service role client for data operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
     // Check admin role
     const { data: isAdmin } = await supabase.rpc("has_role", {
-      _user_id: user.id,
+      _user_id: userId,
       _role: "admin",
     });
     
@@ -283,7 +293,7 @@ serve(async (req) => {
         .from('demo_settings')
         .update({ 
           is_active: false,
-          updated_by: user.id,
+          updated_by: userId,
           updated_at: new Date().toISOString()
         })
         .eq('id', '00000000-0000-0000-0000-000000000001');
@@ -449,7 +459,7 @@ serve(async (req) => {
         demo_post_count: demoPosts.length,
         demo_comment_count: commentsCreated,
         last_generated_at: new Date().toISOString(),
-        updated_by: user.id,
+        updated_by: userId,
         updated_at: new Date().toISOString(),
       })
       .eq('id', '00000000-0000-0000-0000-000000000001');
