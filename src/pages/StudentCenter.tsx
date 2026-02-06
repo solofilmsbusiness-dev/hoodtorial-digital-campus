@@ -154,7 +154,9 @@ export default function StudentCenter() {
     const enrollment = activeEnrollments.find(e => e.course_code === courseCode);
     if (enrollment?.status === 'completed') return 100;
     
-    const course = getCourse(courseCode);
+    // Prefer static course for module structure (IDs match progress records)
+    const staticCourse = courses.find(c => c.code === courseCode);
+    const course = staticCourse || getCourse(courseCode);
     if (!course) return 0;
     
     // Handle DB-only courses with no modules
