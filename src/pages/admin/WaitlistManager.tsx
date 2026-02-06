@@ -40,6 +40,7 @@ import {
   Search,
   Download,
   Users,
+  Loader2,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -50,11 +51,13 @@ export default function WaitlistManager() {
     entries,
     isLoading,
     updateStatus,
+    approveEntry,
     deleteEntry,
     pendingCount,
     approvedCount,
     rejectedCount,
     isUpdating,
+    isApproving,
   } = useWaitlist();
 
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
@@ -69,10 +72,11 @@ export default function WaitlistManager() {
   });
 
   const exportToCSV = () => {
-    const headers = ["Email", "Name", "Status", "Signed Up", "Notes"];
+    const headers = ["Email", "Name", "Username", "Status", "Signed Up", "Notes"];
     const rows = entries.map((e) => [
       e.email,
       e.name || "",
+      e.desired_username || "",
       e.status,
       format(new Date(e.created_at), "yyyy-MM-dd HH:mm"),
       e.notes || "",
@@ -238,6 +242,7 @@ export default function WaitlistManager() {
                   <TableRow>
                     <TableHead>Email</TableHead>
                     <TableHead>Name</TableHead>
+                    <TableHead>Username</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Signed Up</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -248,6 +253,13 @@ export default function WaitlistManager() {
                     <TableRow key={entry.id}>
                       <TableCell className="font-medium">{entry.email}</TableCell>
                       <TableCell>{entry.name || "—"}</TableCell>
+                      <TableCell>
+                        {entry.desired_username ? (
+                          <span className="text-primary font-medium">@{entry.desired_username}</span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                       <TableCell>{getStatusBadge(entry.status)}</TableCell>
                       <TableCell className="text-muted-foreground">
                         {format(new Date(entry.created_at), "MMM d, yyyy")}
@@ -259,12 +271,15 @@ export default function WaitlistManager() {
                               size="sm"
                               variant="outline"
                               className="text-green-500 hover:text-green-600"
-                              onClick={() =>
-                                updateStatus({ id: entry.id, status: "approved" })
-                              }
-                              disabled={isUpdating}
+                              onClick={() => approveEntry(entry.id)}
+                              disabled={isApproving || isUpdating}
+                              title="Approve & send acceptance email"
                             >
-                              <CheckCircle className="w-4 h-4" />
+                              {isApproving ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <CheckCircle className="w-4 h-4" />
+                              )}
                             </Button>
                           )}
                           {entry.status !== "rejected" && (
@@ -275,7 +290,7 @@ export default function WaitlistManager() {
                               onClick={() =>
                                 updateStatus({ id: entry.id, status: "rejected" })
                               }
-                              disabled={isUpdating}
+                              disabled={isUpdating || isApproving}
                             >
                               <XCircle className="w-4 h-4" />
                             </Button>

@@ -6,8 +6,10 @@ export interface WaitlistEntry {
   id: string;
   email: string;
   name: string | null;
+  desired_username: string | null;
   status: "pending" | "approved" | "rejected";
   notes: string | null;
+  approved_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -69,6 +71,35 @@ export function useWaitlist() {
     },
   });
 
+  // New mutation for approving with account creation
+  const approveEntry = useMutation({
+    mutationFn: async (waitlistId: string) => {
+      const { data, error } = await supabase.functions.invoke("approve-waitlist", {
+        body: { waitlistId },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-waitlist"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-pending-waitlist"] });
+      toast({
+        title: "User approved! 🎉",
+        description: data?.message || "Acceptance email has been sent.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Approval failed",
+        description: error.message || "Failed to approve waitlist entry.",
+      });
+      console.error("Approve error:", error);
+    },
+  });
+
   const deleteEntry = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("waitlist").delete().eq("id", id);
@@ -100,11 +131,13 @@ export function useWaitlist() {
     entries: entries || [],
     isLoading,
     updateStatus: updateStatus.mutate,
+    approveEntry: approveEntry.mutate,
     deleteEntry: deleteEntry.mutate,
     pendingCount,
     approvedCount,
     rejectedCount,
     isUpdating: updateStatus.isPending,
+    isApproving: approveEntry.isPending,
     isDeleting: deleteEntry.isPending,
   };
 }

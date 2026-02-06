@@ -33,6 +33,8 @@ export default function Auth() {
   // Waitlist mode state
   const [isWaitlistMode, setIsWaitlistMode] = useState(false);
   const [waitlistName, setWaitlistName] = useState("");
+  const [waitlistUsername, setWaitlistUsername] = useState("");
+  const [usernameError, setUsernameError] = useState<string | null>(null);
   const [waitlistSuccess, setWaitlistSuccess] = useState(false);
   
   // Dynamic media URLs (fall back to static imports)
@@ -270,6 +272,23 @@ export default function Auth() {
     navigate("/assessment", { replace: true });
   };
 
+  // Validate username format
+  const validateUsername = (username: string): string | null => {
+    if (!username.trim()) {
+      return "Username is required";
+    }
+    if (username.length < 3) {
+      return "Username must be at least 3 characters";
+    }
+    if (username.length > 20) {
+      return "Username must be 20 characters or less";
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      return "Username can only contain letters, numbers, and underscores";
+    }
+    return null;
+  };
+
   // Handle waitlist submission
   const handleWaitlistSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -280,21 +299,37 @@ export default function Auth() {
       return;
     }
     
+    const usernameValidationError = validateUsername(waitlistUsername);
+    if (usernameValidationError) {
+      setUsernameError(usernameValidationError);
+      return;
+    }
+    
     setLoading(true);
     setErrors({});
+    setUsernameError(null);
     
     try {
       const { error } = await supabase
         .from("waitlist")
-        .insert({ email, name: waitlistName || null });
+        .insert({ 
+          email, 
+          name: waitlistName || null,
+          desired_username: waitlistUsername.toLowerCase()
+        });
       
       if (error) {
         if (error.code === "23505") {
-          toast({
-            variant: "destructive",
-            title: "Already on the list",
-            description: "This email is already on the waiting list.",
-          });
+          // Check if it's email or username duplicate
+          if (error.message?.includes("desired_username")) {
+            setUsernameError("This username is already taken. Please choose another.");
+          } else {
+            toast({
+              variant: "destructive",
+              title: "Already on the list",
+              description: "This email is already on the waiting list.",
+            });
+          }
         } else {
           throw error;
         }
@@ -432,6 +467,7 @@ export default function Auth() {
                       setIsWaitlistMode(false);
                       setEmail("");
                       setWaitlistName("");
+                      setWaitlistUsername("");
                     }}
                   >
                     Back to Sign In
@@ -464,6 +500,34 @@ export default function Auth() {
                           className="pl-10 bg-background/50 border-2 border-border focus:border-primary transition-all"
                         />
                       </div>
+                    </div>
+
+                    {/* Desired Username (required) */}
+                    <div className="space-y-2">
+                      <Label htmlFor="waitlistUsername" className="text-xs font-bold uppercase tracking-wide">
+                        Desired Username <span className="text-destructive">*</span>
+                      </Label>
+                      <div className="relative group">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors font-medium">@</span>
+                        <Input
+                          id="waitlistUsername"
+                          type="text"
+                          value={waitlistUsername}
+                          onChange={(e) => {
+                            setWaitlistUsername(e.target.value);
+                            setUsernameError(null);
+                          }}
+                          placeholder="your_username"
+                          className="pl-8 bg-background/50 border-2 border-border focus:border-primary transition-all lowercase"
+                          maxLength={20}
+                        />
+                      </div>
+                      {usernameError && (
+                        <p className="text-sm text-destructive">{usernameError}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        3-20 characters. Letters, numbers, and underscores only.
+                      </p>
                     </div>
 
                     {/* Email */}
@@ -513,6 +577,7 @@ export default function Auth() {
                       onClick={() => {
                         setIsWaitlistMode(false);
                         setErrors({});
+                        setUsernameError(null);
                       }}
                       className="text-sm text-muted-foreground hover:text-foreground"
                     >
