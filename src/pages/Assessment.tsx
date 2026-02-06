@@ -50,7 +50,7 @@ export default function Assessment() {
   const navigate = useNavigate();
    const [searchParams] = useSearchParams();
   const { user } = useAuth();
-   const { profile, updateProfile } = useProfileContext();
+   const { profile, updateProfile, refetch } = useProfileContext();
   const { saveAssessmentResult, latestResult, latestRoadmap, hasCompletedAssessment, calculateRoadmap, loading: resultsLoading } = useAssessmentResults();
 
   const [step, setStep] = useState<Step>("welcome");
@@ -297,15 +297,19 @@ export default function Assessment() {
        // Get the primary strength from results
        const primaryStrength = finalResults?.roadmap?.primaryStrength || interests[0];
        
-       await updateProfile({
+       const { error } = await updateProfile({
          degree_path: path,
          certificate_department: path === "certificate" ? (department || primaryStrength) : null,
          recommended_degree_path: path,
          onboarding_completed: true,
        });
        
-       // Navigate to journey view
-       navigate(`/journey/${path}`);
+       if (!error) {
+         // Refetch to ensure context is synced before navigation
+         await refetch();
+         // Navigate to skill tree view (correct route)
+         navigate(`/skill-tree/${path}`);
+       }
      } catch (error) {
        console.error("Failed to save degree path:", error);
      } finally {
@@ -315,9 +319,12 @@ export default function Assessment() {
  
    const handleSkipDegreeSelection = async () => {
      // Mark onboarding as completed even if they skip
-     await updateProfile({
+     const { error } = await updateProfile({
        onboarding_completed: true,
      });
+     if (!error) {
+       await refetch();
+     }
      navigate("/academics");
    };
  
