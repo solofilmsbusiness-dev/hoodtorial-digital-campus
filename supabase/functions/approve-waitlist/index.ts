@@ -252,12 +252,11 @@ const handler = async (req: Request): Promise<Response> => {
     let createdNewUser = false;
 
     if (existingUser) {
-      console.log(`User already exists with ID: ${existingUser.id}, updating password`);
-      // User exists - update their password and mark as confirmed
+      console.log(`User already exists with ID: ${existingUser.id}, confirming email only (preserving password)`);
+      // User exists - only confirm their email, do NOT overwrite their password
       const { error: updateUserError } = await supabaseAdmin.auth.admin.updateUserById(
         existingUser.id,
         {
-          password: tempPassword,
           email_confirm: true,
           user_metadata: {
             display_name: name || username,
@@ -270,6 +269,7 @@ const handler = async (req: Request): Promise<Response> => {
         throw new Error(`Failed to update existing user: ${updateUserError.message}`);
       }
       userId = existingUser.id;
+      createdNewUser = false;
     } else {
       console.log(`Creating new user account for: ${email}`);
       // Create the user account
@@ -308,29 +308,32 @@ const handler = async (req: Request): Promise<Response> => {
     // Get the login URL
     const loginUrl = Deno.env.get("SITE_URL") || "https://hoodtorial-digital-campus.lovable.app/auth";
 
-    // Send the acceptance email
-    console.log(`Sending acceptance email to: ${email}`);
-    
-    const emailHtml = generateAcceptanceEmail(
-      name || "",
-      username,
-      email,
-      tempPassword,
-      loginUrl
-    );
+    // Only send acceptance email with credentials for newly created users
+    if (createdNewUser) {
+      console.log(`Sending acceptance email to: ${email}`);
+      
+      const emailHtml = generateAcceptanceEmail(
+        name || "",
+        username,
+        email,
+        tempPassword,
+        loginUrl
+      );
 
-    const { error: emailError } = await resend.emails.send({
-      from: "Hoodtorial University <onboarding@resend.dev>",
-      to: [email],
-      subject: "🎬 Welcome to Hoodtorial University - You're IN!",
-      html: emailHtml,
-    });
+      const { error: emailError } = await resend.emails.send({
+        from: "Hoodtorial University <onboarding@resend.dev>",
+        to: [email],
+        subject: "🎬 Welcome to Hoodtorial University - You're IN!",
+        html: emailHtml,
+      });
 
-    if (emailError) {
-      console.error("Email send error:", emailError);
-      // Log but don't fail - user account is already created
+      if (emailError) {
+        console.error("Email send error:", emailError);
+      } else {
+        console.log("Acceptance email sent successfully");
+      }
     } else {
-      console.log("Acceptance email sent successfully");
+      console.log(`Skipping credential email for existing user: ${email}`);
     }
 
     // Update waitlist status to approved

@@ -664,6 +664,48 @@ export default function Auth() {
                       {errors.password && (
                         <p className="text-sm text-destructive">{errors.password}</p>
                       )}
+                      {!isSignUp && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!email) {
+                              toast({
+                                variant: "destructive",
+                                title: "Enter your email first",
+                                description: "Please enter your email address above, then click Forgot Password.",
+                              });
+                              return;
+                            }
+                            const emailResult = emailSchema.safeParse(email);
+                            if (!emailResult.success) {
+                              toast({
+                                variant: "destructive",
+                                title: "Invalid email",
+                                description: "Please enter a valid email address.",
+                              });
+                              return;
+                            }
+                            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                              redirectTo: `${window.location.origin}/auth`,
+                            });
+                            if (error) {
+                              toast({
+                                variant: "destructive",
+                                title: "Error",
+                                description: error.message,
+                              });
+                            } else {
+                              toast({
+                                title: "Check your email",
+                                description: "If an account exists with that email, you'll receive a password reset link.",
+                              });
+                            }
+                          }}
+                          className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                        >
+                          Forgot Password?
+                        </button>
+                      )}
                     </div>
 
                     {/* Submit Button */}
