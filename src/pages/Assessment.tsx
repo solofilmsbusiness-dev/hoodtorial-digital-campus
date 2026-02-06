@@ -372,6 +372,21 @@ export default function Assessment() {
     );
   }
 
+  // Show loading while checking assessment status to prevent race conditions
+  // This prevents showing the wrong step while data is being fetched
+  const stepParam = searchParams.get("step");
+  if (resultsLoading && stepParam === "degree-recommendation") {
+    return (
+      <PageLayout>
+        <div className="container max-w-4xl py-16 text-center">
+          <div className="animate-pulse text-primary font-bold text-xl">
+            Loading your assessment data...
+          </div>
+        </div>
+      </PageLayout>
+    );
+  }
+
    // Onboarding step configuration
    const currentOnboardingStepIndex = step === "degree-recommendation" ? 1 : 0;
    const onboardingStepsConfig = [
