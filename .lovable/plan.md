@@ -1,131 +1,137 @@
 
-# Fix: Users Stuck in Assessment Redirect Loop
 
-## Problem Identified
+# Fix: Multiple Student Issues and Video Upload Problems
 
-Users who have **completed the assessment** but did not select a **degree path** are caught in a redirect loop:
+## Issues Identified
 
-```text
-User visits /community
-         │
-         ▼
-┌─────────────────────────────────────────────────────┐
-│ AssessmentRequiredRoute checks:                     │
-│   ✅ hasCompletedAssessment = true                  │
-│   ❌ degree_path = null                             │
-│   ❌ onboarding_completed = false                   │
-│                                                     │
-│   → Redirects to /assessment?step=degree-recommendation │
-└─────────────────────────────────────────────────────┘
-         │
-         ▼
-┌─────────────────────────────────────────────────────┐
-│ Assessment.tsx loads:                               │
-│   - Data still loading...                           │
-│   - Shows "welcome" step instead of degree step     │
-│   - User confused, clicks something                 │
-│   - Loop continues                                  │
-└─────────────────────────────────────────────────────┘
-```
+### Issue 1: Prince Moran Stuck in Assessment Loop (Again)
 
-**Affected Users** (7 users with completed assessment but no degree path):
-- Test User
-- Jason Young  
-- zach
-- Jessica Norton
-- Test Account
-- Jardani
-- Ja'Van
+**Current State:**
+| Field | Value | Problem |
+|-------|-------|---------|
+| `assessment_count` | 0 | No assessments completed |
+| `degree_path` | `"associate"` | Has a path set without assessment |
+| `onboarding_completed` | `false` | Not marked complete |
+
+**Root Cause:** The corrupted profile fix from earlier reset `degree_path` to `null`, but it was set to "bachelor" before. Now it shows "associate" - which means either:
+1. The previous SQL fix didn't work (wrong user_id)
+2. The profile was modified again after the fix
+3. The defensive `useEffect` in Assessment.tsx fired but the update didn't persist
+
+The defensive code in Assessment.tsx checks `profile?.degree_path` but only triggers when `hasCompletedAssessment` is false. If the assessment query is loading, this check is skipped.
 
 ---
 
-## Root Cause
+### Issue 2: Video Upload Not Working
 
-Two issues:
+**Symptoms:** Admin can't upload videos for login page or other tabs (admin backgrounds).
 
-1. **Race Condition**: The `useEffect` that sets the step to "degree-recommendation" depends on `latestResult` and `latestRoadmap` being loaded. During loading, users see the confusing "welcome" step.
+**Findings from Investigation:**
+- Storage bucket `site-assets` exists and is public
+- RLS policies are correctly configured (admins can INSERT/UPDATE/DELETE)
+- The `site_settings` table policies are correct (admins can INSERT/UPDATE)
+- No actual upload errors visible in recent network logs
 
-2. **No Loading State**: Assessment page doesn't show a loading state while checking assessment data, causing the wrong UI to flash.
+**Likely Causes:**
+1. The upload is failing silently without proper error handling
+2. The `updateSetting` call to save the URL may be failing due to RLS
+3. Browser may be blocking large file uploads
 
 ---
 
 ## Solution
 
-### Part 1: Fix Assessment.tsx Loading State
+### Part 1: Database Fix for Prince Moran
 
-Add proper loading state handling so users don't see the welcome screen while data loads:
+Reset the corrupted profile state:
+
+```sql
+UPDATE profiles 
+SET degree_path = NULL, 
+    certificate_department = NULL,
+    recommended_degree_path = NULL
+WHERE user_id = '3e612916-6557-4b3f-81b4-3b3e185064c6';
+```
+
+### Part 2: Improve Defensive Code in Assessment.tsx
+
+The current defensive code has a race condition - it only triggers if `resultsLoading` is false. We need to make it more robust:
 
 **File: `src/pages/Assessment.tsx`**
 
-Add a check at the beginning of the component to show loading while assessment data is being fetched:
-
 ```typescript
-// Show loading while checking assessment status
-if (resultsLoading) {
-  return (
-    <PageLayout>
-      <div className="container max-w-4xl py-16 text-center">
-        <div className="animate-pulse text-primary font-bold text-xl">
-          Loading your assessment data...
-        </div>
-      </div>
-    </PageLayout>
-  );
-}
-```
-
-### Part 2: Fix Step Initialization Logic
-
-Update the step initialization to properly handle the degree-recommendation redirect **before** rendering the welcome screen:
-
-```typescript
-// Initialize step based on URL params and assessment state
-const [step, setStep] = useState<Step>(() => {
-  // This will be properly set in useEffect once data loads
-  return "welcome";
-});
-
-// Immediately set correct step when data is available
+// Current code (line 58-68):
 useEffect(() => {
-  const stepParam = searchParams.get("step");
-  
-  if (stepParam === "degree-recommendation" && hasCompletedAssessment) {
-    // Even before roadmap loads, show loading or degree step
-    if (latestResult && latestRoadmap) {
-      setFinalResults({
-        departmentScores: latestResult.department_scores as Record<string, number>,
-        totalScore: latestResult.total_score,
-        recommendedCourses: latestResult.recommended_courses,
-        roadmap: latestRoadmap,
-      });
-      setInterests(latestResult.interests);
-      setExperienceLevel(latestResult.experience_level);
-      setStep("degree-recommendation");
-    }
-    // If not loaded yet, the loading state above handles it
+  if (!resultsLoading && !hasCompletedAssessment && profile?.degree_path) {
+    console.warn("Detected corrupted profile state...");
+    updateProfile({...});
   }
-}, [searchParams, hasCompletedAssessment, latestResult, latestRoadmap]);
+}, [resultsLoading, hasCompletedAssessment, profile?.degree_path, updateProfile]);
 ```
 
-### Part 3: Database Fix for Affected Users
+**Problems:**
+1. The `updateProfile` call doesn't handle errors or confirm success
+2. No feedback to user about what's happening
+3. Page might still show wrong state during the fix
 
-Reset `onboarding_completed` to allow affected users to properly complete the flow:
+**Improved approach:**
+1. Add loading state while auto-fixing
+2. Show toast notification about the fix
+3. Force refetch profile after fix
+4. Navigate user to start fresh assessment after fix
 
-```sql
--- Users who completed assessment but never selected degree path
--- Set onboarding_completed = true so they can access the site
--- They can select degree path later from settings
-UPDATE profiles 
-SET onboarding_completed = true
-WHERE user_id IN (
-  SELECT p.user_id 
-  FROM profiles p
-  WHERE EXISTS (
-    SELECT 1 FROM assessment_results ar WHERE ar.user_id = p.user_id
-  )
-  AND p.degree_path IS NULL 
-  AND p.onboarding_completed = false
-);
+### Part 3: Fix Video Upload Error Handling
+
+**File: `src/hooks/useSiteSettings.ts`**
+
+The `uploadAsset` function silently fails without proper error details. Add better logging and validation:
+
+```typescript
+const uploadAsset = useCallback(async (file: File, assetType: 'video' | 'logo' | 'music'): Promise<string> => {
+  console.log("Starting upload:", { type: assetType, size: file.size, name: file.name });
+  
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${assetType}-${Date.now()}.${fileExt}`;
+  const filePath = `login/${fileName}`;
+
+  const { error: uploadError, data: uploadData } = await supabase.storage
+    .from('site-assets')
+    .upload(filePath, file, {
+      cacheControl: '3600',
+      upsert: true
+    });
+
+  if (uploadError) {
+    console.error("Storage upload error:", uploadError);
+    throw new Error(`Upload failed: ${uploadError.message}`);
+  }
+
+  console.log("Upload successful:", uploadData);
+  
+  const { data: urlData } = supabase.storage
+    .from('site-assets')
+    .getPublicUrl(filePath);
+
+  console.log("Public URL:", urlData.publicUrl);
+  return urlData.publicUrl;
+}, []);
+```
+
+**File: `src/components/admin/SiteCustomization.tsx`**
+
+Add better error display in the upload handlers:
+
+```typescript
+} catch (error) {
+  console.error("Error uploading video:", error);
+  toast({
+    title: "Upload failed",
+    description: error instanceof Error 
+      ? error.message 
+      : "Failed to upload video. Please try again.",
+    variant: "destructive",
+  });
+}
 ```
 
 ---
@@ -134,23 +140,34 @@ WHERE user_id IN (
 
 | File | Changes |
 |------|---------|
-| `src/pages/Assessment.tsx` | Add loading state check at component start |
-| Database | Update affected users' onboarding_completed to true |
+| Database | Reset Prince Moran's corrupted profile |
+| `src/pages/Assessment.tsx` | Improve defensive code with proper error handling, loading state, and user feedback |
+| `src/hooks/useSiteSettings.ts` | Add detailed logging to upload function |
+| `src/components/admin/SiteCustomization.tsx` | Improve error message display |
 
 ---
 
 ## Implementation Steps
 
-1. **Add Loading State** - Show loading spinner while assessment data fetches
-2. **Fix Step Logic** - Ensure degree-recommendation step is shown immediately when URL param is present
-3. **Database Update** - Allow affected users to access the site by setting onboarding_completed = true
-4. **Test** - Verify users can access Community without redirect loop
+1. **Database Fix** - Reset Prince Moran's profile fields
+2. **Assessment.tsx** - Add robust auto-fix with loading state and navigation
+3. **useSiteSettings.ts** - Add console logging for debugging uploads
+4. **SiteCustomization.tsx** - Show more detailed error messages
+5. **Test** - Have Prince Moran log in and verify assessment starts correctly
+6. **Test** - Try uploading a video and check browser console for any errors
 
 ---
 
 ## Expected Behavior After Fix
 
-1. User visits `/community`
-2. `AssessmentRequiredRoute` sees `onboarding_completed = true` → allows access
-3. Users can optionally select a degree path from their profile/settings later
-4. New users completing assessment see proper loading states and smooth transitions
+**For Students:**
+1. Prince Moran visits any protected page
+2. Gets redirected to `/assessment` 
+3. Assessment page detects corrupted state → shows loading → auto-fixes profile
+4. User sees "Start Assessment" button and can proceed normally
+
+**For Video Uploads:**
+1. Admin uploads a video
+2. Console shows detailed progress: "Starting upload... Upload successful... Public URL..."
+3. If error occurs, toast shows specific error message for debugging
+
