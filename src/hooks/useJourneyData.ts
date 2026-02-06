@@ -2,88 +2,85 @@
  import { useAssessmentResults } from "@/hooks/useAssessmentResults";
  import { useUserProgress } from "@/hooks/useUserProgress";
  import { courses, departments } from "@/data/courses";
- import type { DegreePath } from "@/hooks/useSkillTree";
- 
- export type LevelStatus = "locked" | "available" | "in_progress" | "complete";
- export type CourseStatus = "locked" | "available" | "in_progress" | "complete";
- 
- export interface JourneyCourse {
-   code: string;
-   title: string;
-   department: string;
-   departmentId: string;
-   departmentColor: string;
-   credits: number;
-   skillPoints: number;
-   status: CourseStatus;
-   progress: {
-     lessonsCompleted: number;
-     lessonsTotal: number;
-     quizzesPassed: number;
-     quizzesTotal: number;
-     percentage: number;
-   };
-   prerequisites: string[];
-   isRecommended?: boolean;
- }
- 
- export interface JourneyMilestone {
-   id: string;
-   type: "exam" | "project" | "capstone";
-   title: string;
-   description: string;
-   status: "locked" | "available" | "complete";
-   skillPoints: number;
-   requiredCourses?: string[];
- }
- 
- export interface JourneyLevel {
-   id: string;
-   name: string;
-   number: number;
-   status: LevelStatus;
-   courses: JourneyCourse[];
-   completedCount: number;
-   totalCount: number;
-   milestone?: JourneyMilestone;
- }
- 
- interface JourneyData {
-   levels: JourneyLevel[];
-   pathName: string;
-   totalCredits: number;
-   earnedCredits: number;
-   totalSkillPoints: number;
-   earnedSkillPoints: number;
-   completedCourses: number;
-   totalCourses: number;
-   currentLevel: number;
-   rank: string;
-   overallPercentage: number;
- }
- 
- // Degree path configurations
- const pathConfigs: Record<DegreePath, { name: string; totalCredits: number; courseCodes: string[] }> = {
-   associate: {
-     name: "Associate of Film",
-     totalCredits: 30,
-     courseCodes: ["HU-101", "HU-102", "HU-103", "HU-104", "HU-105", "HU-106"],
-   },
-   bachelor: {
-     name: "Bachelor of Film",
-     totalCredits: 60,
-     courseCodes: [
-       "HU-101", "HU-102", "HU-103", "HU-104", "HU-105", "HU-106",
-       "HU-201", "HU-202", "HU-203", "HU-204",
-       "HU-301", "HU-302", "HU-303", "HU-304",
-     ],
-   },
-   certificate: {
-     name: "Certificate",
-     totalCredits: 15,
-     courseCodes: ["HU-101", "HU-102", "HU-201"],
-   },
- };
+import type { DegreePath } from "@/hooks/useSkillTree";
+import { DEGREE_PATH_COURSES, DEGREE_PATH_NAMES, DEGREE_PATH_CREDITS } from "@/lib/degreePathCourses";
+
+export type LevelStatus = "locked" | "available" | "in_progress" | "complete";
+export type CourseStatus = "locked" | "available" | "in_progress" | "complete";
+
+export interface JourneyCourse {
+  code: string;
+  title: string;
+  department: string;
+  departmentId: string;
+  departmentColor: string;
+  credits: number;
+  skillPoints: number;
+  status: CourseStatus;
+  progress: {
+    lessonsCompleted: number;
+    lessonsTotal: number;
+    quizzesPassed: number;
+    quizzesTotal: number;
+    percentage: number;
+  };
+  prerequisites: string[];
+  isRecommended?: boolean;
+}
+
+export interface JourneyMilestone {
+  id: string;
+  type: "exam" | "project" | "capstone";
+  title: string;
+  description: string;
+  status: "locked" | "available" | "complete";
+  skillPoints: number;
+  requiredCourses?: string[];
+}
+
+export interface JourneyLevel {
+  id: string;
+  name: string;
+  number: number;
+  status: LevelStatus;
+  courses: JourneyCourse[];
+  completedCount: number;
+  totalCount: number;
+  milestone?: JourneyMilestone;
+}
+
+interface JourneyData {
+  levels: JourneyLevel[];
+  pathName: string;
+  totalCredits: number;
+  earnedCredits: number;
+  totalSkillPoints: number;
+  earnedSkillPoints: number;
+  completedCourses: number;
+  totalCourses: number;
+  currentLevel: number;
+  rank: string;
+  overallPercentage: number;
+}
+
+// Degree path configurations (using shared course codes)
+const pathConfigs: Record<DegreePath, { name: string; totalCredits: number; courseCodes: string[] }> = {
+  associate: {
+    name: DEGREE_PATH_NAMES.associate,
+    totalCredits: DEGREE_PATH_CREDITS.associate,
+    courseCodes: DEGREE_PATH_COURSES.associate,
+  },
+  bachelor: {
+    name: DEGREE_PATH_NAMES.bachelor,
+    totalCredits: DEGREE_PATH_CREDITS.bachelor,
+    courseCodes: DEGREE_PATH_COURSES.bachelor,
+  },
+  certificate: {
+    name: DEGREE_PATH_NAMES.certificate,
+    totalCredits: DEGREE_PATH_CREDITS.certificate,
+    courseCodes: DEGREE_PATH_COURSES.certificate,
+  },
+};
  
  // Department color mapping
  const departmentColors: Record<string, string> = {
