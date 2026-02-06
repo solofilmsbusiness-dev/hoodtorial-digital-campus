@@ -718,10 +718,10 @@ export function StudentDetailSheet({
                     Manage Roles
                   </Button>
                   <Button variant="ghost" asChild>
-                    <a href={`/profile/${student.id}`} target="_blank" rel="noopener noreferrer">
+                    <Link to={`/profile/${student.id}`}>
                       <ExternalLink className="h-4 w-4 mr-2" />
                       View Public Profile
-                    </a>
+                    </Link>
                   </Button>
                   {!student.isBanned && (
                     <Button
