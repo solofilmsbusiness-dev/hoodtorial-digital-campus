@@ -10,8 +10,9 @@ import { Search } from "lucide-react";
 
 export type SubscriptionFilter = "all" | "trial" | "active" | "expired";
 export type TierFilter = "all" | "freshman" | "sophomore" | "graduate";
- export type RoleFilter = "all" | "admin" | "professor" | "moderator" | "tester" | "student";
+export type RoleFilter = "all" | "admin" | "professor" | "moderator" | "tester" | "student";
 export type SortOption = "newest" | "oldest" | "name-asc" | "name-desc" | "quiz-rate" | "courses";
+export type OnlineFilter = "all" | "online" | "offline";
 
 interface StudentFiltersProps {
   searchQuery: string;
@@ -24,6 +25,8 @@ interface StudentFiltersProps {
   onRoleChange: (value: RoleFilter) => void;
   sortOption: SortOption;
   onSortChange: (value: SortOption) => void;
+  onlineFilter?: OnlineFilter;
+  onOnlineChange?: (value: OnlineFilter) => void;
 }
 
 export function StudentFilters({
@@ -37,6 +40,8 @@ export function StudentFilters({
   onRoleChange,
   sortOption,
   onSortChange,
+  onlineFilter,
+  onOnlineChange,
 }: StudentFiltersProps) {
   return (
     <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
@@ -87,6 +92,19 @@ export function StudentFilters({
           <SelectItem value="student">Student</SelectItem>
         </SelectContent>
       </Select>
+
+      {onlineFilter !== undefined && onOnlineChange && (
+        <Select value={onlineFilter} onValueChange={onOnlineChange}>
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="Online" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Users</SelectItem>
+            <SelectItem value="online">Online</SelectItem>
+            <SelectItem value="offline">Offline</SelectItem>
+          </SelectContent>
+        </Select>
+      )}
 
       <Select value={sortOption} onValueChange={onSortChange}>
         <SelectTrigger className="w-[160px]">
