@@ -8,7 +8,8 @@ import {
   GraduationCap,
   MessageSquare,
   Zap,
-  Headphones
+  Headphones,
+  Clock
 } from "lucide-react";
 import {
   Sidebar,
@@ -24,6 +25,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useAdminSupport } from "@/hooks/useAdminSupport";
+import { usePendingWaitlistCount } from "@/hooks/useWaitlist";
 
 const navItems = [
   {
@@ -57,6 +59,11 @@ const navItems = [
     icon: Users,
   },
   {
+    title: "Waiting List",
+    href: "/admin/waitlist",
+    icon: Clock,
+  },
+  {
     title: "Settings",
     href: "/admin/settings",
     icon: Settings,
@@ -67,6 +74,7 @@ export function AdminSidebar() {
   const location = useLocation();
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
+  const pendingWaitlistCount = usePendingWaitlistCount();
   const { openTicketsCount } = useAdminSupport();
 
   return (
@@ -90,7 +98,10 @@ export function AdminSidebar() {
               {navItems.map((item) => {
                 const isActive = location.pathname === item.href || 
                   (item.href !== "/admin" && location.pathname.startsWith(item.href));
-                const showBadge = item.href === "/admin/support" && openTicketsCount > 0;
+                const showSupportBadge = item.href === "/admin/support" && openTicketsCount > 0;
+                const showWaitlistBadge = item.href === "/admin/waitlist" && pendingWaitlistCount > 0;
+                const showBadge = showSupportBadge || showWaitlistBadge;
+                const badgeCount = showSupportBadge ? openTicketsCount : pendingWaitlistCount;
                 
                 return (
                   <SidebarMenuItem key={item.href}>
@@ -104,7 +115,7 @@ export function AdminSidebar() {
                         <span>{item.title}</span>
                         {showBadge && (
                           <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                            {openTicketsCount > 9 ? "9+" : openTicketsCount}
+                            {badgeCount > 9 ? "9+" : badgeCount}
                           </span>
                         )}
                       </Link>
