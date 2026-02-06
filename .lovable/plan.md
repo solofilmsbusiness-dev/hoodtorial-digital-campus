@@ -1,65 +1,49 @@
 
 
-# Create Admin Account
+# Fix: Welcome Screen Should Only Show Once for New Users
 
-## What This Does
+## Problem
 
-Creates a new admin account you can use to log in immediately. This will be done via a one-time-use backend function that creates the account with the admin role pre-assigned.
+The "Welcome to Your Assessment" page appears every time a user visits `/assessment`, even after they have already completed it. It should only appear once for brand new users taking the assessment for the first time.
 
-## Your Login Credentials
+## Root Cause
 
-Once implemented, your new admin account will be:
-- **Email**: admin@hoodtorial.com
-- **Password**: HoodAdmin2026!
+In `src/pages/Assessment.tsx`, the initial `step` state is always set to `"welcome"` (line 56). There is no logic to automatically skip past the welcome screen when the user has already completed the assessment. Currently, returning users see a "You've already completed" card on the welcome page, but the welcome page itself still renders.
 
-You can change the password after logging in.
+## Solution
 
-## How It Works
+Add an effect that checks `hasCompletedAssessment` once loading is done. If the user has already completed the assessment, automatically jump to the `"results"` step (populating `finalResults` from `latestResult`) instead of lingering on `"welcome"`.
 
-### Step 1: Create a setup edge function
+## File to Modify
 
-A new backend function (`create-admin`) that:
-1. Creates a new user account with email `admin@hoodtorial.com` and a known password
-2. Confirms the email automatically (no verification needed)
-3. Assigns the `admin` role in the `user_roles` table
-4. Returns success so you know it worked
-
-This function will NOT require authentication (since you can't log in yet), but will include a one-time secret key to prevent unauthorized use.
-
-### Step 2: Call the function to create the account
-
-After deploying, we'll invoke the function to create the account.
-
-### Step 3: Log in
-
-Go to hoodtorialuniversity.com/auth and log in with the credentials above.
-
----
-
-## File to Create
-
-| File | Purpose |
-|------|---------|
-| `supabase/functions/create-admin/index.ts` | One-time function to create the admin account |
+| File | Change |
+|------|--------|
+| `src/pages/Assessment.tsx` | Add a `useEffect` that auto-skips the welcome step for returning users |
 
 ## Technical Details
 
-The edge function will:
+Add a new `useEffect` after the existing ones (around line 105) that runs when `resultsLoading` finishes:
 
-```typescript
-// Create user via admin API
-const { data: newUser } = await supabaseAdmin.auth.admin.createUser({
-  email: "admin@hoodtorial.com",
-  password: "HoodAdmin2026!",
-  email_confirm: true,
-});
-
-// Assign admin role
-await supabaseAdmin.from("user_roles").insert({
-  user_id: newUser.user.id,
-  role: "admin",
-});
+```tsx
+// Auto-skip welcome for returning users
+useEffect(() => {
+  if (!resultsLoading && hasCompletedAssessment && latestResult && latestRoadmap && step === "welcome" && !isRetaking) {
+    setFinalResults({
+      departmentScores: latestResult.department_scores as Record<string, number>,
+      totalScore: latestResult.total_score,
+      recommendedCourses: latestResult.recommended_courses,
+      roadmap: latestRoadmap,
+    });
+    setInterests(latestResult.interests);
+    setExperienceLevel(latestResult.experience_level);
+    setStep("results");
+  }
+}, [resultsLoading, hasCompletedAssessment, latestResult, latestRoadmap, step, isRetaking]);
 ```
 
-A setup key is required in the request body to prevent anyone else from calling this. After the account is created, the function should be deleted for security.
+This ensures:
+- First-time users see the welcome screen as normal
+- Returning users are taken directly to their results
+- The "Retake Assessment" button still works (guarded by `!isRetaking`)
+- The `?step=degree-recommendation` query param still works (handled by existing effect)
 
