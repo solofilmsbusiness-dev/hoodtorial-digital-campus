@@ -1,71 +1,65 @@
 
 
-# Fix: Complete the Forgot Password Flow
+# Create Admin Account
 
-## Problem
+## What This Does
 
-The "Forgot Password" button correctly sends a recovery email, but when you click the link in the email, you're redirected back to the login page with no way to actually set a new password. The `PASSWORD_RECOVERY` auth event is never handled.
+Creates a new admin account you can use to log in immediately. This will be done via a one-time-use backend function that creates the account with the admin role pre-assigned.
 
-## Solution
+## Your Login Credentials
 
-### 1. Handle the PASSWORD_RECOVERY event in Auth.tsx
+Once implemented, your new admin account will be:
+- **Email**: admin@hoodtorial.com
+- **Password**: HoodAdmin2026!
 
-Listen for the `PASSWORD_RECOVERY` event in the auth state change listener. When detected, show a "Set New Password" form instead of the normal login/signup form.
+You can change the password after logging in.
 
-### 2. Add a New Password form
+## How It Works
 
-Display a simple form with a new password field and confirm button. On submit, call `supabase.auth.updateUser({ password })` to save the new password.
+### Step 1: Create a setup edge function
 
-### 3. Immediate action after deploying
+A new backend function (`create-admin`) that:
+1. Creates a new user account with email `admin@hoodtorial.com` and a known password
+2. Confirms the email automatically (no verification needed)
+3. Assigns the `admin` role in the `user_roles` table
+4. Returns success so you know it worked
 
-Once this fix is live:
-1. Go to hoodtorialuniversity.com/auth
-2. Click "Forgot Password?" and enter bangoutfilms@gmail.com
-3. Check your email and click the reset link
-4. Enter your new password in the form that appears
+This function will NOT require authentication (since you can't log in yet), but will include a one-time secret key to prevent unauthorized use.
+
+### Step 2: Call the function to create the account
+
+After deploying, we'll invoke the function to create the account.
+
+### Step 3: Log in
+
+Go to hoodtorialuniversity.com/auth and log in with the credentials above.
 
 ---
 
-## File to Modify
+## File to Create
 
-| File | Change |
-|------|--------|
-| `src/pages/Auth.tsx` | Add PASSWORD_RECOVERY event handler and new password form |
+| File | Purpose |
+|------|---------|
+| `supabase/functions/create-admin/index.ts` | One-time function to create the admin account |
 
 ## Technical Details
 
-**Auth.tsx changes:**
+The edge function will:
 
-Add state to track recovery mode:
-```tsx
-const [isRecoveryMode, setIsRecoveryMode] = useState(false);
-const [newPassword, setNewPassword] = useState("");
+```typescript
+// Create user via admin API
+const { data: newUser } = await supabaseAdmin.auth.admin.createUser({
+  email: "admin@hoodtorial.com",
+  password: "HoodAdmin2026!",
+  email_confirm: true,
+});
+
+// Assign admin role
+await supabaseAdmin.from("user_roles").insert({
+  user_id: newUser.user.id,
+  role: "admin",
+});
 ```
 
-Add a `useEffect` to listen for the recovery event:
-```tsx
-useEffect(() => {
-  const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-    if (event === 'PASSWORD_RECOVERY') {
-      setIsRecoveryMode(true);
-    }
-  });
-  return () => subscription.unsubscribe();
-}, []);
-```
+A setup key is required in the request body to prevent anyone else from calling this. After the account is created, the function should be deleted for security.
 
-Add a handler to update the password:
-```tsx
-const handlePasswordReset = async () => {
-  const { error } = await supabase.auth.updateUser({ password: newPassword });
-  if (error) {
-    toast({ title: "Error", description: error.message, variant: "destructive" });
-  } else {
-    toast({ title: "Success", description: "Password updated! You can now log in." });
-    setIsRecoveryMode(false);
-    navigate("/student");
-  }
-};
-```
-
-Conditionally render the recovery form when `isRecoveryMode` is true, showing a password input and "Update Password" button instead of the normal login/signup form.
