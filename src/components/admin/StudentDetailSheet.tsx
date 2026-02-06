@@ -74,7 +74,8 @@ type ConfirmAction =
   | { type: "removeAllEnrollments" }
   | { type: "resetAllProgress" }
   | { type: "banUser" }
-  | { type: "unbanUser" };
+  | { type: "unbanUser" }
+  | { type: "deleteUser" };
 
 export function StudentDetailSheet({
   userId,
@@ -93,6 +94,7 @@ export function StudentDetailSheet({
     deleteAllProgress,
     banUser,
     unbanUser,
+    deleteUser,
     isDeleting 
   } = useAdminQuizManagement();
 
@@ -256,6 +258,14 @@ export function StudentDetailSheet({
         if (result.success) {
           toast.success("User has been unbanned");
           refetch();
+        } else {
+          throw result.error;
+        }
+      } else if (confirmDialog.type === "deleteUser") {
+        const result = await deleteUser(userId);
+        if (result.success) {
+          toast.success("User has been permanently deleted");
+          onOpenChange(false); // Close the sheet after deletion
         } else {
           throw result.error;
         }
@@ -733,6 +743,18 @@ export function StudentDetailSheet({
                       Ban User
                     </Button>
                   )}
+                  {/* Delete User - hidden for current user */}
+                  {student.id !== currentUser?.id && (
+                    <Button
+                      variant="outline"
+                      className="text-destructive hover:text-destructive border-destructive/30 hover:border-destructive hover:bg-destructive/10"
+                      onClick={() => setConfirmDialog({ type: "deleteUser" })}
+                      disabled={isDeleting}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete User Permanently
+                    </Button>
+                  )}
                 </div>
               </div>
             </ScrollArea>
@@ -756,6 +778,7 @@ export function StudentDetailSheet({
               {confirmDialog?.type === "resetAllProgress" && "Reset All Progress"}
               {confirmDialog?.type === "banUser" && "Ban User"}
               {confirmDialog?.type === "unbanUser" && "Unban User"}
+              {confirmDialog?.type === "deleteUser" && "Permanently Delete User"}
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div>
@@ -813,6 +836,24 @@ export function StudentDetailSheet({
                     Are you sure you want to unban this user? They will regain access to the platform.
                   </>
                 )}
+                {confirmDialog?.type === "deleteUser" && (
+                  <div className="space-y-2">
+                    <p>
+                      <strong className="text-destructive">Warning:</strong> This action is <strong>irreversible</strong>.
+                    </p>
+                    <p>
+                      Permanently deleting <strong>{student?.displayName || "this user"}</strong> will remove:
+                    </p>
+                    <ul className="list-disc list-inside text-sm space-y-1 mt-2">
+                      <li>Account and login credentials</li>
+                      <li>Profile information</li>
+                      <li>Course enrollments and progress</li>
+                      <li>Quiz results and answers</li>
+                      <li>Community posts and comments</li>
+                      <li>Messages and friendships</li>
+                    </ul>
+                  </div>
+                )}
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -822,7 +863,7 @@ export function StudentDetailSheet({
               onClick={handleConfirmAction}
               disabled={isDeleting || (confirmDialog?.type === "banUser" && !banReason.trim())}
               className={cn(
-                confirmDialog?.type === "unbanUser" 
+                (confirmDialog?.type === "unbanUser")
                   ? "" 
                   : "bg-destructive text-destructive-foreground hover:bg-destructive/90"
               )}

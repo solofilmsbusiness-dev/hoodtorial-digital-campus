@@ -280,6 +280,41 @@ export function useAdminQuizManagement() {
     }
   }, [queryClient]);
 
+  // Delete a user permanently (calls edge function)
+  const deleteUser = useCallback(async (userId: string) => {
+    setIsDeleting(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
+
+      const response = await supabase.functions.invoke("delete-user", {
+        body: { userId },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || "Failed to delete user");
+      }
+
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
+
+      // Invalidate all relevant queries
+      queryClient.invalidateQueries({ queryKey: ["admin-students"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-student-detail"] });
+
+      return { success: true };
+    } catch (error) {
+      return { success: false, error };
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [queryClient]);
+
   return {
     fetchQuizResultsWithAnswers,
     deleteQuizResult,
@@ -289,6 +324,7 @@ export function useAdminQuizManagement() {
     deleteAllProgress,
     banUser,
     unbanUser,
+    deleteUser,
     isDeleting,
   };
 }
