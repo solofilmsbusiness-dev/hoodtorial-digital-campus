@@ -517,6 +517,45 @@ export type Database = {
         }
         Relationships: []
       }
+      faculty_members: {
+        Row: {
+          bio: string | null
+          created_at: string
+          department: string
+          display_order: number | null
+          expertise: string[] | null
+          featured: boolean | null
+          id: string
+          image_url: string | null
+          name: string
+          role: string
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string
+          department: string
+          display_order?: number | null
+          expertise?: string[] | null
+          featured?: boolean | null
+          id?: string
+          image_url?: string | null
+          name: string
+          role: string
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string
+          department?: string
+          display_order?: number | null
+          expertise?: string[] | null
+          featured?: boolean | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          role?: string
+        }
+        Relationships: []
+      }
       friend_requests: {
         Row: {
           created_at: string
