@@ -167,7 +167,7 @@ export default function StudentCenter() {
     // Count completed lessons for this course
     const courseProgress = progress.filter(p => p.course_code === courseCode);
     const completedLessons = courseProgress.filter(p => 
-      p.lesson_id && (p.completed || (p.watch_percentage ?? 0) >= 90)
+      p.lesson_id && p.completed
     ).length;
     
     // Count passed quizzes for this course (unique quiz IDs only)
