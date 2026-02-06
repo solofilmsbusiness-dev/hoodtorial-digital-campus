@@ -1,35 +1,37 @@
 
-# Fix: User List Not Refreshing After Deletion
 
-## Problem
-When deleting a user, the edge function succeeds (confirmed in logs: "User successfully deleted"), but the user remains visible in the list. The UI doesn't refresh after deletion.
+# Fix: Login Failure and Waitlist Approval Password Overwrite
+
+## Problem Summary
+
+There are two related issues:
+
+1. **Login not working for bangoutfilms@gmail.com**: The `approve-waitlist` Edge Function overwrote this user's existing password with a random temporary password when it was approved. The user is trying to log in with their original password ("Killab513"), which no longer works.
+
+2. **Site "crashing"**: The site loads correctly -- the login page renders fine. The perceived crash is the inability to get past the login screen due to the password mismatch.
 
 ## Root Cause
-**Query key mismatch between the hook and invalidation:**
 
-| Location | Query Key Used |
-|----------|----------------|
-| `useAdminStudents` | `["admin-students", showDemoData]` |
-| `deleteUser` invalidation | `["admin-students"]` |
-
-The `useAdminStudents` hook includes `showDemoData` (a boolean) in its query key, but the invalidation in `deleteUser` only invalidates `["admin-students"]` without matching the full key.
-
-React Query's `invalidateQueries` with an exact key like `["admin-students"]` won't match `["admin-students", true]` or `["admin-students", false]`.
+In the recent fix to `approve-waitlist`, when a user already exists in the auth system, the function calls `updateUserById` and sets a **new random temporary password**, destroying the user's original password. This is wrong for users who already registered themselves -- their existing password should be preserved.
 
 ## Solution
-Update the `deleteUser` function to use a **partial match** that invalidates all queries starting with `["admin-students"]`, regardless of additional parameters.
 
-Change from:
-```typescript
-queryClient.invalidateQueries({ queryKey: ["admin-students"] });
-```
+### Step 1: Reset the user's password (immediate fix)
 
-To:
-```typescript
-queryClient.invalidateQueries({ queryKey: ["admin-students"], exact: false });
-```
+Use the admin API to update the password for `bangoutfilms@gmail.com` back to `Killab513` so the user can log in immediately.
 
-Setting `exact: false` ensures any query key that starts with `["admin-students"]` gets invalidated, including `["admin-students", true]` and `["admin-students", false]`.
+### Step 2: Fix the approve-waitlist function (prevent future issues)
+
+Update the Edge Function so that when an existing user is found, it does NOT overwrite their password. It should only:
+- Confirm their email (set `email_confirm: true`)
+- Update metadata if needed
+- Skip password replacement entirely
+
+The temp password and welcome email with credentials should only be sent for **newly created** users.
+
+### Step 3: Add a "Forgot Password" link on the login page
+
+The Auth page currently has no visible password reset option. Adding a "Forgot Password?" link will let users self-service password resets in the future, preventing this class of issue from requiring admin intervention.
 
 ---
 
@@ -37,14 +39,36 @@ Setting `exact: false` ensures any query key that starts with `["admin-students"
 
 | File | Change |
 |------|--------|
-| `src/hooks/useAdminQuizManagement.ts` | Add `exact: false` to the query invalidation for `deleteUser` |
+| `supabase/functions/approve-waitlist/index.ts` | Stop overwriting passwords for existing users |
+| `src/pages/Auth.tsx` | Add a "Forgot Password?" link/flow to the sign-in form |
+
+## Database Change
+
+- Reset password for `bangoutfilms@gmail.com` to the user's expected password via admin API
 
 ---
 
 ## Technical Details
 
-React Query's `invalidateQueries` behavior:
-- **Default (exact: true)**: Only invalidates queries with exactly matching keys
-- **exact: false**: Invalidates all queries whose keys start with the provided prefix
+**approve-waitlist change** (existing user path):
 
-Since `showDemoData` is dynamically added to the query key, we need partial matching to catch all variations.
+Before:
+```typescript
+await supabaseAdmin.auth.admin.updateUserById(existingUser.id, {
+  password: tempPassword,  // <-- destroys existing password
+  email_confirm: true,
+  user_metadata: { display_name: name || username }
+});
+```
+
+After:
+```typescript
+await supabaseAdmin.auth.admin.updateUserById(existingUser.id, {
+  email_confirm: true,  // only confirm email, don't touch password
+  user_metadata: { display_name: name || username }
+});
+// Skip sending temp password email for existing users
+```
+
+**Auth.tsx change**: Add a "Forgot Password?" button below the password field that triggers `supabase.auth.resetPasswordForEmail()` and shows a confirmation toast.
+
