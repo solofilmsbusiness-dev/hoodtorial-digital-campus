@@ -9,7 +9,8 @@ import {
   MessageSquare,
   Zap,
   Headphones,
-  Clock
+  Clock,
+  UserCheck
 } from "lucide-react";
 import {
   Sidebar,
@@ -52,6 +53,11 @@ const navItems = [
     title: "Support",
     href: "/admin/support",
     icon: Headphones,
+  },
+  {
+    title: "Faculty",
+    href: "/admin/faculty",
+    icon: UserCheck,
   },
   {
     title: "Users",

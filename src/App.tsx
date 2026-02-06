@@ -37,6 +37,7 @@ import ChallengeManager from "./pages/admin/ChallengeManager";
 import AdminSettings from "./pages/admin/AdminSettings";
 import SupportManager from "./pages/admin/SupportManager";
 import WaitlistManager from "./pages/admin/WaitlistManager";
+import FacultyManager from "./pages/admin/FacultyManager";
 import Checkout from "./pages/Checkout";
  import Friends from "./pages/Friends";
  import Messages from "./pages/Messages";
@@ -179,11 +180,16 @@ function JourneyRedirect() {
                 <SupportManager />
               </AdminRoute>
             } />
-            <Route path="/admin/waitlist" element={
-              <AdminRoute>
-                <WaitlistManager />
-              </AdminRoute>
-            } />
+             <Route path="/admin/waitlist" element={
+               <AdminRoute>
+                 <WaitlistManager />
+               </AdminRoute>
+             } />
+             <Route path="/admin/faculty" element={
+               <AdminRoute>
+                 <FacultyManager />
+               </AdminRoute>
+             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
            <Route path="*" element={<NotFound />} />
          </Routes>
