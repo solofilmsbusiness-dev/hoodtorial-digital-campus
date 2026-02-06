@@ -22,13 +22,16 @@
      overallPercentage,
    } = useJourneyData(path);
  
-   return (
-     <div className="min-h-screen bg-background">
-       {/* Sticky header with stats */}
-       <JourneyHeader
-         pathName={pathName}
-         currentLevel={currentLevel}
-         totalSkillPoints={totalSkillPoints}
+    const currentLevelName = levels.find(l => l.status !== "complete")?.name || "Graduate";
+
+    return (
+    <div className="min-h-screen bg-background">
+        {/* Sticky header with stats */}
+        <JourneyHeader
+          pathName={pathName}
+          currentLevel={currentLevel}
+          currentLevelName={currentLevelName}
+          totalSkillPoints={totalSkillPoints}
          earnedSkillPoints={earnedSkillPoints}
          totalCredits={totalCredits}
          earnedCredits={earnedCredits}
