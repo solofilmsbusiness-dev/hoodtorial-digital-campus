@@ -247,22 +247,55 @@ const handler = async (req: Request): Promise<Response> => {
     // Generate temporary password
     const tempPassword = generatePassword();
 
-    console.log(`Creating user account for: ${email}`);
+    console.log(`Checking if user already exists for: ${email}`);
 
-    // Create the user account
-    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password: tempPassword,
-      email_confirm: true, // Auto-confirm since we're approving them
-      user_metadata: {
-        display_name: name || username,
-      },
-    });
+    // Check if user already exists with this email
+    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+    const existingUser = existingUsers?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
 
-    if (createError) {
-      console.error("User creation error:", createError);
-      throw new Error(`Failed to create user: ${createError.message}`);
+    let userId: string;
+    let createdNewUser = false;
+
+    if (existingUser) {
+      console.log(`User already exists with ID: ${existingUser.id}, updating password`);
+      // User exists - update their password and mark as confirmed
+      const { error: updateUserError } = await supabaseAdmin.auth.admin.updateUserById(
+        existingUser.id,
+        {
+          password: tempPassword,
+          email_confirm: true,
+          user_metadata: {
+            display_name: name || username,
+          },
+        }
+      );
+
+      if (updateUserError) {
+        console.error("User update error:", updateUserError);
+        throw new Error(`Failed to update existing user: ${updateUserError.message}`);
+      }
+      userId = existingUser.id;
+    } else {
+      console.log(`Creating new user account for: ${email}`);
+      // Create the user account
+      const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password: tempPassword,
+        email_confirm: true, // Auto-confirm since we're approving them
+        user_metadata: {
+          display_name: name || username,
+        },
+      });
+
+      if (createError) {
+        console.error("User creation error:", createError);
+        throw new Error(`Failed to create user: ${createError.message}`);
+      }
+      userId = newUser.user.id;
+      createdNewUser = true;
     }
+
+    console.log(`User ${createdNewUser ? 'created' : 'updated'} with ID: ${userId}`);
 
     console.log(`User created with ID: ${newUser.user.id}`);
 
@@ -272,7 +305,7 @@ const handler = async (req: Request): Promise<Response> => {
       .update({
         display_name: name || username,
       })
-      .eq("user_id", newUser.user.id);
+      .eq("user_id", userId);
 
     if (profileError) {
       console.error("Profile update error:", profileError);
@@ -328,7 +361,7 @@ const handler = async (req: Request): Promise<Response> => {
       JSON.stringify({
         success: true,
         message: `User ${email} has been approved and notified`,
-        userId: newUser.user.id,
+        userId: userId,
       }),
       {
         status: 200,
