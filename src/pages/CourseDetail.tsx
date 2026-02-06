@@ -366,17 +366,7 @@ const CourseDetail = () => {
       return;
     }
 
-    // For video lessons, require 90% watch
-    if (activeLesson.type === "video") {
-      if (videoProgress.watchPercentage < 90 && !videoProgress.isCompleted) {
-        toast({
-          title: "Watch More Video",
-          description: `Watch at least 90% of the video to complete this lesson. Currently: ${videoProgress.watchPercentage}%`,
-          variant: "destructive",
-        });
-        return;
-      }
-    }
+    // Video lessons can be completed at any time (no 90% requirement)
 
     // For non-video lessons (reading, practice), allow manual completion
     await markLessonComplete(course.code, activeLesson.id, 0);
@@ -651,11 +641,7 @@ const CourseDetail = () => {
                             <CheckCircle2 className="w-3 h-3" />
                             Lesson complete! You can proceed to the next content.
                           </p>
-                        ) : (
-                          <p className="text-xs text-muted-foreground mt-2">
-                            Watch at least 90% to complete this lesson
-                          </p>
-                        )}
+                        ) : null}
                       </div>
                     )}
 
@@ -671,34 +657,12 @@ const CourseDetail = () => {
                         </button>
                       )}
 
-                      {!isTestModeEnabled && activeLesson.type === "video" ? (
-                        <button 
-                          onClick={handleMarkComplete} 
-                          disabled={!videoProgress.isCompleted && videoProgress.watchPercentage < 90}
-                          className={cn(
-                            "btn-brutal",
-                            (!videoProgress.isCompleted && videoProgress.watchPercentage < 90) && 
-                            "opacity-50 cursor-not-allowed"
-                          )}
-                        >
-                          {videoProgress.isCompleted || videoProgress.watchPercentage >= 90 ? (
-                            <>
-                              Complete Lesson
-                              <CheckCircle2 className="ml-2 h-5 w-5" />
-                            </>
-                          ) : (
-                            <>
-                              <Play className="mr-2 h-5 w-5" />
-                              Watch Video ({videoProgress.watchPercentage}%)
-                            </>
-                          )}
-                        </button>
-                      ) : !isTestModeEnabled ? (
+                      {!isTestModeEnabled && (
                         <button onClick={handleMarkComplete} className="btn-brutal">
                           Mark Complete
                           <CheckCircle2 className="ml-2 h-5 w-5" />
                         </button>
-                      ) : null}
+                      )}
                     </div>
                   </div>
                 </>
