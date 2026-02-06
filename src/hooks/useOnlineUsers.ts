@@ -5,34 +5,43 @@ export function useOnlineUsers() {
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    const channel = supabase.channel("online-users", {
-      config: {
-        presence: {
-          key: `admin-reader-${Math.random().toString(36).substring(7)}`,
-        },
-      },
-    });
+    let channelRef: ReturnType<typeof supabase.channel> | null = null;
 
-    channel
-      .on("presence", { event: "sync" }, () => {
-        const state = channel.presenceState();
-        const ids = new Set<string>();
-        Object.values(state).forEach((presences) => {
-          presences.forEach((p: any) => {
-            if (p.user_id) ids.add(p.user_id);
-          });
-        });
-        setOnlineUserIds(ids);
-      })
-      .subscribe(async (status) => {
-        if (status === "SUBSCRIBED") {
-          // Track with no user_id so this reader doesn't count as a user
-          await channel.track({ reader: true });
-        }
+    const setup = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const presenceKey = user?.id || `admin-reader-${Math.random().toString(36).substring(7)}`;
+
+      const channel = supabase.channel("online-users", {
+        config: { presence: { key: presenceKey } },
       });
 
+      channel
+        .on("presence", { event: "sync" }, () => {
+          const state = channel.presenceState();
+          const ids = new Set<string>();
+          Object.values(state).forEach((presences) => {
+            presences.forEach((p: any) => {
+              if (p.user_id) ids.add(p.user_id);
+            });
+          });
+          setOnlineUserIds(ids);
+        })
+        .subscribe(async (status) => {
+          if (status === "SUBSCRIBED") {
+            await channel.track({
+              online_at: new Date().toISOString(),
+              user_id: user?.id || null,
+            });
+          }
+        });
+
+      return channel;
+    };
+
+    setup().then((ch) => { channelRef = ch; });
+
     return () => {
-      supabase.removeChannel(channel);
+      if (channelRef) supabase.removeChannel(channelRef);
     };
   }, []);
 
