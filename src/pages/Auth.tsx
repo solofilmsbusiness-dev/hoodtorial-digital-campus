@@ -30,6 +30,11 @@ export default function Auth() {
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [signupDisabled, setSignupDisabled] = useState(false);
   
+  // Waitlist mode state
+  const [isWaitlistMode, setIsWaitlistMode] = useState(false);
+  const [waitlistName, setWaitlistName] = useState("");
+  const [waitlistSuccess, setWaitlistSuccess] = useState(false);
+  
   // Dynamic media URLs (fall back to static imports)
   const [videoUrl, setVideoUrl] = useState<string>(defaultVideo);
   const [logoUrl, setLogoUrl] = useState<string>(defaultLogo);
@@ -265,6 +270,53 @@ export default function Auth() {
     navigate("/assessment", { replace: true });
   };
 
+  // Handle waitlist submission
+  const handleWaitlistSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const emailResult = emailSchema.safeParse(email);
+    if (!emailResult.success) {
+      setErrors({ email: emailResult.error.errors[0].message });
+      return;
+    }
+    
+    setLoading(true);
+    setErrors({});
+    
+    try {
+      const { error } = await supabase
+        .from("waitlist")
+        .insert({ email, name: waitlistName || null });
+      
+      if (error) {
+        if (error.code === "23505") {
+          toast({
+            variant: "destructive",
+            title: "Already on the list",
+            description: "This email is already on the waiting list.",
+          });
+        } else {
+          throw error;
+        }
+      } else {
+        setWaitlistSuccess(true);
+        toast({
+          title: "You're on the list!",
+          description: "We'll notify you when registration opens.",
+        });
+      }
+    } catch (err) {
+      console.error("Waitlist error:", err);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to join waiting list. Please try again.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen relative overflow-hidden">
       {/* Terms Acceptance Modal */}
@@ -363,120 +415,246 @@ export default function Auth() {
             <div className="absolute -inset-[1px] bg-gradient-to-r from-primary via-neon-purple to-primary rounded-lg opacity-30 blur-sm animate-border-flow" />
             
             <div className="relative backdrop-blur-xl bg-card/70 border border-border/50 rounded-lg p-6 md:p-8 shadow-2xl">
-              <WelcomeHeadlines isSignUp={isSignUp} />
-
-              <form onSubmit={handleSubmit} className="space-y-5">
-                {/* Display Name (Sign Up only) */}
-                <div 
-                  className={`space-y-2 overflow-hidden transition-all duration-300 ease-out ${
-                    isSignUp ? 'max-h-24 opacity-100' : 'max-h-0 opacity-0'
-                  }`}
-                >
-                  <Label htmlFor="displayName" className="text-xs font-bold uppercase tracking-wide">
-                    Display Name
-                  </Label>
-                  <div className="relative group">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                    <Input
-                      id="displayName"
-                      type="text"
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
-                      placeholder="Your name"
-                      className="pl-10 bg-background/50 border-2 border-border focus:border-primary transition-all"
-                      tabIndex={isSignUp ? 0 : -1}
-                    />
+              {/* Waitlist Success State */}
+              {waitlistSuccess ? (
+                <div className="text-center py-6">
+                  <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Mail className="w-8 h-8 text-primary" />
                   </div>
-                  {errors.displayName && (
-                    <p className="text-sm text-destructive">{errors.displayName}</p>
-                  )}
+                  <h2 className="text-xl font-bold mb-2">You're on the list!</h2>
+                  <p className="text-muted-foreground mb-6">
+                    We'll notify you at <span className="font-semibold text-foreground">{email}</span> when registration opens.
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setWaitlistSuccess(false);
+                      setIsWaitlistMode(false);
+                      setEmail("");
+                      setWaitlistName("");
+                    }}
+                  >
+                    Back to Sign In
+                  </Button>
                 </div>
-
-                {/* Email */}
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wide">
-                    Email
-                  </Label>
-                  <div className="relative group">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                    <Input
-                      id="email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@example.com"
-                      className="pl-10 bg-background/50 border-2 border-border focus:border-primary transition-all"
-                    />
+              ) : isWaitlistMode ? (
+                /* Waitlist Form */
+                <>
+                  <div className="text-center mb-6">
+                    <h2 className="text-xl font-bold mb-2">Join the Waiting List</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Registration is currently closed. Leave your email and we'll notify you when spots open up.
+                    </p>
                   </div>
-                  {errors.email && (
-                    <p className="text-sm text-destructive">{errors.email}</p>
-                  )}
-                </div>
+                  
+                  <form onSubmit={handleWaitlistSubmit} className="space-y-5">
+                    {/* Name (optional) */}
+                    <div className="space-y-2">
+                      <Label htmlFor="waitlistName" className="text-xs font-bold uppercase tracking-wide">
+                        Name <span className="text-muted-foreground font-normal">(optional)</span>
+                      </Label>
+                      <div className="relative group">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                        <Input
+                          id="waitlistName"
+                          type="text"
+                          value={waitlistName}
+                          onChange={(e) => setWaitlistName(e.target.value)}
+                          placeholder="Your name"
+                          className="pl-10 bg-background/50 border-2 border-border focus:border-primary transition-all"
+                        />
+                      </div>
+                    </div>
 
-                {/* Password */}
-                <div className="space-y-2">
-                  <Label htmlFor="password" className="text-xs font-bold uppercase tracking-wide">
-                    Password
-                  </Label>
-                  <div className="relative group">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="pl-10 pr-10 bg-background/50 border-2 border-border focus:border-primary transition-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    {/* Email */}
+                    <div className="space-y-2">
+                      <Label htmlFor="waitlistEmail" className="text-xs font-bold uppercase tracking-wide">
+                        Email
+                      </Label>
+                      <div className="relative group">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                        <Input
+                          id="waitlistEmail"
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="you@example.com"
+                          className="pl-10 bg-background/50 border-2 border-border focus:border-primary transition-all"
+                        />
+                      </div>
+                      {errors.email && (
+                        <p className="text-sm text-destructive">{errors.email}</p>
+                      )}
+                    </div>
+
+                    {/* Submit Button */}
+                    <Button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full btn-brutal group relative overflow-hidden"
                     >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                  {errors.password && (
-                    <p className="text-sm text-destructive">{errors.password}</p>
-                  )}
-                </div>
-
-                {/* Submit Button */}
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full btn-brutal group relative overflow-hidden"
-                >
-                  <span className="relative z-10">
-                    {loading ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        {isSignUp ? "Creating account..." : "Signing in..."}
+                      <span className="relative z-10">
+                        {loading ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Joining...
+                          </span>
+                        ) : (
+                          "Join Waiting List"
+                        )}
                       </span>
-                    ) : (
-                      isSignUp ? "Create Account" : "Sign In"
-                    )}
-                  </span>
-                </Button>
-              </form>
+                    </Button>
+                  </form>
 
-              {/* Toggle Sign In/Up */}
-              {!signupDisabled && (
-                <div className="mt-6 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    {isSignUp ? "Already have an account?" : "Don't have an account?"}
+                  {/* Back to Sign In */}
+                  <div className="mt-6 text-center">
                     <button
                       type="button"
                       onClick={() => {
-                        setIsSignUp(!isSignUp);
+                        setIsWaitlistMode(false);
                         setErrors({});
                       }}
-                      className="ml-2 text-primary font-bold hover:underline"
+                      className="text-sm text-muted-foreground hover:text-foreground"
                     >
-                      {isSignUp ? "Sign In" : "Sign Up"}
+                      ← Back to Sign In
                     </button>
-                  </p>
-                </div>
+                  </div>
+                </>
+              ) : (
+                /* Normal Login/Signup Form */
+                <>
+                  <WelcomeHeadlines isSignUp={isSignUp} />
+
+                  <form onSubmit={handleSubmit} className="space-y-5">
+                    {/* Display Name (Sign Up only) */}
+                    <div 
+                      className={`space-y-2 overflow-hidden transition-all duration-300 ease-out ${
+                        isSignUp ? 'max-h-24 opacity-100' : 'max-h-0 opacity-0'
+                      }`}
+                    >
+                      <Label htmlFor="displayName" className="text-xs font-bold uppercase tracking-wide">
+                        Display Name
+                      </Label>
+                      <div className="relative group">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                        <Input
+                          id="displayName"
+                          type="text"
+                          value={displayName}
+                          onChange={(e) => setDisplayName(e.target.value)}
+                          placeholder="Your name"
+                          className="pl-10 bg-background/50 border-2 border-border focus:border-primary transition-all"
+                          tabIndex={isSignUp ? 0 : -1}
+                        />
+                      </div>
+                      {errors.displayName && (
+                        <p className="text-sm text-destructive">{errors.displayName}</p>
+                      )}
+                    </div>
+
+                    {/* Email */}
+                    <div className="space-y-2">
+                      <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wide">
+                        Email
+                      </Label>
+                      <div className="relative group">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                        <Input
+                          id="email"
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="you@example.com"
+                          className="pl-10 bg-background/50 border-2 border-border focus:border-primary transition-all"
+                        />
+                      </div>
+                      {errors.email && (
+                        <p className="text-sm text-destructive">{errors.email}</p>
+                      )}
+                    </div>
+
+                    {/* Password */}
+                    <div className="space-y-2">
+                      <Label htmlFor="password" className="text-xs font-bold uppercase tracking-wide">
+                        Password
+                      </Label>
+                      <div className="relative group">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                        <Input
+                          id="password"
+                          type={showPassword ? "text" : "password"}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="pl-10 pr-10 bg-background/50 border-2 border-border focus:border-primary transition-all"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      {errors.password && (
+                        <p className="text-sm text-destructive">{errors.password}</p>
+                      )}
+                    </div>
+
+                    {/* Submit Button */}
+                    <Button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full btn-brutal group relative overflow-hidden"
+                    >
+                      <span className="relative z-10">
+                        {loading ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            {isSignUp ? "Creating account..." : "Signing in..."}
+                          </span>
+                        ) : (
+                          isSignUp ? "Create Account" : "Sign In"
+                        )}
+                      </span>
+                    </Button>
+                  </form>
+
+                  {/* Toggle Sign In/Up or Waitlist */}
+                  {!signupDisabled ? (
+                    <div className="mt-6 text-center">
+                      <p className="text-sm text-muted-foreground">
+                        {isSignUp ? "Already have an account?" : "Don't have an account?"}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsSignUp(!isSignUp);
+                            setErrors({});
+                          }}
+                          className="ml-2 text-primary font-bold hover:underline"
+                        >
+                          {isSignUp ? "Sign In" : "Sign Up"}
+                        </button>
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="mt-6 text-center">
+                      <p className="text-sm text-muted-foreground">
+                        Registration is currently closed.
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsWaitlistMode(true);
+                            setErrors({});
+                          }}
+                          className="ml-2 text-primary font-bold hover:underline"
+                        >
+                          Join Waiting List
+                        </button>
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </motion.div>
