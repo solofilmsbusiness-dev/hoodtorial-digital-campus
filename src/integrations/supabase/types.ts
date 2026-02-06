@@ -1270,29 +1270,38 @@ export type Database = {
       }
       waitlist: {
         Row: {
+          approved_at: string | null
           created_at: string | null
+          desired_username: string | null
           email: string
           id: string
           name: string | null
           notes: string | null
+          password_token: string | null
           status: string | null
           updated_at: string | null
         }
         Insert: {
+          approved_at?: string | null
           created_at?: string | null
+          desired_username?: string | null
           email: string
           id?: string
           name?: string | null
           notes?: string | null
+          password_token?: string | null
           status?: string | null
           updated_at?: string | null
         }
         Update: {
+          approved_at?: string | null
           created_at?: string | null
+          desired_username?: string | null
           email?: string
           id?: string
           name?: string | null
           notes?: string | null
+          password_token?: string | null
           status?: string | null
           updated_at?: string | null
         }
