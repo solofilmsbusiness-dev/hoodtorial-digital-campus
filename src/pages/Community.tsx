@@ -146,25 +146,8 @@ export default function Community() {
     }
   };
 
-  if (!hasActiveEnrollment) {
-    return (
-      <PageLayout>
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="text-center max-w-md">
-            <Users className="h-16 w-16 text-muted-foreground mx-auto mb-6 opacity-50" />
-            <h1 className="heading-2 text-foreground mb-4">Community Access Required</h1>
-            <p className="text-muted-foreground mb-6">
-              The Student Community is available to enrolled students only. 
-              Enroll in a course to join discussions, share projects, and connect with peers.
-            </p>
-            <Button asChild className="btn-brutal">
-              <a href="/academics">Browse Courses</a>
-            </Button>
-          </div>
-        </div>
-      </PageLayout>
-    );
-  }
+  // Note: hasActiveEnrollment is kept for future use (e.g., restricting post creation)
+  // but we no longer block access to the community for non-enrolled users
 
   if (selectedPost) {
     const currentPost = posts.find(p => p.id === selectedPost.id) || selectedPost;
