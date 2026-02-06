@@ -1,209 +1,137 @@
 
-# Waitlist System for Pre-Launch Enrollment
+# Fix Plan: Path Selection & Edit Profile Issues
 
-## Overview
+## Problems Identified
 
-Build a complete waitlist system that replaces the sign-up button when signups are disabled. Prospective students can join the waitlist, and admins can review, approve, or reject applicants from a dedicated admin panel.
+### Problem 1: Wrong Navigation Route After Path Selection
+The Assessment page navigates to `/journey/{path}` after selecting a degree path, but the actual route is `/skill-tree/:path`. This causes a 404 page.
+
+**File:** `src/pages/Assessment.tsx` (line 308)
+```typescript
+// Current (broken)
+navigate(`/journey/${path}`);
+
+// Should be
+navigate(`/skill-tree/${path}`);
+```
+
+### Problem 2: Stale ProfileContext Causes Redirect Loop
+After updating the profile (setting `degree_path` and `onboarding_completed`), the navigation happens immediately. When the new page loads, the `AssessmentRequiredRoute` guard checks the ProfileContext, which may still have stale data. This causes users to be redirected back to `/assessment` even after completing the flow.
+
+**Root Cause:** The `updateProfile` function in ProfileContext updates local state, but when navigating to a new page, the ProfileContext re-initializes and fetches fresh data. However, there's a race condition where the guard checks the (loading) state before the fetch completes.
+
+## Solution
+
+### Fix 1: Correct Navigation Route
+Update the Assessment page to navigate to the correct route.
+
+**File:** `src/pages/Assessment.tsx`
+- Change `navigate(\`/journey/${path}\`)` to `navigate(\`/skill-tree/${path}\`)`
+
+### Fix 2: Add Route Alias for /journey
+To handle any existing bookmarks or users mid-flow, add a redirect route.
+
+**File:** `src/App.tsx`
+- Add `<Route path="/journey/:path" element={<Navigate to="/skill-tree/:path" replace />} />` as a redirect
+
+### Fix 3: Force Profile Refetch After Update (Optional Enhancement)
+After calling `updateProfile`, explicitly call `refetch()` before navigating to ensure the context is synced.
+
+**File:** `src/pages/Assessment.tsx`
+```typescript
+const handleSelectDegreePath = async (path: DegreePath, department?: string) => {
+  // ... existing code ...
+  const { error } = await updateProfile({
+    degree_path: path,
+    certificate_department: ...,
+    recommended_degree_path: path,
+    onboarding_completed: true,
+  });
+  
+  if (!error) {
+    // Refetch to ensure context is synced before navigation
+    await refetch();
+    navigate(`/skill-tree/${path}`);
+  }
+};
+```
+
+### Fix 4: Handle Skip Scenario
+The `handleSkipDegreeSelection` function also needs the same treatment.
 
 ---
 
-## User Experience Flow
+## Files to Modify
 
-```text
-PROSPECTIVE STUDENT:                       ADMIN:
-┌─────────────────────┐                   ┌─────────────────────────────┐
-│ Visit /auth page    │                   │ Admin → Waitlist Manager    │
-│ (signup disabled)   │                   │                             │
-│                     │                   │ ┌─────────────────────────┐ │
-│ ┌─────────────────┐ │                   │ │ Pending: 24 applicants  │ │
-│ │ Already on list?│ │                   │ │                         │ │
-│ │    [Log In]     │ │                   │ │ Name │ Email │ Status   │ │
-│ └─────────────────┘ │                   │ │ Alex │ a@... │ [Approve]│ │
-│                     │                   │ │ Sam  │ s@... │ [Reject] │ │
-│ ┌─────────────────┐ │                   │ └─────────────────────────┘ │
-│ │ Join Waitlist   │ │                   │                             │
-│ │                 │ │                   │ Approved applicants get     │
-│ │ [Name]          │ │  ─── Approval ──► │ email with signup link      │
-│ │ [Email]         │ │                   │                             │
-│ │ [Why join?]     │ │                   │ Rejected applicants can     │
-│ │                 │ │                   │ be notified or silently     │
-│ │ [Join Waitlist] │ │                   │ removed                     │
-│ └─────────────────┘ │                   └─────────────────────────────┘
-└─────────────────────┘
+| File | Change |
+|------|--------|
+| `src/pages/Assessment.tsx` | Fix navigation route from `/journey/` to `/skill-tree/`, add refetch before navigate |
+| `src/App.tsx` | Add redirect route `/journey/:path` → `/skill-tree/:path` |
+
+---
+
+## Technical Details
+
+### Change 1: `src/pages/Assessment.tsx`
+
+```typescript
+// Around line 293-314
+const handleSelectDegreePath = async (path: DegreePath, department?: string) => {
+  setSavingDegreePath(true);
+  
+  try {
+    const primaryStrength = finalResults?.roadmap?.primaryStrength || interests[0];
+    
+    const { error } = await updateProfile({
+      degree_path: path,
+      certificate_department: path === "certificate" ? (department || primaryStrength) : null,
+      recommended_degree_path: path,
+      onboarding_completed: true,
+    });
+    
+    if (!error) {
+      // Navigate to correct route
+      navigate(`/skill-tree/${path}`);
+    }
+  } catch (error) {
+    console.error("Failed to save degree path:", error);
+  } finally {
+    setSavingDegreePath(false);
+  }
+};
+```
+
+### Change 2: `src/App.tsx`
+
+Add a redirect route in the Routes section:
+
+```tsx
+<Route 
+  path="/journey/:path" 
+  element={<Navigate to="/skill-tree/:path" replace />} 
+/>
+```
+
+Wait - this won't work because React Router doesn't interpolate params in Navigate `to`. We need a component:
+
+```tsx
+// Add this redirect component
+function JourneyRedirect() {
+  const { path } = useParams();
+  return <Navigate to={`/skill-tree/${path}`} replace />;
+}
+
+// Then in routes:
+<Route path="/journey/:path" element={<JourneyRedirect />} />
 ```
 
 ---
 
-## Features
+## Summary
 
-### For Prospective Students
-- Waitlist form appears on `/auth` page when signups are disabled
-- Collects: Name, Email, Optional message (why they want to join)
-- Shows confirmation after submission
-- Can check their waitlist status via email lookup
-- Receives approval email with special signup link when approved
+This fix addresses:
+1. Users unable to choose degree paths (wrong route navigation)
+2. Users stuck in redirect loops after path selection (navigation to 404)
+3. Edit profile not working (users redirected back to assessment due to stale context check)
 
-### For Admins
-- New "Waitlist" section in Admin sidebar with badge showing pending count
-- Full waitlist management page at `/admin/waitlist`
-- View all applicants with filtering (pending/approved/rejected)
-- Search by name or email
-- Approve: Sends invitation email with unique signup link
-- Reject: Optionally notify applicant
-- Bulk actions for efficiency
-- Export waitlist to CSV
-- View submission details (when applied, message, etc.)
-
----
-
-## Database Design
-
-### New Table: `waitlist`
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | uuid | Primary key |
-| email | text | Applicant email (unique) |
-| name | text | Applicant display name |
-| message | text | Why they want to join (optional) |
-| status | enum | `pending`, `approved`, `rejected` |
-| invite_token | text | Unique token for signup link (nullable) |
-| invite_sent_at | timestamp | When approval email was sent |
-| invite_expires_at | timestamp | When invite link expires (7 days) |
-| reviewed_by | uuid | Admin who approved/rejected |
-| reviewed_at | timestamp | When decision was made |
-| created_at | timestamp | When applied |
-| ip_address | text | For spam prevention (optional) |
-
-### New Enum: `waitlist_status`
-```sql
-CREATE TYPE waitlist_status AS ENUM ('pending', 'approved', 'rejected');
-```
-
-### RLS Policies
-- Public can INSERT (to join waitlist) - with rate limiting consideration
-- Only admins can SELECT/UPDATE/DELETE
-- Authenticated users can check their own status by email
-
----
-
-## Implementation Details
-
-### Phase 1: Database & Backend
-
-1. **Create waitlist table** with proper schema and RLS policies
-2. **Create edge function** `send-waitlist-invite` to send approval emails via Resend
-3. **Create helper function** `get_pending_waitlist_count()` for admin sidebar badge
-
-### Phase 2: Auth Page Changes
-
-**File: `src/pages/Auth.tsx`**
-
-When `signupDisabled` is true, show waitlist form instead of hiding signup:
-- Waitlist form with Name, Email, Message fields
-- Submit handler inserts into waitlist table
-- Success state shows confirmation message
-- Status check allows users to enter email and see their application status
-
-### Phase 3: Admin Waitlist Manager
-
-**New Files:**
-- `src/pages/admin/WaitlistManager.tsx` - Main waitlist management page
-- `src/hooks/useWaitlist.ts` - Hook for waitlist CRUD operations
-- `src/components/admin/WaitlistFilters.tsx` - Filter controls
-- `src/components/admin/WaitlistTable.tsx` - Table with actions
-
-**Update Files:**
-- `src/components/admin/AdminSidebar.tsx` - Add Waitlist nav item with badge
-- `src/App.tsx` - Add `/admin/waitlist` route
-
-### Phase 4: Invitation Flow
-
-1. Admin clicks "Approve" on applicant
-2. System generates unique invite token
-3. Edge function sends branded email via Resend with:
-   - Personalized welcome message
-   - Unique signup link: `/auth?invite={token}`
-   - 7-day expiration notice
-4. Auth page recognizes invite token:
-   - Pre-fills email (read-only)
-   - Validates token hasn't expired
-   - On successful signup, marks invite as used
-
-### Phase 5: Edge Function
-
-**File: `supabase/functions/send-waitlist-invite/index.ts`**
-
-Sends branded invitation emails:
-- Uses existing RESEND_API_KEY secret
-- Hoodtorial-branded template
-- Includes personalized signup link
-- Handles errors gracefully
-
----
-
-## File Changes Summary
-
-| Action | File | Purpose |
-|--------|------|---------|
-| Create | `supabase/migrations/[timestamp].sql` | Create waitlist table and enum |
-| Create | `supabase/functions/send-waitlist-invite/index.ts` | Send invitation emails |
-| Create | `src/pages/admin/WaitlistManager.tsx` | Admin waitlist management page |
-| Create | `src/hooks/useWaitlist.ts` | Waitlist data operations |
-| Create | `src/components/admin/WaitlistTable.tsx` | Waitlist applicant table |
-| Modify | `src/pages/Auth.tsx` | Add waitlist form when signups disabled |
-| Modify | `src/components/admin/AdminSidebar.tsx` | Add Waitlist nav item |
-| Modify | `src/App.tsx` | Add `/admin/waitlist` route |
-| Modify | `supabase/config.toml` | Register new edge function |
-
----
-
-## Email Template Preview
-
-```text
-Subject: You're In! 🎬 Your Invitation to Hoodtorial University
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-         HOODTORIAL UNIVERSITY
-         Where Hustle Meets Hollywood
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Hey [Name]! 👋
-
-Your spot at Hoodtorial University is ready.
-
-You've been approved to join the next generation of 
-mobile filmmakers. Click below to create your account 
-and start your journey:
-
-       [ CREATE MY ACCOUNT ]
-
-This link expires in 7 days.
-
-See you on set,
-The Hoodtorial Team 🎥
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
----
-
-## Security Considerations
-
-1. **Rate Limiting**: Consider adding rate limit on waitlist submissions (IP-based)
-2. **Email Validation**: Validate email format before insertion
-3. **Token Security**: Use secure random tokens for invites
-4. **RLS Policies**: Strict admin-only access for management operations
-5. **Invite Expiration**: Tokens expire after 7 days
-
----
-
-## Admin UI Preview
-
-The Waitlist Manager will include:
-- Stats cards: Pending, Approved (this month), Total applicants
-- Filter tabs: All / Pending / Approved / Rejected
-- Search bar for name/email
-- Sortable table with columns: Name, Email, Applied, Status, Actions
-- Bulk select for mass approve/reject
-- Export to CSV button
-- Click row to view full application details in a sheet/dialog
+The core fix is changing the navigation route from `/journey/` to `/skill-tree/`. The redirect component ensures backward compatibility for any users who may have bookmarked or be mid-flow with the old route.
