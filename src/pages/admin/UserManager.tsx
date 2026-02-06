@@ -47,17 +47,26 @@ import {
   Download,
   Ban,
   ShieldOff,
-   FlaskConical,
+  FlaskConical,
+  Trash2,
+  Loader2,
 } from "lucide-react";
+import { useAdminQuizManagement } from "@/hooks/useAdminQuizManagement";
+import { toast } from "sonner";
 import { format } from "date-fns";
 import { Database } from "@/integrations/supabase/types";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
 
+type ConfirmDialogState = 
+  | { open: boolean; type: "role"; action: "add" | "remove"; userId: string; role: AppRole; userName: string }
+  | { open: boolean; type: "deleteUser"; userId: string; userName: string };
+
 export default function UserManager() {
   const { user: currentUser } = useAuth();
   const { data: students, isLoading } = useAdminStudents();
   const { addRole, removeRole } = useManageRoles();
+  const { deleteUser, isDeleting } = useAdminQuizManagement();
 
   // Filters state
   const [searchQuery, setSearchQuery] = useState("");
@@ -70,14 +79,8 @@ export default function UserManager() {
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  // Role dialog state
-  const [confirmDialog, setConfirmDialog] = useState<{
-    open: boolean;
-    action: "add" | "remove";
-    userId: string;
-    role: AppRole;
-    userName: string;
-  } | null>(null);
+  // Confirm dialog state (for roles and delete user)
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null);
 
   // Filter and sort students
   const filteredStudents = useMemo(() => {
@@ -156,16 +159,30 @@ export default function UserManager() {
     if (action === "remove" && role === "admin" && userId === currentUser?.id) {
       return;
     }
-    setConfirmDialog({ open: true, action, userId, role, userName });
+    setConfirmDialog({ open: true, type: "role", action, userId, role, userName });
   };
 
-  const confirmRoleAction = () => {
+  const handleDeleteUser = (userId: string, userName: string) => {
+    setConfirmDialog({ open: true, type: "deleteUser", userId, userName });
+  };
+
+  const confirmAction = async () => {
     if (!confirmDialog) return;
 
-    if (confirmDialog.action === "add") {
-      addRole.mutate({ userId: confirmDialog.userId, role: confirmDialog.role });
-    } else {
-      removeRole.mutate({ userId: confirmDialog.userId, role: confirmDialog.role });
+    if (confirmDialog.type === "role") {
+      if (confirmDialog.action === "add") {
+        addRole.mutate({ userId: confirmDialog.userId, role: confirmDialog.role });
+      } else {
+        removeRole.mutate({ userId: confirmDialog.userId, role: confirmDialog.role });
+      }
+    } else if (confirmDialog.type === "deleteUser") {
+      const result = await deleteUser(confirmDialog.userId);
+      if (result.success) {
+        toast.success(`${confirmDialog.userName} has been permanently deleted`);
+      } else {
+        const errorMsg = result.error instanceof Error ? result.error.message : "Failed to delete user";
+        toast.error(errorMsg);
+      }
     }
     setConfirmDialog(null);
   };
@@ -466,6 +483,19 @@ export default function UserManager() {
                                Remove Tester
                              </DropdownMenuItem>
                            )}
+                          {/* Delete User - hidden for current user */}
+                          {student.id !== currentUser?.id && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteUser(student.id, student.displayName || "User")}
+                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete User
+                              </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -496,28 +526,70 @@ export default function UserManager() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {confirmDialog?.action === "add" ? "Grant" : "Revoke"} {confirmDialog?.role} Role
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to {confirmDialog?.action === "add" ? "grant" : "revoke"} the{" "}
-              <strong>{confirmDialog?.role}</strong> role {confirmDialog?.action === "add" ? "to" : "from"}{" "}
-              <strong>{confirmDialog?.userName}</strong>?
-              {confirmDialog?.role === "admin" && (
-                <span className="block mt-2 text-destructive">
-                  Admin users have full access to manage the platform.
-                </span>
+              {confirmDialog?.type === "role" && (
+                <>{confirmDialog.action === "add" ? "Grant" : "Revoke"} {confirmDialog.role} Role</>
               )}
-               {confirmDialog?.role === "tester" && (
-                 <span className="block mt-2 text-violet-500">
-                   Testers have full platform access for testing but cannot access admin features.
-                 </span>
-               )}
+              {confirmDialog?.type === "deleteUser" && (
+                <>Permanently Delete User</>
+              )}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                {confirmDialog?.type === "role" && (
+                  <>
+                    Are you sure you want to {confirmDialog.action === "add" ? "grant" : "revoke"} the{" "}
+                    <strong>{confirmDialog.role}</strong> role {confirmDialog.action === "add" ? "to" : "from"}{" "}
+                    <strong>{confirmDialog.userName}</strong>?
+                    {confirmDialog.role === "admin" && (
+                      <span className="block mt-2 text-destructive">
+                        Admin users have full access to manage the platform.
+                      </span>
+                    )}
+                    {confirmDialog.role === "tester" && (
+                      <span className="block mt-2 text-violet-500">
+                        Testers have full platform access for testing but cannot access admin features.
+                      </span>
+                    )}
+                  </>
+                )}
+                {confirmDialog?.type === "deleteUser" && (
+                  <div className="space-y-2">
+                    <p>
+                      <strong className="text-destructive">Warning:</strong> This action is <strong>irreversible</strong>.
+                    </p>
+                    <p>
+                      Permanently deleting <strong>{confirmDialog.userName}</strong> will remove:
+                    </p>
+                    <ul className="list-disc list-inside text-sm space-y-1 mt-2">
+                      <li>Account and login credentials</li>
+                      <li>Profile information</li>
+                      <li>Course enrollments and progress</li>
+                      <li>Quiz results and answers</li>
+                      <li>Community posts and comments</li>
+                      <li>Messages and friendships</li>
+                    </ul>
+                  </div>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmRoleAction}>
-              {confirmDialog?.action === "add" ? "Grant Role" : "Revoke Role"}
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmAction}
+              disabled={isDeleting}
+              className={confirmDialog?.type === "deleteUser" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : confirmDialog?.type === "role" ? (
+                confirmDialog.action === "add" ? "Grant Role" : "Revoke Role"
+              ) : (
+                "Delete User"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
