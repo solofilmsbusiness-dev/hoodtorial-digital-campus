@@ -196,21 +196,16 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Unauthorized");
     }
     
-    const userId = claimsData.claims.sub as string;
-    console.log("User validated via claims, userId:", userId);
+    const adminUserId = claimsData.claims.sub as string;
+    console.log("User validated via claims, adminUserId:", adminUserId);
 
     // Check if user has admin role (using service role client to bypass RLS)
     const { data: roleData, error: roleError } = await supabaseAdmin
       .from("user_roles")
       .select("role")
-      .eq("user_id", userId)
+      .eq("user_id", adminUserId)
       .eq("role", "admin")
       .maybeSingle();
-
-    if (roleError || !roleData) {
-      console.error("Role check error:", roleError);
-      throw new Error("Admin access required");
-    }
 
     if (roleError || !roleData) {
       console.error("Role check error:", roleError);
@@ -296,8 +291,6 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log(`User ${createdNewUser ? 'created' : 'updated'} with ID: ${userId}`);
-
-    console.log(`User created with ID: ${newUser.user.id}`);
 
     // Update the user's profile with the username
     const { error: profileError } = await supabaseAdmin
