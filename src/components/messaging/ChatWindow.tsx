@@ -22,17 +22,15 @@ import { useMessageReactions } from "@/hooks/useMessageReactions";
  
  export function ChatWindow({ conversationId, otherUser }: ChatWindowProps) {
    const { user } = useAuth();
-  const { messages, loading, deleteMessage } = useDirectMessages(conversationId);
-   const scrollRef = useRef<HTMLDivElement>(null);
-  const { typingUsers, setTyping } = useTypingIndicator(conversationId);
-  const { toggleReaction, getReactionSummary } = useMessageReactions(conversationId);
- 
-   useEffect(() => {
-     // Scroll to bottom when messages change
-     if (scrollRef.current) {
-       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-     }
-   }, [messages]);
+   const { messages, loading, deleteMessage } = useDirectMessages(conversationId);
+    const bottomRef = useRef<HTMLDivElement>(null);
+   const { typingUsers, setTyping } = useTypingIndicator(conversationId);
+   const { toggleReaction, getReactionSummary } = useMessageReactions(conversationId);
+
+    useEffect(() => {
+      // Scroll to bottom when messages change
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
  
    const getInitials = (name?: string | null) => {
      if (!name) return "?";
@@ -74,42 +72,43 @@ import { useMessageReactions } from "@/hooks/useMessageReactions";
        )}
  
        {/* Messages */}
-       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-         {loading ? (
-           <div className="space-y-4">
-             {[1, 2, 3].map((i) => (
-               <div key={i} className={i % 2 === 0 ? "flex justify-end" : ""}>
-                 <Skeleton className="h-12 w-48" />
-               </div>
-             ))}
-           </div>
-         ) : messages.length === 0 ? (
-           <div className="text-center py-12 text-muted-foreground">
-             <p>No messages yet. Say hello! 👋</p>
-           </div>
-         ) : (
-           <div className="space-y-4">
-             {messages.map((message) => (
-               <MessageBubble
-                 key={message.id}
-                 message={message}
-                 isOwn={message.sender_id === user?.id}
-                 senderProfile={
-                   message.sender_id !== user?.id
-                     ? otherUser
-                     : undefined
-                 }
-                onDelete={() => deleteMessage(message.id)}
-                onReact={(emoji) => toggleReaction(message.id, emoji)}
-                reactions={getReactionSummary(message.id)}
-               />
-             ))}
-           </div>
-         )}
-        
-        {/* Typing Indicator */}
-        <TypingIndicator typingUsers={typingUsers} className="mt-2" />
-       </ScrollArea>
+        <ScrollArea className="flex-1 p-4">
+          {loading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className={i % 2 === 0 ? "flex justify-end" : ""}>
+                  <Skeleton className="h-12 w-48" />
+                </div>
+              ))}
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <p>No messages yet. Say hello! 👋</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {messages.map((message) => (
+                <MessageBubble
+                  key={message.id}
+                  message={message}
+                  isOwn={message.sender_id === user?.id}
+                  senderProfile={
+                    message.sender_id !== user?.id
+                      ? otherUser
+                      : undefined
+                  }
+                 onDelete={() => deleteMessage(message.id)}
+                 onReact={(emoji) => toggleReaction(message.id, emoji)}
+                 reactions={getReactionSummary(message.id)}
+                />
+              ))}
+              <div ref={bottomRef} />
+            </div>
+          )}
+         
+         {/* Typing Indicator */}
+         <TypingIndicator typingUsers={typingUsers} className="mt-2" />
+        </ScrollArea>
  
        {/* Composer */}
       <MessageComposer conversationId={conversationId} onTyping={setTyping} />

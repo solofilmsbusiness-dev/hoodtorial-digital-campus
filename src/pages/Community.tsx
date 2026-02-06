@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { PageLayout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,7 @@ import {
 } from "@/components/community";
 import { ViewMode } from "@/components/community/ViewToggle";
 import { useCommunityPosts, PostCategory, CommunityPost } from "@/hooks/useCommunityPosts";
+import { useCommunityComments } from "@/hooks/useCommunityComments";
 import { useDailyChallenges } from "@/hooks/useDailyChallenges";
 import { useChallengeStreak } from "@/hooks/useChallengeStreak";
 import { useEnrollments } from "@/hooks/useEnrollments";
@@ -43,6 +44,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 
 export default function Community() {
+  const [searchParams] = useSearchParams();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedPost, setSelectedPost] = useState<CommunityPost | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<PostCategory | "all">("all");
@@ -82,6 +84,27 @@ export default function Community() {
     following_only: viewMode === 'following',
     include_comment_previews: viewMode === 'timeline',
   });
+
+  // Inline comment hook - we use a null postId since we submit per-post
+  const { createComment: inlineCreateComment } = useCommunityComments(null);
+
+  // Deep link: handle ?post= URL param
+  useEffect(() => {
+    const postParam = searchParams.get('post');
+    if (postParam && posts.length > 0 && !selectedPost) {
+      const found = posts.find(p => p.id === postParam);
+      if (found) {
+        setSelectedPost(found);
+      }
+    }
+  }, [searchParams, posts, selectedPost]);
+
+  const handleInlineComment = (postId: string, content: string) => {
+    inlineCreateComment.mutate({
+      post_id: postId,
+      content,
+    });
+  };
 
   // Filter posts by search and course
   const filteredPosts = posts.filter(post => {
@@ -429,6 +452,7 @@ export default function Community() {
                   onLike={(postId) => toggleLike.mutate(postId)}
                   onSave={(postId) => toggleFollow.mutate(postId)}
                   onClick={(post) => setSelectedPost(post)}
+                  onInlineComment={handleInlineComment}
                 />
               ) : viewMode === 'grid' ? (
                 <FeedGrid
@@ -444,6 +468,7 @@ export default function Community() {
                   onLike={(postId) => toggleLike.mutate(postId)}
                   onSave={(postId) => toggleFollow.mutate(postId)}
                   onClick={(post) => setSelectedPost(post)}
+                  onInlineComment={handleInlineComment}
                 />
               )}
             </div>

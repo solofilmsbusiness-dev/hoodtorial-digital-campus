@@ -3,7 +3,8 @@ import { formatDistanceToNow } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Heart, MessageSquare, Bookmark, Award, Play, ChevronDown, ChevronUp, GraduationCap, Shield } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Heart, MessageSquare, Bookmark, Award, Play, ChevronDown, ChevronUp, GraduationCap, Shield, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CommunityPost, CommentPreview } from "@/hooks/useCommunityPosts";
 import { motion, AnimatePresence } from "framer-motion";
@@ -22,6 +23,7 @@ interface TimelinePostProps {
   onLike: () => void;
   onSave: () => void;
   onClick: () => void;
+  onInlineComment?: (postId: string, content: string) => void;
 }
 
 const categoryLabels: Record<string, { label: string; color: string }> = {
@@ -36,12 +38,14 @@ export function TimelinePost({
   post, 
   onLike, 
   onSave, 
-  onClick, 
+  onClick,
+  onInlineComment,
 }: TimelinePostProps) {
   const previewComments = post.preview_comments || [];
   const [isLiking, setIsLiking] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [inlineComment, setInlineComment] = useState("");
 
   // Fetch target profile info if this is a wall post
   const { data: targetProfile } = useQuery({
@@ -376,6 +380,36 @@ export function TimelinePost({
             >
               View all {post.comments_count} comments
             </button>
+          )}
+
+          {/* Inline comment input */}
+          {onInlineComment && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (inlineComment.trim()) {
+                  onInlineComment(post.id, inlineComment.trim());
+                  setInlineComment("");
+                }
+              }}
+              className="flex items-center gap-2 mt-2"
+            >
+              <Input
+                placeholder="Write a comment..."
+                value={inlineComment}
+                onChange={(e) => setInlineComment(e.target.value)}
+                className="flex-1 h-9 text-sm border-border bg-muted/30"
+              />
+              <Button
+                type="submit"
+                size="icon"
+                variant="ghost"
+                disabled={!inlineComment.trim()}
+                className="h-8 w-8 shrink-0 text-primary"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </form>
           )}
         </div>
       )}
