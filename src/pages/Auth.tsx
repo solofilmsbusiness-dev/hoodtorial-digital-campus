@@ -44,6 +44,8 @@ export default function Auth() {
   const [videoUrl, setVideoUrl] = useState<string>(defaultVideo);
   const [logoUrl, setLogoUrl] = useState<string>(defaultLogo);
   const [musicUrl, setMusicUrl] = useState<string | null>(null);
+  const [musicVolume, setMusicVolume] = useState(0.3);
+  const [musicEnabledSetting, setMusicEnabledSetting] = useState(true);
   const [isMusicEnabled, setIsMusicEnabled] = useState(() => {
     return localStorage.getItem('hoodtorial-login-music-enabled') !== 'false';
   });
@@ -63,7 +65,7 @@ export default function Auth() {
         const { data } = await supabase
           .from("site_settings")
           .select("id, value")
-          .in("id", ["login_video_url", "login_logo_url", "login_music_url", "signup_disabled"]);
+          .in("id", ["login_video_url", "login_logo_url", "login_music_url", "login_music_volume", "login_music_enabled", "signup_disabled"]);
 
         data?.forEach((setting) => {
           if (setting.id === "login_video_url" && setting.value) {
@@ -74,6 +76,12 @@ export default function Auth() {
           }
           if (setting.id === "login_music_url" && setting.value) {
             setMusicUrl(setting.value);
+          }
+          if (setting.id === "login_music_volume" && setting.value) {
+            setMusicVolume(parseInt(setting.value) / 100);
+          }
+          if (setting.id === "login_music_enabled") {
+            setMusicEnabledSetting(setting.value !== "false");
           }
           if (setting.id === "signup_disabled") {
             setSignupDisabled(setting.value === "true");
@@ -88,12 +96,12 @@ export default function Auth() {
     fetchSiteMedia();
   }, []);
 
-  // Handle audio playback based on user preference
+  // Handle audio playback based on user preference and admin settings
   useEffect(() => {
-    if (!musicUrl || !audioRef.current) return;
+    if (!musicUrl || !audioRef.current || !musicEnabledSetting) return;
 
     const audio = audioRef.current;
-    audio.volume = 0.3;
+    audio.volume = musicVolume;
 
     // Try to play if user has enabled music
     if (isMusicEnabled) {
@@ -104,11 +112,11 @@ export default function Auth() {
         });
       }
     }
-  }, [musicUrl, isMusicEnabled]);
+  }, [musicUrl, isMusicEnabled, musicEnabledSetting, musicVolume]);
 
   // Handle first user interaction to enable audio (browser autoplay policy)
   useEffect(() => {
-    if (!musicUrl || !isMusicEnabled) return;
+    if (!musicUrl || !isMusicEnabled || !musicEnabledSetting) return;
 
     const handleInteraction = () => {
       if (audioRef.current && audioRef.current.paused) {
@@ -119,7 +127,7 @@ export default function Auth() {
 
     document.addEventListener('click', handleInteraction);
     return () => document.removeEventListener('click', handleInteraction);
-  }, [musicUrl, isMusicEnabled]);
+  }, [musicUrl, isMusicEnabled, musicEnabledSetting]);
 
   // Listen for PASSWORD_RECOVERY event
   useEffect(() => {
@@ -409,7 +417,7 @@ export default function Auth() {
       )}
 
       {/* Music Toggle Button */}
-      {musicUrl && (
+      {musicUrl && musicEnabledSetting && (
         <motion.button
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

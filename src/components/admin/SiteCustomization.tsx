@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -19,8 +19,10 @@ export function SiteCustomization() {
   const [musicUploading, setMusicUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [volume, setVolume] = useState(50);
+  const [volume, setVolume] = useState(30);
+  const [musicEnabled, setMusicEnabled] = useState(true);
   const [signupToggling, setSignupToggling] = useState(false);
+  const volumeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const videoInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -282,7 +284,37 @@ export function SiteCustomization() {
     if (audioRef.current) {
       audioRef.current.volume = newVolume / 100;
     }
+    // Debounce saving to DB
+    if (volumeDebounceRef.current) clearTimeout(volumeDebounceRef.current);
+    volumeDebounceRef.current = setTimeout(() => {
+      updateSetting('login_music_volume', String(newVolume));
+    }, 500);
   };
+
+  const handleMusicEnabledToggle = async (enabled: boolean) => {
+    setMusicEnabled(enabled);
+    try {
+      await updateSetting('login_music_enabled', enabled ? "true" : "false");
+      toast({
+        title: enabled ? "Music enabled" : "Music disabled",
+        description: enabled 
+          ? "Background music will play on the login page." 
+          : "Background music is now disabled on the login page.",
+      });
+    } catch {
+      setMusicEnabled(!enabled);
+    }
+  };
+
+  // Load saved volume and enabled state from settings
+  useEffect(() => {
+    if (!loading) {
+      if (settings.login_music_volume !== null) {
+        setVolume(parseInt(settings.login_music_volume) || 30);
+      }
+      setMusicEnabled(settings.login_music_enabled !== "false");
+    }
+  }, [loading, settings.login_music_volume, settings.login_music_enabled]);
 
   const handleSignupToggle = async (disabled: boolean) => {
     setSignupToggling(true);
@@ -568,6 +600,20 @@ export function SiteCustomization() {
                 loop
                 onEnded={() => setIsPlaying(false)}
               />
+
+              {/* Enable/Disable toggle */}
+              <div className="flex items-center justify-between pt-2 border-t border-border">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-medium">Enable login music</p>
+                  <p className="text-xs text-muted-foreground">
+                    Play background music on the login page
+                  </p>
+                </div>
+                <Switch
+                  checked={musicEnabled}
+                  onCheckedChange={handleMusicEnabledToggle}
+                />
+              </div>
             </div>
           ) : (
             <div className="rounded-lg border border-border bg-muted/30 p-6">
