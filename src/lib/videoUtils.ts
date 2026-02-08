@@ -6,7 +6,7 @@ export function getVideoType(url: string | null | undefined): VideoType {
   if (url.includes('youtube.com') || url.includes('youtu.be')) {
     return 'youtube';
   }
-  if (url.includes('vimeo.com')) {
+  if (url.includes('vimeo.com/') && /vimeo\.com\/\d+/.test(url)) {
     return 'vimeo';
   }
   if (url.match(/\.(mp4|webm|ogg)($|\?)/i)) {
@@ -32,6 +32,7 @@ export function getYouTubeId(url: string): string | null {
 }
 
 export function getVimeoId(url: string): string | null {
+  // Handle vimeo.com/ID and vimeo.com/ID/HASH formats
   const match = url.match(/vimeo\.com\/(\d+)/);
   return match ? match[1] : null;
 }
