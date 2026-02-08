@@ -1,55 +1,31 @@
 
 
-# Fix: Course Progress Percentages Always Showing 0% in Student Center
+# Fix: Quiz Shows "Coming Soon" for Non-Admin Users
 
 ## Problem
 
-The Student Center's `getCourseProgress()` function always prefers the **static course data** to count total lessons and quizzes. But after the recent change, course detail pages now use **database content** (with UUID-based lesson IDs). So:
+When a student opens a quiz on the iPhone Cinematography course (or any course), the quiz player says "Questions for this quiz are coming soon" even though questions exist in the database.
 
-- Students complete lessons tracked with DB UUIDs (e.g., `0e957dae-...`)
-- But progress calculation counts totals from static modules (which may have different lesson counts or not exist at all)
-- For DB-only courses, `useCourseStatus` returns `modules: []`, so total is always 0, meaning progress is always 0%
-
-For HU-101, the database has 9 lessons + 3 quizzes, but the static version may have a completely different structure.
+**Root cause:** The `quiz_questions` table has Row Level Security (RLS) enabled with policies that **only allow admins** to read rows. The `quiz_questions_public` view (which strips the `correct_answer` column for security) reads from this table, but since the student is not an admin, RLS blocks all rows. The quiz player receives 0 questions and displays the "coming soon" fallback message.
 
 ## Solution
 
-Update `getCourseProgress()` in `StudentCenter.tsx` to fetch and use database module/lesson/quiz counts when available, falling back to static data only when the database has no content.
+Add a SELECT policy on the `quiz_questions` table that allows all authenticated (logged-in) users to read quiz questions. This is safe because:
+- The application already uses the `quiz_questions_public` view which excludes the `correct_answer` column
+- Answer verification happens server-side via an edge function
 
-## Technical Changes
+## Technical Change
 
-### 1. Create a new hook: `src/hooks/useDbCourseCounts.ts`
+**Database migration** -- Add one RLS policy:
 
-A lightweight hook that fetches lesson and quiz counts per course from the database. This avoids loading full module content -- just counts.
-
-```typescript
-// Queries:
-// SELECT course_id, count(*) as lesson_count FROM lessons GROUP BY course_id
-// SELECT course_id, count(*) as quiz_count FROM quizzes GROUP BY course_id
-// JOIN with courses to map course_id -> course_code
+```sql
+CREATE POLICY "Authenticated users can read quiz questions"
+  ON public.quiz_questions
+  FOR SELECT
+  TO authenticated
+  USING (true);
 ```
 
-Returns a map: `{ [courseCode]: { totalLessons: number, totalQuizzes: number } }`
+This allows any logged-in user to read quiz questions. The existing admin-only policies remain in place for INSERT/UPDATE/DELETE operations, so only admins can modify questions.
 
-### 2. Update `getCourseProgress()` in `src/pages/StudentCenter.tsx`
-
-Change the progress calculation to:
-1. First check if DB counts are available for the course
-2. If yes, use DB counts for total lessons/quizzes
-3. If no, fall back to static course module counts (existing behavior)
-
-This ensures that courses edited via admin (with DB content) calculate progress correctly against the actual DB content structure.
-
-### 3. Files Summary
-
-| File | Action | Description |
-|------|--------|-------------|
-| `src/hooks/useDbCourseCounts.ts` | Create | Hook to fetch lesson/quiz counts per course from DB |
-| `src/pages/StudentCenter.tsx` | Edit | Use DB counts in `getCourseProgress()` when available |
-
-### Why This Works
-
-- Progress records already track `course_code` correctly regardless of ID format
-- The `completedLessons` count (line 171) just counts progress records with `lesson_id && completed` -- this works with both static and DB IDs
-- Only the **total** count was wrong because it came from static modules -- fixing the total fixes the percentage
-
+No code file changes are needed -- the QuizPlayer component already fetches from `quiz_questions_public` correctly; it just gets empty results due to this RLS block.
