@@ -339,7 +339,7 @@ export default function CourseManager() {
               <span>{stats.total} total</span>
               <span className="text-green-500">{stats.published} published</span>
               <span className="text-amber-500">{stats.comingSoon} coming soon</span>
-              <span className="text-muted-foreground">{stats.hidden} hidden</span>
+              <span className="text-destructive">{stats.hidden} hidden</span>
             </div>
           </div>
           <Button asChild>
@@ -408,15 +408,16 @@ export default function CourseManager() {
                               })
                             }
                             disabled={isUsingStaticData}
+                            title={course.is_published ? "Click to hide from Academics page" : "Click to show on Academics page"}
                             className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${
                               course.is_published
                                 ? "bg-green-600 text-white hover:bg-green-700"
-                                : "bg-muted text-muted-foreground hover:bg-muted/80"
+                                : "bg-destructive text-destructive-foreground hover:bg-destructive/80"
                             }`}
                           >
                             <span
                               className={`w-1.5 h-1.5 rounded-full ${
-                                course.is_published ? "bg-white" : "bg-muted-foreground"
+                                course.is_published ? "bg-white" : "bg-destructive-foreground"
                               }`}
                             />
                             {course.is_published ? "Published" : "Hidden"}

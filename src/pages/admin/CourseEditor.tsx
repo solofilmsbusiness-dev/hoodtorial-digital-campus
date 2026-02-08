@@ -446,7 +446,7 @@ export default function CourseEditor() {
                     <div>
                       <Label>Published</Label>
                       <p className="text-xs text-muted-foreground">
-                        Visible to students
+                        Show on Academics page. When off, course is completely hidden from students.
                       </p>
                     </div>
                     <Switch
@@ -458,7 +458,7 @@ export default function CourseEditor() {
                     <div>
                       <Label>Coming Soon</Label>
                       <p className="text-xs text-muted-foreground">
-                        Show as locked
+                        Show course on Academics page but lock enrollment.
                       </p>
                     </div>
                     <Switch
