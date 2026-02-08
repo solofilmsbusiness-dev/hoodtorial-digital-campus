@@ -12,6 +12,7 @@ import { useEnrollments } from "@/hooks/useEnrollments";
 import { useLessonProgress } from "@/hooks/useLessonProgress";
 import { useCourseStatus } from "@/hooks/useCourseStatus";
 import { courses, getTotalLessonsCount, getTotalQuizzesCount } from "@/data/courses";
+import { useDbCourseCounts } from "@/hooks/useDbCourseCounts";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -62,6 +63,7 @@ export default function StudentCenter() {
   
   // Use merged course list from database + static data
   const { allCourses, isLoading: coursesLoading } = useCourseStatus();
+  const { dbCourseCounts } = useDbCourseCounts();
 
   // Handle enrolled query param - scroll to and highlight new course
   useEffect(() => {
@@ -154,16 +156,23 @@ export default function StudentCenter() {
     const enrollment = activeEnrollments.find(e => e.course_code === courseCode);
     if (enrollment?.status === 'completed') return 100;
     
-    // Prefer static course for module structure (IDs match progress records)
-    const staticCourse = courses.find(c => c.code === courseCode);
-    const course = staticCourse || getCourse(courseCode);
-    if (!course) return 0;
-    
-    // Handle DB-only courses with no modules
-    const totalLessons = course.modules?.length > 0 ? getTotalLessonsCount(course) : 0;
-    const totalQuizzes = course.modules?.length > 0 ? getTotalQuizzesCount(course) : 0;
+    // Use DB counts when available, fall back to static
+    const dbCounts = dbCourseCounts[courseCode];
+    let totalLessons: number;
+    let totalQuizzes: number;
+
+    if (dbCounts && (dbCounts.totalLessons > 0 || dbCounts.totalQuizzes > 0)) {
+      totalLessons = dbCounts.totalLessons;
+      totalQuizzes = dbCounts.totalQuizzes;
+    } else {
+      const staticCourse = courses.find(c => c.code === courseCode);
+      const course = staticCourse || getCourse(courseCode);
+      if (!course) return 0;
+      totalLessons = course.modules?.length > 0 ? getTotalLessonsCount(course) : 0;
+      totalQuizzes = course.modules?.length > 0 ? getTotalQuizzesCount(course) : 0;
+    }
+
     const total = totalLessons + totalQuizzes;
-    
     if (total === 0) return 0;
     
     // Count completed lessons for this course
