@@ -131,7 +131,12 @@ const CourseDetail = () => {
     
     const transformed = transformDbCourse(dbCourse);
     
-    // Always prefer static content when available -- progress is tracked against static IDs
+    // Prefer database content when it has modules (admin-edited content)
+    if (transformed.modules && transformed.modules.length > 0) {
+      return transformed;
+    }
+    
+    // Fall back to static content if database has no modules
     if (staticCourse?.modules && staticCourse.modules.length > 0) {
       return {
         ...transformed,

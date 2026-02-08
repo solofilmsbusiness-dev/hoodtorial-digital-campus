@@ -46,7 +46,8 @@ export function useCourseStatus() {
       const staticCourse = staticCourses.find((s) => s.code === dbCourse.code);
       
       if (staticCourse) {
-        // Merge static data with DB status
+        // Merge: use DB status, keep static data as base but don't override modules
+        // (modules are loaded separately on course detail page where DB content is preferred)
         coursesWithStatus.push({
           ...staticCourse,
           isPublished: dbCourse.is_published,
