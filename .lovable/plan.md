@@ -1,32 +1,46 @@
 
-# Improve Course Visibility Controls in Admin
 
-## Current State
-
-The admin already has the ability to hide courses from the Academics page:
-- **Course Editor** (`/admin/courses/:code`): Has a "Visibility" card with a "Published" switch
-- **Course Manager** (`/admin/courses`): Has clickable Published/Hidden badge toggles
-
-When "Published" is toggled off, `useCourseStatus` filters out the course from the Academics page (line 93: `filter(course => course.isPublished)`).
+# Fix: Database Content Not Showing for Static Courses
 
 ## Problem
 
-The current labels ("Published" / "Visible to students") don't clearly communicate that toggling this off will **completely hide the course from the Academics page**. This may be why it seems like the option doesn't exist.
+When you add quizzes, videos, or other content to HU-101 (iPhone Cinematography) in the admin panel, those changes are saved to the database but **never displayed** on the course detail page.
 
-## Changes
+This happens because the code has a "fallback" rule: if a course exists in both the old static data files AND the database, it **always uses the static version** and ignores the database. Since HU-101 is one of the original static courses, your database edits are invisible.
 
-### 1. Improve Course Editor Labels (src/pages/admin/CourseEditor.tsx)
+## Solution
 
-Update the Visibility card to make the behavior explicit:
-- "Published" label stays, but description changes to **"Show on Academics page. When off, course is completely hidden from students."**
-- "Coming Soon" description changes to **"Show course on Academics page but lock enrollment."**
+Change the logic so that **if the database has modules/content, use the database version**. Only fall back to static data if the database has no modules at all.
 
-### 2. Improve Course Manager Labels (src/pages/admin/CourseManager.tsx)
+## Technical Changes
 
-Add a tooltip or clearer labeling on the Published/Hidden badge toggle to indicate it controls Academics page visibility.
+### 1. Update `src/pages/CourseDetail.tsx` (lines ~129-146)
 
-### 3. Add "Hidden" Status Badge Styling
+Current logic:
+```
+If static course has modules -> always use static
+```
 
-Make the "Hidden" state more visually distinct (e.g., red/destructive styling) so admins clearly see which courses are hidden from the Academics page.
+New logic:
+```
+If database course has modules -> use database
+Else if static course has modules -> fall back to static
+```
 
-No database changes needed -- the existing `is_published` column already handles this correctly.
+This is a small change to the `useMemo` block that builds the course object. The condition flips from "prefer static" to "prefer database when it has content."
+
+### 2. Update `src/hooks/useCourseStatus.ts`
+
+The same fallback pattern exists in the course status hook (used by the Academics page and Student Center). Apply the same fix: prefer database modules when they exist, only fall back to static when the database has none.
+
+## What This Fixes
+
+- Quizzes you add in admin will appear on the course page
+- Video URLs you set on lessons will play correctly
+- Any module/lesson edits in admin will be reflected for students
+- Courses that only exist in static data (and haven't been edited in admin) continue working as before
+
+## Important Note
+
+Since existing student progress may be tracked against old static IDs (like `hu101-q1`), the new database content will use different IDs (UUIDs). This means previously completed progress won't carry over to the new database-driven content -- but going forward, all new progress will track against the database IDs.
+
