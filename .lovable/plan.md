@@ -1,57 +1,61 @@
 
 
-# Fix Login Music Volume Control and Add Disable Toggle
+# Add Page Background Videos to Student-Facing Sections
 
-## Problems
+## Overview
 
-1. **Volume slider doesn't work on the actual login page** -- The admin panel's volume slider only adjusts the preview player locally. The chosen volume is never saved to the database, and the Auth page always uses a hardcoded volume of `0.3`.
+Extend the existing admin background video system to cover the main student-facing pages. This reuses the exact same pattern already built for admin pages -- a `PageBackground` wrapper component that reads video URLs and overlay opacity from `site_settings`, plus admin UI to configure each page.
 
-2. **No way to disable music without deleting it** -- Currently the only way to stop music on the login page is to remove the uploaded file entirely. There should be a toggle to enable/disable the music while keeping the file.
+## Pages to Support
+
+| Key | Label | Route |
+|-----|-------|-------|
+| `home` | Home | `/` |
+| `academics` | Courses | `/academics` |
+| `community` | Community | `/community` |
+| `student_center` | Student Center | `/student-center` |
+| `degrees` | Degrees | `/degrees` |
+| `faculty` | Faculty | `/faculty` |
+| `shop` | Shop | `/shop` |
+| `friends` | Friends | `/friends` |
+| `messages` | Messages | `/messages` |
 
 ## Changes
 
-### 1. Save volume to site_settings (`src/components/admin/SiteCustomization.tsx`)
+### 1. Create `src/components/layout/PageBackground.tsx`
 
-- When the admin changes the volume slider, persist the value to the `site_settings` table as `login_music_volume` (a string like `"0.45"`).
-- Debounce the save so it doesn't fire on every tiny drag movement.
-- Load the saved volume on component mount.
+A generic version of `AdminBackground` that reads settings using the prefix `page_bg_` instead of `admin_bg_`. Same video + overlay approach, same mobile-disable logic (skip video on small screens to avoid crashes, matching the login page pattern).
 
-### 2. Add a music enable/disable toggle (`src/components/admin/SiteCustomization.tsx`)
+### 2. Update `src/components/layout/PageLayout.tsx`
 
-- Add a Switch toggle labeled "Enable login music" below the music player section.
-- Save the state to `site_settings` as `login_music_enabled` (`"true"` / `"false"`).
-- When disabled, the login page won't play music even if a file is uploaded.
+Add an optional `pageKey` prop. When provided, wrap the content in `PageBackground`. Pages that don't pass a key behave exactly as before.
 
-### 3. Read volume and enabled state on login page (`src/pages/Auth.tsx`)
+```
+Before: <PageLayout>...</PageLayout>
+After:  <PageLayout pageKey="academics">...</PageLayout>
+```
 
-- Fetch `login_music_volume` and `login_music_enabled` alongside the other site settings.
-- Replace the hardcoded `audio.volume = 0.3` with the saved volume value.
-- Only attempt to play music when `login_music_enabled` is `"true"` (or not set, defaulting to enabled for backward compatibility).
+### 3. Update each page to pass `pageKey`
 
-### 4. Update site settings hook (`src/hooks/useSiteSettings.ts`)
+Each of the 9 pages listed above gets a one-line change adding the `pageKey` prop to their `<PageLayout>` call.
 
-- Add `login_music_volume` and `login_music_enabled` to the `SiteSettings` type and fetch list.
+### 4. Create `src/components/admin/PageBackgroundSettings.tsx`
+
+A new settings card (nearly identical to `AdminBackgroundSettings`) but configured with the student-facing pages list and using the `page_bg_` prefix. Includes the same video upload, remove, overlay slider, and preview link for each page.
+
+### 5. Add settings card to Admin Settings page
+
+Import and render `PageBackgroundSettings` in the admin settings page alongside the existing `AdminBackgroundSettings` card.
+
+### 6. Update `src/hooks/useSiteSettings.ts`
+
+Add the new `page_bg_*` keys to the `SiteSettings` type and initial state so they're fetched and available.
 
 ## Technical Details
 
-### Files to modify
-
-| File | Change |
-|------|--------|
-| `src/hooks/useSiteSettings.ts` | Add `login_music_volume` and `login_music_enabled` fields |
-| `src/components/admin/SiteCustomization.tsx` | Persist volume on slider change (debounced); add Switch toggle for enable/disable |
-| `src/pages/Auth.tsx` | Fetch saved volume and enabled state; use them for playback |
-
-### Volume handling
-
-- Admin slider range: 0-100 (integer)
-- Stored in DB as string (e.g., `"45"`)
-- Auth page converts to 0-1 float for `audio.volume` (divide by 100)
-- Default if not set: 30 (matching current hardcoded 0.3)
-
-### Enable/disable toggle
-
-- Stored as `"true"` / `"false"` string in site_settings
-- Default if not set: `"true"` (backward compatible -- music plays if file exists)
-- When disabled, Auth page skips all audio playback logic
+- Settings keys follow the pattern: `page_bg_{key}_video` and `page_bg_{key}_overlay`
+- Videos are uploaded to the existing `site-assets` bucket via `uploadAsset`
+- No database migration needed -- `site_settings` is a key-value store that accepts any ID
+- Mobile devices skip video rendering (matches existing login page pattern to prevent crashes)
+- The `PageBackground` component is identical in behavior to `AdminBackground`
 
