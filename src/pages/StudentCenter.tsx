@@ -191,7 +191,7 @@ export default function StudentCenter() {
 
   if (profileLoading || coursesLoading) {
     return (
-      <PageLayout>
+      <PageLayout pageKey="student_center">
         <div className="min-h-[80vh] flex items-center justify-center">
           <div className="animate-pulse text-primary font-bold text-xl">Loading...</div>
         </div>
@@ -200,7 +200,7 @@ export default function StudentCenter() {
   }
 
   return (
-    <PageLayout>
+    <PageLayout pageKey="student_center">
       <div className="py-12 px-4">
         <div className="container-wide">
           {/* Header Section */}

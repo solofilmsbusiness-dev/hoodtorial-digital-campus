@@ -107,7 +107,7 @@ const membershipTiers = [
 
 const Index = () => {
   return (
-    <PageLayout>
+    <PageLayout pageKey="home">
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-noise">
         {/* Background Video Layer */}

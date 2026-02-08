@@ -89,7 +89,7 @@
      : null;
  
    return (
-     <PageLayout>
+     <PageLayout pageKey="degrees">
        {/* Hero */}
        <section className="relative pt-32 pb-20 overflow-hidden bg-noise">
          <div className="absolute inset-0 bg-grid" />

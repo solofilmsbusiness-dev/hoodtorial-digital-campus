@@ -175,7 +175,7 @@ export default function Community() {
   if (selectedPost) {
     const currentPost = posts.find(p => p.id === selectedPost.id) || selectedPost;
     return (
-      <PageLayout>
+      <PageLayout pageKey="community">
         <div className="py-8 px-4">
           <div className="container-wide max-w-4xl mx-auto">
             <PostDetail
@@ -191,7 +191,7 @@ export default function Community() {
   }
 
   return (
-    <PageLayout>
+    <PageLayout pageKey="community">
       <div className="py-6 px-4">
         <div className="container-wide">
           {/* Breadcrumb */}

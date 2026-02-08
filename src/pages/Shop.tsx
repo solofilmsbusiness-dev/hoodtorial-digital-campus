@@ -79,7 +79,7 @@ export default function Shop() {
   };
 
   return (
-    <PageLayout>
+    <PageLayout pageKey="shop">
       {/* Hero Section */}
       <section className="relative min-h-[50vh] flex items-center justify-center overflow-hidden bg-grid">
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/50 to-background" />

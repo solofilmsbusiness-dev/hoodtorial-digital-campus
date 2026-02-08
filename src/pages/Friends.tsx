@@ -12,7 +12,7 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
    const { pendingCount, outgoingRequests } = useFriendships();
  
    return (
-     <PageLayout>
+     <PageLayout pageKey="friends">
        <div className="py-12 px-4">
          <div className="container max-w-4xl mx-auto">
           {/* Breadcrumb */}

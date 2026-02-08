@@ -47,7 +47,7 @@ const Academics = () => {
   const totalLessons = filteredCourses.reduce((acc, c) => acc + c.lessons, 0);
 
   return (
-    <PageLayout>
+    <PageLayout pageKey="academics">
       {/* Trial Banner */}
       {isTrialing && <TrialBanner />}
 

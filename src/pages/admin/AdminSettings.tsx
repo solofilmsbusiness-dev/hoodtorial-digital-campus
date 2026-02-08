@@ -14,6 +14,7 @@ import { TestModeSettingsCard } from "@/components/admin/TestModeSettingsCard";
 import { DemoModeSettingsCard } from "@/components/admin/DemoModeSettingsCard";
 import { TestMessagesCard } from "@/components/admin/TestMessagesCard";
 import { AdminBackgroundSettings } from "@/components/admin/AdminBackgroundSettings";
+import { PageBackgroundSettings } from "@/components/admin/PageBackgroundSettings";
 
 type DisplayDensity = "comfortable" | "compact" | "cozy";
 
@@ -107,6 +108,9 @@ export default function AdminSettings() {
 
         {/* Admin Page Backgrounds */}
         <AdminBackgroundSettings />
+
+        {/* Student Page Backgrounds */}
+        <PageBackgroundSettings />
 
         {/* Appearance Settings */}
         <Card>
