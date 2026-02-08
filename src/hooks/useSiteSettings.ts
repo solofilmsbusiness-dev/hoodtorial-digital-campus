@@ -6,6 +6,8 @@ interface SiteSettings {
   login_video_url: string | null;
   login_logo_url: string | null;
   login_music_url: string | null;
+  login_music_volume: string | null;
+  login_music_enabled: string | null;
   signup_disabled: string | null;
   // Admin background settings
   admin_bg_dashboard_video: string | null;
@@ -30,6 +32,8 @@ export function useSiteSettings() {
     login_video_url: null,
     login_logo_url: null,
     login_music_url: null,
+    login_music_volume: null,
+    login_music_enabled: null,
     signup_disabled: null,
     admin_bg_dashboard_video: null,
     admin_bg_dashboard_overlay: null,
@@ -64,6 +68,8 @@ export function useSiteSettings() {
         login_video_url: null,
         login_logo_url: null,
         login_music_url: null,
+        login_music_volume: null,
+        login_music_enabled: null,
         signup_disabled: null,
         admin_bg_dashboard_video: null,
         admin_bg_dashboard_overlay: null,
