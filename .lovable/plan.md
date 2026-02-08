@@ -1,46 +1,55 @@
 
 
-# Fix: Database Content Not Showing for Static Courses
+# Fix: Course Progress Percentages Always Showing 0% in Student Center
 
 ## Problem
 
-When you add quizzes, videos, or other content to HU-101 (iPhone Cinematography) in the admin panel, those changes are saved to the database but **never displayed** on the course detail page.
+The Student Center's `getCourseProgress()` function always prefers the **static course data** to count total lessons and quizzes. But after the recent change, course detail pages now use **database content** (with UUID-based lesson IDs). So:
 
-This happens because the code has a "fallback" rule: if a course exists in both the old static data files AND the database, it **always uses the static version** and ignores the database. Since HU-101 is one of the original static courses, your database edits are invisible.
+- Students complete lessons tracked with DB UUIDs (e.g., `0e957dae-...`)
+- But progress calculation counts totals from static modules (which may have different lesson counts or not exist at all)
+- For DB-only courses, `useCourseStatus` returns `modules: []`, so total is always 0, meaning progress is always 0%
+
+For HU-101, the database has 9 lessons + 3 quizzes, but the static version may have a completely different structure.
 
 ## Solution
 
-Change the logic so that **if the database has modules/content, use the database version**. Only fall back to static data if the database has no modules at all.
+Update `getCourseProgress()` in `StudentCenter.tsx` to fetch and use database module/lesson/quiz counts when available, falling back to static data only when the database has no content.
 
 ## Technical Changes
 
-### 1. Update `src/pages/CourseDetail.tsx` (lines ~129-146)
+### 1. Create a new hook: `src/hooks/useDbCourseCounts.ts`
 
-Current logic:
-```
-If static course has modules -> always use static
-```
+A lightweight hook that fetches lesson and quiz counts per course from the database. This avoids loading full module content -- just counts.
 
-New logic:
-```
-If database course has modules -> use database
-Else if static course has modules -> fall back to static
+```typescript
+// Queries:
+// SELECT course_id, count(*) as lesson_count FROM lessons GROUP BY course_id
+// SELECT course_id, count(*) as quiz_count FROM quizzes GROUP BY course_id
+// JOIN with courses to map course_id -> course_code
 ```
 
-This is a small change to the `useMemo` block that builds the course object. The condition flips from "prefer static" to "prefer database when it has content."
+Returns a map: `{ [courseCode]: { totalLessons: number, totalQuizzes: number } }`
 
-### 2. Update `src/hooks/useCourseStatus.ts`
+### 2. Update `getCourseProgress()` in `src/pages/StudentCenter.tsx`
 
-The same fallback pattern exists in the course status hook (used by the Academics page and Student Center). Apply the same fix: prefer database modules when they exist, only fall back to static when the database has none.
+Change the progress calculation to:
+1. First check if DB counts are available for the course
+2. If yes, use DB counts for total lessons/quizzes
+3. If no, fall back to static course module counts (existing behavior)
 
-## What This Fixes
+This ensures that courses edited via admin (with DB content) calculate progress correctly against the actual DB content structure.
 
-- Quizzes you add in admin will appear on the course page
-- Video URLs you set on lessons will play correctly
-- Any module/lesson edits in admin will be reflected for students
-- Courses that only exist in static data (and haven't been edited in admin) continue working as before
+### 3. Files Summary
 
-## Important Note
+| File | Action | Description |
+|------|--------|-------------|
+| `src/hooks/useDbCourseCounts.ts` | Create | Hook to fetch lesson/quiz counts per course from DB |
+| `src/pages/StudentCenter.tsx` | Edit | Use DB counts in `getCourseProgress()` when available |
 
-Since existing student progress may be tracked against old static IDs (like `hu101-q1`), the new database content will use different IDs (UUIDs). This means previously completed progress won't carry over to the new database-driven content -- but going forward, all new progress will track against the database IDs.
+### Why This Works
+
+- Progress records already track `course_code` correctly regardless of ID format
+- The `completedLessons` count (line 171) just counts progress records with `lesson_id && completed` -- this works with both static and DB IDs
+- Only the **total** count was wrong because it came from static modules -- fixing the total fixes the percentage
 
