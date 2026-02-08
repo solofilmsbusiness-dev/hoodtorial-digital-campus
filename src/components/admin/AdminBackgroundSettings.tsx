@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -139,13 +139,13 @@ export function AdminBackgroundSettings() {
               <div className="space-y-3">
                 <Label>Background Video Preview</Label>
                 <div className="aspect-video rounded-lg overflow-hidden bg-muted/50 border border-border relative">
-                  {getVideoUrl(page.key) ? (
+                {getVideoUrl(page.key) ? (
                     <>
                       <video
                         key={getVideoUrl(page.key)}
+                        ref={(el) => { if (el) el.play().catch(() => {}); }}
                         src={getVideoUrl(page.key)!}
                         className="w-full h-full object-cover"
-                        style={{ opacity: 0.15 }}
                         autoPlay
                         loop
                         muted
