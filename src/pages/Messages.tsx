@@ -35,7 +35,7 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
    };
  
    return (
-     <PageLayout>
+     <PageLayout pageKey="messages">
        <div className="py-6 px-4 h-[calc(100vh-12rem)]">
          <div className="container max-w-6xl mx-auto h-full">
           {/* Breadcrumb */}

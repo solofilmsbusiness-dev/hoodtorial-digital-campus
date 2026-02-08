@@ -81,7 +81,7 @@ export default function Faculty() {
   const regular = filtered?.filter((f) => !f.featured) ?? [];
 
   return (
-    <PageLayout>
+    <PageLayout pageKey="faculty">
       {/* Hero Section */}
       <section className="relative py-20 md:py-32 bg-background overflow-hidden">
         <div className="absolute inset-0 bg-grid opacity-50" />
