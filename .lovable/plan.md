@@ -1,31 +1,47 @@
 
-
-# Fix: Quiz Shows "Coming Soon" for Non-Admin Users
+# Fix: AI Learning Insights Show Incorrect Data for Students
 
 ## Problem
 
-When a student opens a quiz on the iPhone Cinematography course (or any course), the quiz player says "Questions for this quiz are coming soon" even though questions exist in the database.
+The AI Learning Insights panel shows inaccurate metrics because the analytics calculations produce wrong numbers. The root cause is a **mixed scoring format** in the `quiz_results` table:
 
-**Root cause:** The `quiz_questions` table has Row Level Security (RLS) enabled with policies that **only allow admins** to read rows. The `quiz_questions_public` view (which strips the `correct_answer` column for security) reads from this table, but since the student is not an admin, RLS blocks all rows. The quiz player receives 0 questions and displays the "coming soon" fallback message.
+- **New DB quizzes** (UUID-based quiz IDs) store `score` as the **raw correct count** (e.g., score=17, total_questions=20)
+- **Old static quizzes** (string quiz IDs like `hu204-q1`) store `score` as a **percentage** (e.g., score=100, total_questions=5)
+
+The analytics code in `useStudentAnalytics.ts` always calculates `(score / total_questions) * 100`, which produces correct results for DB quizzes (17/20 = 85%) but absurd numbers for static quizzes (100/5 = 2000%).
+
+This corrupts the `averageQuizScore`, `quizPassRate`, `quizScoreTrend`, and `engagementScore` -- all of which feed into the AI prompt, producing nonsensical insights.
 
 ## Solution
 
-Add a SELECT policy on the `quiz_questions` table that allows all authenticated (logged-in) users to read quiz questions. This is safe because:
-- The application already uses the `quiz_questions_public` view which excludes the `correct_answer` column
-- Answer verification happens server-side via an edge function
+Update the analytics calculation to detect which format each quiz result uses and normalize scores before averaging.
 
-## Technical Change
+## Technical Changes
 
-**Database migration** -- Add one RLS policy:
+### 1. Update `src/hooks/useStudentAnalytics.ts`
 
-```sql
-CREATE POLICY "Authenticated users can read quiz questions"
-  ON public.quiz_questions
-  FOR SELECT
-  TO authenticated
-  USING (true);
-```
+Add a score normalization step in `calculateLearningMetrics()`:
 
-This allows any logged-in user to read quiz questions. The existing admin-only policies remain in place for INSERT/UPDATE/DELETE operations, so only admins can modify questions.
+- If `score > total_questions`, the score is already a percentage -- use it directly
+- If `score <= total_questions`, it's a raw count -- convert to percentage via `(score / total_questions) * 100`
 
-No code file changes are needed -- the QuizPlayer component already fetches from `quiz_questions_public` correctly; it just gets empty results due to this RLS block.
+This handles both formats correctly:
+- `score=17, total=20` -> 17 <= 20, so calculate (17/20)*100 = 85%
+- `score=100, total=5` -> 100 > 5, so use 100 directly = 100%
+- `score=60, total=5` -> 60 > 5, so use 60 directly = 60%
+
+Apply this normalization to:
+- `averageQuizScore` calculation (line ~94)
+- `calculateQuizTrend()` function (line ~54)
+
+### 2. Update `src/components/admin/AIInsightsPanel.tsx`
+
+No changes needed -- it already passes `metrics.averageQuizScore` and other values from the analytics hook. Once the hook is fixed, the AI prompt will receive correct data.
+
+### Summary
+
+| File | Change |
+|------|--------|
+| `src/hooks/useStudentAnalytics.ts` | Add score normalization to handle mixed percentage/raw-count formats |
+
+This is a small, targeted fix -- just adding a helper function to normalize quiz scores before they enter the analytics pipeline.
