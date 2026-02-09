@@ -990,10 +990,18 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
 
         {/* Next/Finish/Retake button */}
         {state === "review" && currentIndex === shuffledQuestions.length - 1 ? (
-          <button onClick={handleRestart} className="btn-brutal inline-flex items-center gap-2">
-            <RotateCcw className="w-4 h-4" />
-            Retake Quiz
-          </button>
+          <div className="flex items-center gap-3">
+            <button onClick={handleBackToResults} className="btn-brutal inline-flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4" />
+              Back to Results
+            </button>
+            {!passed && (
+              <button onClick={handleRestart} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-bold text-muted-foreground hover:text-foreground border border-border hover:border-primary transition-colors">
+                <RotateCcw className="w-4 h-4" />
+                Retake Quiz
+              </button>
+            )}
+          </div>
         ) : state === "review" ? (
           <button
             onClick={handleNext}
