@@ -468,6 +468,12 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
     setState("review");
   }, []);
 
+  const handleBackToResults = useCallback(() => {
+    setCurrentIndex(0);
+    setShowExplanation(false);
+    setState("results");
+  }, []);
+
   const answeredCount = Object.keys(answers).filter(k => answers[k] !== -1).length;
   const progress = shuffledQuestions.length > 0 ? (answeredCount / shuffledQuestions.length) * 100 : 0;
   const timeLimitDisplay = quiz.timeLimitMinutes ?? getDefaultTimeLimit(originalQuestions.length);
@@ -806,9 +812,18 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
         </div>
         
         {state === "review" ? (
-          <span className="text-xs font-bold uppercase tracking-wide px-3 py-1 bg-neon-purple/20 text-neon-purple border border-neon-purple/50">
-            Review Mode
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold uppercase tracking-wide px-3 py-1 bg-neon-purple/20 text-neon-purple border border-neon-purple/50">
+              Review Mode
+            </span>
+            <button
+              onClick={handleBackToResults}
+              className="text-xs font-bold text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+            >
+              <ChevronLeft className="w-3 h-3" />
+              Back to Results
+            </button>
+          </div>
         ) : (
           // Per-question timer with circular progress
           <div className="flex items-center gap-3">
@@ -975,10 +990,18 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
 
         {/* Next/Finish/Retake button */}
         {state === "review" && currentIndex === shuffledQuestions.length - 1 ? (
-          <button onClick={handleRestart} className="btn-brutal inline-flex items-center gap-2">
-            <RotateCcw className="w-4 h-4" />
-            Retake Quiz
-          </button>
+          <div className="flex items-center gap-3">
+            <button onClick={handleBackToResults} className="btn-brutal inline-flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4" />
+              Back to Results
+            </button>
+            {!passed && (
+              <button onClick={handleRestart} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-bold text-muted-foreground hover:text-foreground border border-border hover:border-primary transition-colors">
+                <RotateCcw className="w-4 h-4" />
+                Retake Quiz
+              </button>
+            )}
+          </div>
         ) : state === "review" ? (
           <button
             onClick={handleNext}
