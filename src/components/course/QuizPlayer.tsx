@@ -812,9 +812,18 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
         </div>
         
         {state === "review" ? (
-          <span className="text-xs font-bold uppercase tracking-wide px-3 py-1 bg-neon-purple/20 text-neon-purple border border-neon-purple/50">
-            Review Mode
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold uppercase tracking-wide px-3 py-1 bg-neon-purple/20 text-neon-purple border border-neon-purple/50">
+              Review Mode
+            </span>
+            <button
+              onClick={handleBackToResults}
+              className="text-xs font-bold text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+            >
+              <ChevronLeft className="w-3 h-3" />
+              Back to Results
+            </button>
+          </div>
         ) : (
           // Per-question timer with circular progress
           <div className="flex items-center gap-3">
