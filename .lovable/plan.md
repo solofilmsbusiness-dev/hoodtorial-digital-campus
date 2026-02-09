@@ -1,47 +1,50 @@
 
-# Fix: AI Learning Insights Show Incorrect Data for Students
+
+# Fix: Quiz Review Mode Undoes Pass Progress
 
 ## Problem
 
-The AI Learning Insights panel shows inaccurate metrics because the analytics calculations produce wrong numbers. The root cause is a **mixed scoring format** in the `quiz_results` table:
+After passing a quiz, when a student clicks "Review Answers" and navigates to the last question, the only available action button is **"Retake Quiz"**. There is no "Back to Results" or "Done" button. This forces users down one of two bad paths:
 
-- **New DB quizzes** (UUID-based quiz IDs) store `score` as the **raw correct count** (e.g., score=17, total_questions=20)
-- **Old static quizzes** (string quiz IDs like `hu204-q1`) store `score` as a **percentage** (e.g., score=100, total_questions=5)
+1. They click "Retake Quiz" thinking it means "I'm done reviewing" -- this resets the QuizPlayer to the intro/start screen, making it look like the quiz hasn't been completed
+2. They then start a new attempt, potentially fail, and a new failed result gets saved -- making the quiz appear as "not passed" in the UI
 
-The analytics code in `useStudentAnalytics.ts` always calculates `(score / total_questions) * 100`, which produces correct results for DB quizzes (17/20 = 85%) but absurd numbers for static quizzes (100/5 = 2000%).
-
-This corrupts the `averageQuizScore`, `quizPassRate`, `quizScoreTrend`, and `engagementScore` -- all of which feed into the AI prompt, producing nonsensical insights.
+Additionally, when the user is in review mode at any question (not just the last), there is no way to go back to the results screen without using the browser's close (X) button.
 
 ## Solution
 
-Update the analytics calculation to detect which format each quiz result uses and normalize scores before averaging.
+Add proper navigation options in the review mode so users can return to the results screen, and never show "Retake Quiz" when the quiz was already passed.
 
 ## Technical Changes
 
-### 1. Update `src/hooks/useStudentAnalytics.ts`
+### File: `src/components/course/QuizPlayer.tsx`
 
-Add a score normalization step in `calculateLearningMetrics()`:
+**1. Add a "Back to Results" handler**
 
-- If `score > total_questions`, the score is already a percentage -- use it directly
-- If `score <= total_questions`, it's a raw count -- convert to percentage via `(score / total_questions) * 100`
+Add a callback that returns the user from review mode back to the results screen:
 
-This handles both formats correctly:
-- `score=17, total=20` -> 17 <= 20, so calculate (17/20)*100 = 85%
-- `score=100, total=5` -> 100 > 5, so use 100 directly = 100%
-- `score=60, total=5` -> 60 > 5, so use 60 directly = 60%
+```typescript
+const handleBackToResults = useCallback(() => {
+  setCurrentIndex(0);
+  setShowExplanation(false);
+  setState("results");
+}, []);
+```
 
-Apply this normalization to:
-- `averageQuizScore` calculation (line ~94)
-- `calculateQuizTrend()` function (line ~54)
+**2. Fix the review mode footer (last question)**
 
-### 2. Update `src/components/admin/AIInsightsPanel.tsx`
+Currently (line 977-981), the last question in review shows only "Retake Quiz". Change this to:
+- If the quiz was **passed**: Show "Back to Results" button (no retake option -- they already passed)
+- If the quiz was **failed**: Show both "Back to Results" and "Retake Quiz" buttons
 
-No changes needed -- it already passes `metrics.averageQuizScore` and other values from the analytics hook. Once the hook is fixed, the AI prompt will receive correct data.
+**3. Add "Back to Results" button in review mode header area**
+
+Add a persistent "Back to Results" link/button in the review mode UI so users can exit review at any time, not just on the last question.
 
 ### Summary
 
 | File | Change |
 |------|--------|
-| `src/hooks/useStudentAnalytics.ts` | Add score normalization to handle mixed percentage/raw-count formats |
+| `src/components/course/QuizPlayer.tsx` | Add `handleBackToResults` callback; update review mode footer to show "Back to Results" instead of/alongside "Retake Quiz"; add persistent back button in review mode |
 
-This is a small, targeted fix -- just adding a helper function to normalize quiz scores before they enter the analytics pipeline.
+This is a UI-only fix. No database changes needed -- the quiz results are already saved correctly; the issue is purely that the review mode UI funnels users into restarting the quiz when they just want to finish reviewing.
