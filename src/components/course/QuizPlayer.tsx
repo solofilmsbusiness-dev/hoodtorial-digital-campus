@@ -468,6 +468,12 @@ export function QuizPlayer({ quiz, courseCode, onComplete, onClose }: QuizPlayer
     setState("review");
   }, []);
 
+  const handleBackToResults = useCallback(() => {
+    setCurrentIndex(0);
+    setShowExplanation(false);
+    setState("results");
+  }, []);
+
   const answeredCount = Object.keys(answers).filter(k => answers[k] !== -1).length;
   const progress = shuffledQuestions.length > 0 ? (answeredCount / shuffledQuestions.length) * 100 : 0;
   const timeLimitDisplay = quiz.timeLimitMinutes ?? getDefaultTimeLimit(originalQuestions.length);
