@@ -51,6 +51,14 @@ function getEngagementLabel(score: number): string {
   return "Inactive";
 }
 
+function normalizeQuizScore(score: number, totalQuestions: number): number {
+  // If score > totalQuestions, it's already stored as a percentage (legacy static quizzes)
+  // Otherwise it's a raw correct count that needs conversion
+  if (totalQuestions > 0 && score > totalQuestions) return Math.min(score, 100);
+  if (totalQuestions > 0) return (score / totalQuestions) * 100;
+  return 0;
+}
+
 function calculateQuizTrend(quizResults: QuizResult[]): "improving" | "declining" | "stable" {
   if (quizResults.length < 2) return "stable";
 
@@ -59,8 +67,8 @@ function calculateQuizTrend(quizResults: QuizResult[]): "improving" | "declining
     (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   );
 
-  // Calculate scores as percentages
-  const scores = sorted.map((r) => (r.score / r.total_questions) * 100);
+  // Calculate scores as percentages (normalized for mixed formats)
+  const scores = sorted.map((r) => normalizeQuizScore(r.score, r.total_questions));
 
   // Compare first half average to second half average
   const midpoint = Math.floor(scores.length / 2);
@@ -105,7 +113,7 @@ export function calculateLearningMetrics(input: AnalyticsInput): LearningMetrics
   const averageQuizScore =
     quizResults.length > 0
       ? Math.round(
-          quizResults.reduce((sum, r) => sum + (r.score / r.total_questions) * 100, 0) / quizResults.length
+          quizResults.reduce((sum, r) => sum + normalizeQuizScore(r.score, r.total_questions), 0) / quizResults.length
         )
       : 0;
 
