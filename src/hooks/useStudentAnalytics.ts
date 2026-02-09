@@ -113,7 +113,7 @@ export function calculateLearningMetrics(input: AnalyticsInput): LearningMetrics
   const averageQuizScore =
     quizResults.length > 0
       ? Math.round(
-          quizResults.reduce((sum, r) => sum + (r.score / r.total_questions) * 100, 0) / quizResults.length
+          quizResults.reduce((sum, r) => sum + normalizeQuizScore(r.score, r.total_questions), 0) / quizResults.length
         )
       : 0;
 
