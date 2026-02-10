@@ -410,8 +410,8 @@ export default function CourseManager() {
                                 is_published: !course.is_published,
                               })
                             }
-                            disabled={isUsingStaticData}
-                            title={course.is_published ? "Click to hide from Academics page" : "Click to show on Academics page"}
+                            disabled={course.isStaticOnly}
+                            title={course.isStaticOnly ? "Initialize this course first" : course.is_published ? "Click to hide from Academics page" : "Click to show on Academics page"}
                             className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${
                               course.is_published
                                 ? "bg-green-600 text-white hover:bg-green-700"
