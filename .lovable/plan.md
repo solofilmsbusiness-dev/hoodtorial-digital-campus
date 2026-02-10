@@ -1,33 +1,37 @@
 
 
-## Fix: Remove Overly Broad Profile Access Policy
+## Direct Video Upload for Course Lessons (up to 400MB)
 
-### Problem
-The last migration added a policy `"Authenticated users can read profiles via public view"` that allows any authenticated user to SELECT all rows and **all columns** from the `profiles` table. This exposes sensitive data like subscription status, ban information, and trial dates to every logged-in user.
+### What Changes
+Right now, video lessons only accept a URL (YouTube, Vimeo, or a link to a hosted file). This update adds a direct file upload option so you can upload full-quality videos straight from your computer -- up to 400MB per file.
 
-### Root Cause
-There is a fundamental conflict:
-- The Supabase linter wants `security_invoker=on` on views
-- But with `security_invoker=on`, the view inherits base table RLS, meaning users can only see their own profile through the view
-- To work around this, a broad SELECT policy was added -- but that defeats the purpose of column-level protection
+### How It Will Work
+- When editing a video lesson, you will see two tabs: **"Paste URL"** and **"Upload Video"**
+- The Upload tab provides a drag-and-drop area for .mp4, .webm, and .mov files
+- A progress bar shows upload status
+- Once uploaded, a preview of the video appears in the dialog
+- You can remove an uploaded video and switch back to URL if needed
+- Uploaded videos play exactly the same as any other direct video in the course player -- no changes needed there
 
-### Solution
-Revert the `profiles_public` view to **not** use `security_invoker` (making it a security definer view), and **remove** the dangerous broad SELECT policy. The view itself provides column-level security by only exposing non-sensitive fields.
+### Technical Details
 
-### Migration Steps
+**1. Create `lesson-videos` storage bucket (migration)**
+- New bucket with a 400MB file size limit
+- Allowed MIME types: `video/mp4`, `video/webm`, `video/quicktime`
+- Public bucket so students can stream videos
+- RLS policies: authenticated users can upload; admins can delete; public read access
 
-1. **Drop and recreate** the `profiles_public` view **without** `security_invoker=on`
-2. **Drop** the policy `"Authenticated users can read profiles via public view"` from the `profiles` table
-3. **Ignore** the `SUPA_security_definer_view` linter finding with a clear justification (intentional design -- the view acts as a safe public interface)
+**2. Create `useLessonVideoUpload` hook** (`src/hooks/useLessonVideoUpload.ts`)
+- Mirrors the existing `useLessonDocumentUpload` pattern
+- 400MB max file size validation
+- Uploads to `lesson-videos` bucket with unique filenames
+- Returns public URL on success
+- Provides `uploadVideo`, `deleteVideo`, `isUploading`, `uploadProgress`
 
-### Why This Is Safe
-- The `profiles_public` view only selects non-sensitive columns (display name, avatar, bio, social links, gallery, etc.)
-- The base `profiles` table retains restrictive RLS: users can only read their **own** row, and admins/moderators can read all
-- No sensitive fields (subscription status, ban reason, trial dates, location) are exposed through the view
+**3. Update `LessonDialog` component** (`src/components/admin/LessonDialog.tsx`)
+- Add a toggle (tabs) between "URL" and "Upload" when lesson type is "video"
+- Upload mode: file picker for video files with progress bar and preview
+- URL mode: existing URL input (unchanged)
+- When a video is uploaded, its public URL is saved to `video_url` -- the rest of the system already handles direct video URLs seamlessly
 
-### Security Findings Updated
-- **Delete** `profiles_table_sensitive_exposure` (fixed by removing the broad policy)
-- **Ignore** `SUPA_security_definer_view` (intentional design for column-level access control)
-- **Ignore** `waitlist_email_exposure` (admin-only SELECT already enforced; INSERT is public by design for signups)
-- **Ignore** `quiz_questions_public_view_unnecessary` (the public view intentionally excludes correct answers to prevent cheating)
-
+**No other changes needed** -- the `VideoPlayer` component and course detail page already support direct `.mp4/.webm` URLs via the `getVideoType("direct")` path.
