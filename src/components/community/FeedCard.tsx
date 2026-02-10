@@ -57,6 +57,8 @@ export function FeedCard({ post, onLike, onClick, variant = 'grid' }: FeedCardPr
               userId={post.user_id}
               displayName={post.author?.display_name || null}
               avatarUrl={post.author?.avatar_url || null}
+              accentColor={post.author?.profile_accent_color}
+              borderStyle={post.author?.avatar_border_style}
               showAvatar={false}
               nameClassName="text-sm truncate"
             />
