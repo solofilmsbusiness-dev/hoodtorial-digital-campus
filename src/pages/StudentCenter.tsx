@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useWalkthrough } from "@/hooks/useWalkthrough";
+import { WalkthroughOverlay } from "@/components/walkthrough";
 import { PageLayout } from "@/components/layout";
 import { StampBadge } from "@/components/ui/custom-badges";
 import { useAuth } from "@/contexts/AuthContext";
