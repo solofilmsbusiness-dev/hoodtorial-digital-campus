@@ -38,6 +38,8 @@ export interface CommunityPost {
   author?: {
     display_name: string | null;
     avatar_url: string | null;
+    profile_accent_color?: string | null;
+    avatar_border_style?: string | null;
     role?: 'admin' | 'professor' | 'moderator' | 'student' | null;
   };
   likes_count?: number;
