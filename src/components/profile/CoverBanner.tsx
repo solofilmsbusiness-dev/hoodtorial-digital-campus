@@ -9,7 +9,9 @@ import { useToast } from "@/hooks/use-toast";
 
 interface CoverBannerProps {
   currentBannerUrl?: string | null;
+  currentPosition?: number | null;
   onBannerChange?: (url: string | null) => void;
+  onPositionChange?: (position: number) => void;
   onUploadComplete?: () => void;
 }
 
