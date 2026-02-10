@@ -261,7 +261,7 @@ export default function StudentCenter() {
           </div>
 
           {/* Active Courses Section - Now with management */}
-          <Card ref={activeCoursesRef} className="card-urban mb-8">
+          <Card ref={activeCoursesRef} data-tour="active-courses" className="card-urban mb-8">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
