@@ -2,17 +2,19 @@
  import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
  import { cn } from "@/lib/utils";
  
- interface UserProfileLinkProps {
-   userId: string;
-   displayName: string | null;
-   avatarUrl: string | null;
-   showAvatar?: boolean;
-   showName?: boolean;
-   size?: "sm" | "md" | "lg";
-   className?: string;
-   avatarClassName?: string;
-   nameClassName?: string;
- }
+interface UserProfileLinkProps {
+  userId: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  showAvatar?: boolean;
+  showName?: boolean;
+  size?: "sm" | "md" | "lg";
+  className?: string;
+  avatarClassName?: string;
+  nameClassName?: string;
+  accentColor?: string | null;
+  borderStyle?: string | null;
+}
  
  const sizeClasses = {
    sm: "h-6 w-6",
