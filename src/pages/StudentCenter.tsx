@@ -268,7 +268,7 @@ export default function StudentCenter() {
                   <Layers className="h-5 w-5 text-primary" />
                   Active Courses
                 </CardTitle>
-                <div className="flex items-center gap-2 text-sm">
+                <div data-tour="course-slots" className="flex items-center gap-2 text-sm">
                   <span className="text-muted-foreground">Slots:</span>
                   <span className={cn(
                     "font-bold",
