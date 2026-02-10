@@ -22,6 +22,8 @@ export interface CommunityComment {
   author?: {
     display_name: string | null;
     avatar_url: string | null;
+    profile_accent_color?: string | null;
+    avatar_border_style?: string | null;
   };
   user_role?: string;
   likes_count?: number;
