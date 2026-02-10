@@ -39,10 +39,10 @@
  
        // Fetch author profiles
        const userIds = [...new Set(postsData.map(p => p.user_id))];
-       const { data: profiles } = await supabase
-         .from('profiles_public' as any)
-         .select('user_id, display_name, avatar_url')
-         .in('user_id', userIds) as { data: { user_id: string; display_name: string | null; avatar_url: string | null }[] | null };
+      const { data: profiles } = await supabase
+        .from('profiles_public')
+        .select('user_id, display_name, avatar_url, profile_accent_color, avatar_border_style')
+        .in('user_id', userIds);
  
        // Fetch user roles
        const { data: userRolesData } = await supabase
