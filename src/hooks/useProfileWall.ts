@@ -92,13 +92,16 @@
          return acc;
        }, {} as Record<string, number>);
  
-       const profilesMap = (profiles || []).reduce((acc, p) => {
-         acc[p.user_id] = {
-           ...p,
-           role: userRolesMap[p.user_id] as 'admin' | 'professor' | 'moderator' | 'student' | undefined,
-         };
-         return acc;
-       }, {} as Record<string, { display_name: string | null; avatar_url: string | null; role?: 'admin' | 'professor' | 'moderator' | 'student' }>);
+      const profilesMap = (profiles || []).reduce((acc, p) => {
+        acc[p.user_id!] = {
+          display_name: p.display_name,
+          avatar_url: p.avatar_url,
+          profile_accent_color: p.profile_accent_color,
+          avatar_border_style: p.avatar_border_style,
+          role: userRolesMap[p.user_id!] as 'admin' | 'professor' | 'moderator' | 'student' | undefined,
+        };
+        return acc;
+      }, {} as Record<string, { display_name: string | null; avatar_url: string | null; profile_accent_color?: string | null; avatar_border_style?: string | null; role?: 'admin' | 'professor' | 'moderator' | 'student' }>);
  
        return postsData.map(post => ({
          ...post,

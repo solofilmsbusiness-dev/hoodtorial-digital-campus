@@ -206,9 +206,9 @@ export function useCommunityPosts(filters?: {
             .in('user_id', commentUserIds);
 
           const commentProfilesMap = (commentProfiles || []).reduce((acc, p) => {
-            acc[p.user_id] = p;
+            acc[p.user_id!] = p;
             return acc;
-          }, {} as Record<string, { display_name: string | null; avatar_url: string | null }>);
+          }, {} as Record<string, { display_name: string | null; avatar_url: string | null; profile_accent_color?: string | null; avatar_border_style?: string | null }>);
 
           // Group by post_id and take first 2 comments per post
           commentsPreviewData.forEach(c => {

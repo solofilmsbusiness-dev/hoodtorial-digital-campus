@@ -93,9 +93,9 @@ export function useCommunityComments(postId: string | null) {
 
       // Build maps
       const profilesMap = (profiles || []).reduce((acc, p) => {
-        acc[p.user_id] = p;
+        acc[p.user_id!] = { display_name: p.display_name, avatar_url: p.avatar_url, profile_accent_color: p.profile_accent_color, avatar_border_style: p.avatar_border_style };
         return acc;
-      }, {} as Record<string, { display_name: string | null; avatar_url: string | null }>);
+      }, {} as Record<string, { display_name: string | null; avatar_url: string | null; profile_accent_color?: string | null; avatar_border_style?: string | null }>);
 
       const rolesMap = (roles || []).reduce((acc, r) => {
         if (!acc[r.user_id] || r.role === 'admin' || r.role === 'moderator') {

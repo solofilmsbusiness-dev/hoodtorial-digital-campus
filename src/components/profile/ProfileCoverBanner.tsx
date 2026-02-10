@@ -21,6 +21,7 @@
            src={coverUrl}
            alt="Cover"
            className="w-full h-full object-cover"
+           style={{ objectPosition: `center ${coverPosition ?? 50}%` }}
          />
        ) : (
          <div 

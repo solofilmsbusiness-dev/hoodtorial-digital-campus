@@ -110,6 +110,8 @@ function CommentItem({ comment, onLike, onReply, onDelete, depth = 0 }: CommentI
               userId={comment.user_id}
               displayName={comment.author?.display_name || null}
               avatarUrl={comment.author?.avatar_url || null}
+              accentColor={comment.author?.profile_accent_color}
+              borderStyle={comment.author?.avatar_border_style}
               showAvatar={false}
               nameClassName={cn(
                 "text-sm",

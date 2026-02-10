@@ -52,7 +52,7 @@ export function useMentions() {
       if (error) throw error;
       
       return (data || []).map(p => ({
-        id: p.user_id,
+        id: p.user_id!,
         display_name: p.display_name,
         avatar_url: p.avatar_url,
       })) as MentionUser[];

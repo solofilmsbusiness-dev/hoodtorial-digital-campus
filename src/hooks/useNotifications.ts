@@ -47,7 +47,7 @@ export function useNotifications() {
         .in('user_id', senderIds);
 
       const profilesMap = (profiles || []).reduce((acc, p) => {
-        acc[p.user_id] = p;
+        acc[p.user_id!] = { display_name: p.display_name, avatar_url: p.avatar_url };
         return acc;
       }, {} as Record<string, { display_name: string | null; avatar_url: string | null }>);
 
