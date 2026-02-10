@@ -4,6 +4,7 @@
  interface ProfileCoverBannerProps {
    coverUrl: string | null;
    accentColor?: string | null;
+   coverPosition?: number | null;
  }
  
  export function ProfileCoverBanner({ coverUrl, accentColor }: ProfileCoverBannerProps) {
