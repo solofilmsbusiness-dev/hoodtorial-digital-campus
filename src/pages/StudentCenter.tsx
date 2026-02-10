@@ -521,7 +521,8 @@ export default function StudentCenter() {
                   </Link>
 
                   <Link 
-                    to="/academics" 
+                    to="/academics"
+                    data-tour="browse-courses"
                     className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border hover:border-primary transition-colors"
                   >
                     <div className="flex items-center gap-3">
