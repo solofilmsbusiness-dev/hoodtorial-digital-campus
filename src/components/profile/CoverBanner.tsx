@@ -1,20 +1,24 @@
 import { useRef, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { ImagePlus, Trash2 } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { ImagePlus, Trash2, Move } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAvatarUpload } from "@/hooks/useAvatarUpload";
 import { useToast } from "@/hooks/use-toast";
 
 interface CoverBannerProps {
   currentBannerUrl?: string | null;
+  currentPosition?: number | null;
   onBannerChange?: (url: string | null) => void;
+  onPositionChange?: (position: number) => void;
   onUploadComplete?: () => void;
 }
 
-export function CoverBanner({ currentBannerUrl, onBannerChange, onUploadComplete }: CoverBannerProps) {
+export function CoverBanner({ currentBannerUrl, currentPosition, onBannerChange, onPositionChange, onUploadComplete }: CoverBannerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [position, setPosition] = useState(currentPosition ?? 50);
   const { uploadCoverBanner, removeCoverBanner, uploading, progress } = useAvatarUpload();
   const { toast } = useToast();
 
@@ -114,6 +118,7 @@ export function CoverBanner({ currentBannerUrl, onBannerChange, onUploadComplete
               src={currentBannerUrl}
               alt="Cover banner"
               className="w-full h-full object-cover"
+              style={{ objectPosition: `center ${position}%` }}
             />
             {/* Gradient overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
@@ -155,6 +160,25 @@ export function CoverBanner({ currentBannerUrl, onBannerChange, onUploadComplete
           disabled={uploading}
         />
       </div>
+
+      {/* Position slider */}
+      {currentBannerUrl && (
+        <div className="mt-3 flex items-center gap-3 px-1">
+          <Move className="h-4 w-4 text-muted-foreground shrink-0" />
+          <Slider
+            value={[position]}
+            min={0}
+            max={100}
+            step={1}
+            onValueChange={([val]) => {
+              setPosition(val);
+              onPositionChange?.(val);
+            }}
+            className="flex-1"
+          />
+          <span className="text-xs text-muted-foreground w-8 text-right">{position}%</span>
+        </div>
+      )}
 
       {/* Remove button */}
       {currentBannerUrl && (

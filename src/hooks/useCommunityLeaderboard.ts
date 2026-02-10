@@ -52,7 +52,7 @@ export function useCommunityLeaderboard(period: 'week' | 'month' | 'all' = 'week
 
       const { data: profiles } = await supabase
         .from('profiles_public')
-        .select('user_id, display_name, avatar_url')
+        .select('user_id, display_name, avatar_url, profile_accent_color, avatar_border_style')
         .in('user_id', userIds);
 
       // Build leaderboard
@@ -121,7 +121,7 @@ export function useCommunityLeaderboard(period: 'week' | 'month' | 'all' = 'week
 
       const { data: profiles } = await supabase
         .from('profiles_public')
-        .select('user_id, display_name, avatar_url')
+        .select('user_id, display_name, avatar_url, profile_accent_color, avatar_border_style')
         .in('user_id', userIds);
 
       // Build leaderboard

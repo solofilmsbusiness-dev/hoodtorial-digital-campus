@@ -14,6 +14,8 @@ export interface CommentPreview {
   author?: {
     display_name: string | null;
     avatar_url: string | null;
+    profile_accent_color?: string | null;
+    avatar_border_style?: string | null;
   };
 }
 
@@ -36,6 +38,8 @@ export interface CommunityPost {
   author?: {
     display_name: string | null;
     avatar_url: string | null;
+    profile_accent_color?: string | null;
+    avatar_border_style?: string | null;
     role?: 'admin' | 'professor' | 'moderator' | 'student' | null;
   };
   likes_count?: number;
@@ -109,9 +113,9 @@ export function useCommunityPosts(filters?: {
       // Fetch profiles for authors (using limited public view for privacy)
       const userIds = [...new Set(postsData.map(p => p.user_id))];
       const { data: profiles } = await supabase
-        .from('profiles_public' as any)
-        .select('user_id, display_name, avatar_url')
-        .in('user_id', userIds) as { data: { user_id: string; display_name: string | null; avatar_url: string | null }[] | null };
+        .from('profiles_public')
+        .select('user_id, display_name, avatar_url, profile_accent_color, avatar_border_style')
+        .in('user_id', userIds);
 
       // Fetch user roles for authors
       const { data: userRolesData } = await supabase
@@ -173,12 +177,15 @@ export function useCommunityPosts(filters?: {
       }, {} as Record<string, number>);
 
       const profilesMap = (profiles || []).reduce((acc, p) => {
-        acc[p.user_id] = {
-          ...p,
-          role: userRolesMap[p.user_id] as 'admin' | 'professor' | 'moderator' | 'student' | undefined,
+        acc[p.user_id!] = {
+          display_name: p.display_name,
+          avatar_url: p.avatar_url,
+          profile_accent_color: p.profile_accent_color,
+          avatar_border_style: p.avatar_border_style,
+          role: userRolesMap[p.user_id!] as 'admin' | 'professor' | 'moderator' | 'student' | undefined,
         };
         return acc;
-      }, {} as Record<string, { display_name: string | null; avatar_url: string | null; role?: 'admin' | 'professor' | 'moderator' | 'student' }>);
+      }, {} as Record<string, { display_name: string | null; avatar_url: string | null; profile_accent_color?: string | null; avatar_border_style?: string | null; role?: 'admin' | 'professor' | 'moderator' | 'student' }>);
 
       // Fetch comment previews if requested
       let commentPreviews: Record<string, CommentPreview[]> = {};
@@ -194,14 +201,14 @@ export function useCommunityPosts(filters?: {
           // Get unique user IDs from comments
           const commentUserIds = [...new Set(commentsPreviewData.map(c => c.user_id))];
           const { data: commentProfiles } = await supabase
-            .from('profiles_public' as any)
-            .select('user_id, display_name, avatar_url')
-            .in('user_id', commentUserIds) as { data: { user_id: string; display_name: string | null; avatar_url: string | null }[] | null };
+            .from('profiles_public')
+            .select('user_id, display_name, avatar_url, profile_accent_color, avatar_border_style')
+            .in('user_id', commentUserIds);
 
           const commentProfilesMap = (commentProfiles || []).reduce((acc, p) => {
-            acc[p.user_id] = p;
+            acc[p.user_id!] = p;
             return acc;
-          }, {} as Record<string, { display_name: string | null; avatar_url: string | null }>);
+          }, {} as Record<string, { display_name: string | null; avatar_url: string | null; profile_accent_color?: string | null; avatar_border_style?: string | null }>);
 
           // Group by post_id and take first 2 comments per post
           commentsPreviewData.forEach(c => {

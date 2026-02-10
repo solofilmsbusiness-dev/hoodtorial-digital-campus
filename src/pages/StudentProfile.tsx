@@ -110,6 +110,7 @@ export default function StudentProfile() {
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
+  const [bannerPosition, setBannerPosition] = useState<number>(50);
   const [gallery, setGallery] = useState<string[]>([]);
 
   // Gallery hook for managing portfolio items
@@ -164,6 +165,7 @@ export default function StudentProfile() {
       setInitialFormData(newFormData);
       setAvatarUrl(profile.avatar_url);
       setBannerUrl(profile.cover_banner_url);
+      setBannerPosition((profile as any).cover_banner_position ?? 50);
       setGallery(profile.portfolio_gallery || []);
     }
   }, [profile]);
@@ -392,7 +394,12 @@ export default function StudentProfile() {
                     {/* Cover Banner */}
                     <CoverBanner
                       currentBannerUrl={bannerUrl}
+                      currentPosition={bannerPosition}
                       onBannerChange={setBannerUrl}
+                      onPositionChange={(pos) => {
+                        setBannerPosition(pos);
+                        updateProfile({ cover_banner_position: pos } as any);
+                      }}
                       onUploadComplete={refetch}
                     />
 

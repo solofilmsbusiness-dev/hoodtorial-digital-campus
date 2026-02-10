@@ -4,9 +4,10 @@
  interface ProfileCoverBannerProps {
    coverUrl: string | null;
    accentColor?: string | null;
+   coverPosition?: number | null;
  }
  
- export function ProfileCoverBanner({ coverUrl, accentColor }: ProfileCoverBannerProps) {
+ export function ProfileCoverBanner({ coverUrl, accentColor, coverPosition }: ProfileCoverBannerProps) {
    return (
      <motion.div 
        initial={{ opacity: 0 }}
@@ -20,6 +21,7 @@
            src={coverUrl}
            alt="Cover"
            className="w-full h-full object-cover"
+           style={{ objectPosition: `center ${coverPosition ?? 50}%` }}
          />
        ) : (
          <div 

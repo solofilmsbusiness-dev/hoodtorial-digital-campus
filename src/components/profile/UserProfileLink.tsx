@@ -2,17 +2,19 @@
  import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
  import { cn } from "@/lib/utils";
  
- interface UserProfileLinkProps {
-   userId: string;
-   displayName: string | null;
-   avatarUrl: string | null;
-   showAvatar?: boolean;
-   showName?: boolean;
-   size?: "sm" | "md" | "lg";
-   className?: string;
-   avatarClassName?: string;
-   nameClassName?: string;
- }
+interface UserProfileLinkProps {
+  userId: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  showAvatar?: boolean;
+  showName?: boolean;
+  size?: "sm" | "md" | "lg";
+  className?: string;
+  avatarClassName?: string;
+  nameClassName?: string;
+  accentColor?: string | null;
+  borderStyle?: string | null;
+}
  
  const sizeClasses = {
    sm: "h-6 w-6",
@@ -26,17 +28,19 @@
    lg: "text-base",
  };
  
- export function UserProfileLink({
-   userId,
-   displayName,
-   avatarUrl,
-   showAvatar = true,
-   showName = true,
-   size = "md",
-   className,
-   avatarClassName,
-   nameClassName,
- }: UserProfileLinkProps) {
+export function UserProfileLink({
+  userId,
+  displayName,
+  avatarUrl,
+  showAvatar = true,
+  showName = true,
+  size = "md",
+  className,
+  avatarClassName,
+  nameClassName,
+  accentColor,
+  borderStyle,
+}: UserProfileLinkProps) {
    const getInitials = (name?: string | null) => {
      if (!name) return "?";
      return name
@@ -56,14 +60,21 @@
        )}
        onClick={(e) => e.stopPropagation()}
      >
-       {showAvatar && (
-         <Avatar className={cn(sizeClasses[size], "border-2 border-border", avatarClassName)}>
-           <AvatarImage src={avatarUrl || undefined} />
-           <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
-             {getInitials(displayName)}
-           </AvatarFallback>
-         </Avatar>
-       )}
+        {showAvatar && (
+          <Avatar
+            className={cn(sizeClasses[size], "border-2 border-border", avatarClassName)}
+            style={accentColor ? {
+              borderColor: accentColor,
+              boxShadow: `0 0 8px ${accentColor}40`,
+              borderRadius: borderStyle === 'square' ? '8px' : borderStyle === 'hexagon' ? '8px' : undefined,
+            } : undefined}
+          >
+            <AvatarImage src={avatarUrl || undefined} />
+            <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
+              {getInitials(displayName)}
+            </AvatarFallback>
+          </Avatar>
+        )}
        {showName && (
          <span className={cn("font-semibold hover:underline", textSizeClasses[size], nameClassName)}>
            {displayName || "Anonymous"}

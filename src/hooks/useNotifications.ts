@@ -42,12 +42,12 @@ export function useNotifications() {
       // Fetch sender profiles (using limited public view for privacy)
       const senderIds = [...new Set(data.map(n => n.sender_id))];
       const { data: profiles } = await supabase
-        .from('profiles_public' as any)
+        .from('profiles_public')
         .select('user_id, display_name, avatar_url')
-        .in('user_id', senderIds) as { data: { user_id: string; display_name: string | null; avatar_url: string | null }[] | null };
+        .in('user_id', senderIds);
 
       const profilesMap = (profiles || []).reduce((acc, p) => {
-        acc[p.user_id] = p;
+        acc[p.user_id!] = { display_name: p.display_name, avatar_url: p.avatar_url };
         return acc;
       }, {} as Record<string, { display_name: string | null; avatar_url: string | null }>);
 

@@ -233,6 +233,7 @@ import { FeaturedProjectShowcase } from "./FeaturedProjectShowcase";
        <ProfileCoverBanner 
          coverUrl={profile.cover_banner_url} 
          accentColor={profile.profile_accent_color}
+         coverPosition={profile.cover_banner_position}
        />
  
        {/* Profile Header - Avatar & Identity */}
