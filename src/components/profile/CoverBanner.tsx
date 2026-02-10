@@ -1,7 +1,8 @@
 import { useRef, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { ImagePlus, Trash2 } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { ImagePlus, Trash2, Move } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAvatarUpload } from "@/hooks/useAvatarUpload";
 import { useToast } from "@/hooks/use-toast";
