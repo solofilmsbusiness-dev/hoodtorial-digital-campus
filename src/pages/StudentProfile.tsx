@@ -165,6 +165,7 @@ export default function StudentProfile() {
       setInitialFormData(newFormData);
       setAvatarUrl(profile.avatar_url);
       setBannerUrl(profile.cover_banner_url);
+      setBannerPosition((profile as any).cover_banner_position ?? 50);
       setGallery(profile.portfolio_gallery || []);
     }
   }, [profile]);
