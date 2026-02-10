@@ -388,7 +388,7 @@ export default function StudentCenter() {
           )}
 
           {/* Quick Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          <div data-tour="degree-stats" className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
             <Card className="card-urban">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
