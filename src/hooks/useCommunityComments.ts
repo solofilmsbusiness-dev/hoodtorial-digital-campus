@@ -63,9 +63,9 @@ export function useCommunityComments(postId: string | null) {
       // Fetch profiles for authors (using limited public view for privacy)
       const userIds = [...new Set(commentsData.map(c => c.user_id))];
       const { data: profiles } = await supabase
-        .from('profiles_public' as any)
-        .select('user_id, display_name, avatar_url')
-        .in('user_id', userIds) as { data: { user_id: string; display_name: string | null; avatar_url: string | null }[] | null };
+        .from('profiles_public')
+        .select('user_id, display_name, avatar_url, profile_accent_color, avatar_border_style')
+        .in('user_id', userIds);
 
       // Fetch roles
       const { data: roles } = await supabase
