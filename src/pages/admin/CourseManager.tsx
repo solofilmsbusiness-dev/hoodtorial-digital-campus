@@ -474,9 +474,9 @@ export default function CourseManager() {
                             variant="ghost" 
                             size="icon"
                             onClick={() => setCourseToDelete(course)}
-                            disabled={isUsingStaticData}
+                            disabled={course.isStaticOnly}
                             className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            title="Delete course"
+                            title={course.isStaticOnly ? "Initialize this course first" : "Delete course"}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
