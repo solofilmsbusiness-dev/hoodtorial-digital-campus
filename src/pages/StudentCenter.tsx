@@ -36,7 +36,8 @@ import {
   Play,
   Users,
   HelpCircle,
-  Eye
+  Eye,
+  Map
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
