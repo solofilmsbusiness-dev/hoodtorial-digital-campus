@@ -60,14 +60,21 @@ export function UserProfileLink({
        )}
        onClick={(e) => e.stopPropagation()}
      >
-       {showAvatar && (
-         <Avatar className={cn(sizeClasses[size], "border-2 border-border", avatarClassName)}>
-           <AvatarImage src={avatarUrl || undefined} />
-           <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
-             {getInitials(displayName)}
-           </AvatarFallback>
-         </Avatar>
-       )}
+        {showAvatar && (
+          <Avatar
+            className={cn(sizeClasses[size], "border-2 border-border", avatarClassName)}
+            style={accentColor ? {
+              borderColor: accentColor,
+              boxShadow: `0 0 8px ${accentColor}40`,
+              borderRadius: borderStyle === 'square' ? '8px' : borderStyle === 'hexagon' ? '8px' : undefined,
+            } : undefined}
+          >
+            <AvatarImage src={avatarUrl || undefined} />
+            <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
+              {getInitials(displayName)}
+            </AvatarFallback>
+          </Avatar>
+        )}
        {showName && (
          <span className={cn("font-semibold hover:underline", textSizeClasses[size], nameClassName)}>
            {displayName || "Anonymous"}
