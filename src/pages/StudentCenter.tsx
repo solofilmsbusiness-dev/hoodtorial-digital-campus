@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useWalkthrough } from "@/hooks/useWalkthrough";
+import { WalkthroughOverlay } from "@/components/walkthrough";
 import { PageLayout } from "@/components/layout";
 import { StampBadge } from "@/components/ui/custom-badges";
 import { useAuth } from "@/contexts/AuthContext";
@@ -34,7 +36,8 @@ import {
   Play,
   Users,
   HelpCircle,
-  Eye
+  Eye,
+  Map
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -47,6 +50,7 @@ export default function StudentCenter() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeCoursesRef = useRef<HTMLDivElement>(null);
   const [highlightedCourse, setHighlightedCourse] = useState<string | null>(null);
+  const walkthrough = useWalkthrough();
   const { latestResult, hasCompletedAssessment } = useAssessmentResults();
   const { 
     activeEnrollments, 
@@ -257,14 +261,14 @@ export default function StudentCenter() {
           </div>
 
           {/* Active Courses Section - Now with management */}
-          <Card ref={activeCoursesRef} className="card-urban mb-8">
+          <Card ref={activeCoursesRef} data-tour="active-courses" className="card-urban mb-8">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <Layers className="h-5 w-5 text-primary" />
                   Active Courses
                 </CardTitle>
-                <div className="flex items-center gap-2 text-sm">
+                <div data-tour="course-slots" className="flex items-center gap-2 text-sm">
                   <span className="text-muted-foreground">Slots:</span>
                   <span className={cn(
                     "font-bold",
@@ -384,7 +388,7 @@ export default function StudentCenter() {
           )}
 
           {/* Quick Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          <div data-tour="degree-stats" className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
             <Card className="card-urban">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
@@ -484,7 +488,7 @@ export default function StudentCenter() {
 
             {/* Quick Links */}
             <div className="space-y-6">
-              <Card className="card-urban">
+              <Card data-tour="quick-links" className="card-urban">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Award className="h-5 w-5 text-primary" />
@@ -517,7 +521,8 @@ export default function StudentCenter() {
                   </Link>
 
                   <Link 
-                    to="/academics" 
+                    to="/academics"
+                    data-tour="browse-courses"
                     className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border hover:border-primary transition-colors"
                   >
                     <div className="flex items-center gap-3">
@@ -572,6 +577,17 @@ export default function StudentCenter() {
                     </div>
                     <ChevronRight className="h-5 w-5 text-muted-foreground" />
                   </button>
+
+                  <button 
+                    onClick={walkthrough.startTour}
+                    className="w-full flex items-center justify-between p-4 bg-primary/10 rounded-lg border border-primary/30 hover:border-primary transition-colors text-left"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Map className="h-5 w-5 text-primary" />
+                      <span className="font-bold text-primary">Take a Tour</span>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-primary" />
+                  </button>
                 </CardContent>
               </Card>
 
@@ -608,7 +624,7 @@ export default function StudentCenter() {
               )}
 
               {/* Degree Progress */}
-              <Card className="card-urban">
+              <Card data-tour="degree-progress" className="card-urban">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <GraduationCap className="h-5 w-5 text-primary" />
@@ -657,6 +673,16 @@ export default function StudentCenter() {
       <ContactAdminSheet 
         open={supportSheetOpen} 
         onOpenChange={setSupportSheetOpen} 
+      />
+
+      <WalkthroughOverlay
+        isActive={walkthrough.isActive}
+        currentStep={walkthrough.currentStep}
+        currentStepIndex={walkthrough.currentStepIndex}
+        totalSteps={walkthrough.totalSteps}
+        onNext={walkthrough.nextStep}
+        onPrev={walkthrough.prevStep}
+        onSkip={walkthrough.skipTour}
       />
     </PageLayout>
   );
