@@ -28,17 +28,19 @@ interface UserProfileLinkProps {
    lg: "text-base",
  };
  
- export function UserProfileLink({
-   userId,
-   displayName,
-   avatarUrl,
-   showAvatar = true,
-   showName = true,
-   size = "md",
-   className,
-   avatarClassName,
-   nameClassName,
- }: UserProfileLinkProps) {
+export function UserProfileLink({
+  userId,
+  displayName,
+  avatarUrl,
+  showAvatar = true,
+  showName = true,
+  size = "md",
+  className,
+  avatarClassName,
+  nameClassName,
+  accentColor,
+  borderStyle,
+}: UserProfileLinkProps) {
    const getInitials = (name?: string | null) => {
      if (!name) return "?";
      return name
