@@ -488,7 +488,7 @@ export default function StudentCenter() {
 
             {/* Quick Links */}
             <div className="space-y-6">
-              <Card className="card-urban">
+              <Card data-tour="quick-links" className="card-urban">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Award className="h-5 w-5 text-primary" />
