@@ -79,10 +79,11 @@ export default function CourseManager() {
         level: c.level,
         is_published: true,
         is_locked: false,
+        isStaticOnly: true,
       }));
     }
 
-    const merged: Course[] = [...dbCourses];
+    const merged: Course[] = dbCourses.map((c) => ({ ...c, isStaticOnly: false }));
     const dbCodes = new Set(dbCourses.map((c) => c.code));
 
     staticCourses.forEach((c) => {
@@ -96,6 +97,7 @@ export default function CourseManager() {
           level: c.level,
           is_published: true,
           is_locked: false,
+          isStaticOnly: true,
         });
       }
     });
