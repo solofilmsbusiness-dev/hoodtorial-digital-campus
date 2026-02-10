@@ -577,6 +577,17 @@ export default function StudentCenter() {
                     </div>
                     <ChevronRight className="h-5 w-5 text-muted-foreground" />
                   </button>
+
+                  <button 
+                    onClick={walkthrough.startTour}
+                    className="w-full flex items-center justify-between p-4 bg-primary/10 rounded-lg border border-primary/30 hover:border-primary transition-colors text-left"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Map className="h-5 w-5 text-primary" />
+                      <span className="font-bold text-primary">Take a Tour</span>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-primary" />
+                  </button>
                 </CardContent>
               </Card>
 
