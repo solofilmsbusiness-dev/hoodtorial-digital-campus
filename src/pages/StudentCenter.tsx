@@ -613,7 +613,7 @@ export default function StudentCenter() {
               )}
 
               {/* Degree Progress */}
-              <Card className="card-urban">
+              <Card data-tour="degree-progress" className="card-urban">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <GraduationCap className="h-5 w-5 text-primary" />
