@@ -50,6 +50,7 @@ export default function StudentCenter() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeCoursesRef = useRef<HTMLDivElement>(null);
   const [highlightedCourse, setHighlightedCourse] = useState<string | null>(null);
+  const walkthrough = useWalkthrough();
   const { latestResult, hasCompletedAssessment } = useAssessmentResults();
   const { 
     activeEnrollments, 
