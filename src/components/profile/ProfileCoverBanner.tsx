@@ -7,7 +7,7 @@
    coverPosition?: number | null;
  }
  
- export function ProfileCoverBanner({ coverUrl, accentColor }: ProfileCoverBannerProps) {
+ export function ProfileCoverBanner({ coverUrl, accentColor, coverPosition }: ProfileCoverBannerProps) {
    return (
      <motion.div 
        initial={{ opacity: 0 }}
