@@ -1,37 +1,31 @@
 
 
-## Direct Video Upload for Course Lessons (up to 400MB)
+## Fix: Ensure All Courses Can Be Deleted and Hidden
 
-### What Changes
-Right now, video lessons only accept a URL (YouTube, Vimeo, or a link to a hosted file). This update adds a direct file upload option so you can upload full-quality videos straight from your computer -- up to 400MB per file.
+### Problem
+When courses have been initialized into the database, static-only courses (ones that exist in code but weren't imported to the DB) still appear in the table. These courses use their code (e.g., "MF-201") as a fake ID. Clicking Delete or toggling Published/Hidden targets a database row that doesn't exist, so nothing happens.
 
-### How It Will Work
-- When editing a video lesson, you will see two tabs: **"Paste URL"** and **"Upload Video"**
-- The Upload tab provides a drag-and-drop area for .mp4, .webm, and .mov files
-- A progress bar shows upload status
-- Once uploaded, a preview of the video appears in the dialog
-- You can remove an uploaded video and switch back to URL if needed
-- Uploaded videos play exactly the same as any other direct video in the course player -- no changes needed there
+Additionally, the `isUsingStaticData` flag only disables buttons when there are **zero** DB courses. Once some courses are in the DB, the buttons become enabled for all rows -- including static-only ones that have no matching DB record.
 
-### Technical Details
+### Solution
+Track which courses are "static-only" (not in the database) on a per-row basis, and disable actions for those rows while enabling them for all real DB courses.
 
-**1. Create `lesson-videos` storage bucket (migration)**
-- New bucket with a 400MB file size limit
-- Allowed MIME types: `video/mp4`, `video/webm`, `video/quicktime`
-- Public bucket so students can stream videos
-- RLS policies: authenticated users can upload; admins can delete; public read access
+### Technical Changes
 
-**2. Create `useLessonVideoUpload` hook** (`src/hooks/useLessonVideoUpload.ts`)
-- Mirrors the existing `useLessonDocumentUpload` pattern
-- 400MB max file size validation
-- Uploads to `lesson-videos` bucket with unique filenames
-- Returns public URL on success
-- Provides `uploadVideo`, `deleteVideo`, `isUploading`, `uploadProgress`
+**File: `src/pages/admin/CourseManager.tsx`**
 
-**3. Update `LessonDialog` component** (`src/components/admin/LessonDialog.tsx`)
-- Add a toggle (tabs) between "URL" and "Upload" when lesson type is "video"
-- Upload mode: file picker for video files with progress bar and preview
-- URL mode: existing URL input (unchanged)
-- When a video is uploaded, its public URL is saved to `video_url` -- the rest of the system already handles direct video URLs seamlessly
+1. **Add an `isStaticOnly` flag to each course in the merge logic** -- courses from the static fallback that have no matching DB record get `isStaticOnly: true`. DB courses get `isStaticOnly: false`.
 
-**No other changes needed** -- the `VideoPlayer` component and course detail page already support direct `.mp4/.webm` URLs via the `getVideoType("direct")` path.
+2. **Use `isStaticOnly` per-row instead of the global `isUsingStaticData`** to disable the Published toggle, Coming Soon toggle, and Delete button. This means:
+   - DB courses: all actions work (delete, hide, lock)
+   - Static-only courses: actions are disabled with a tooltip explaining the course needs to be initialized first
+
+3. **Update the `Course` interface** to include `isStaticOnly: boolean`.
+
+4. **Keep the global `isUsingStaticData` banner** at the top for when zero courses are in the DB (unchanged).
+
+### What This Fixes
+- "Lighting for Mobile Film" and any other static-only course will show disabled action buttons with a clear explanation
+- All database-backed courses will be fully deletable and hideable regardless of whether static courses also exist
+- No silent failures -- the UI accurately reflects what actions are possible
+
