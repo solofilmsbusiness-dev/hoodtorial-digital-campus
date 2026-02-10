@@ -15,7 +15,7 @@ interface CoverBannerProps {
   onUploadComplete?: () => void;
 }
 
-export function CoverBanner({ currentBannerUrl, onBannerChange, onUploadComplete }: CoverBannerProps) {
+export function CoverBanner({ currentBannerUrl, currentPosition, onBannerChange, onPositionChange, onUploadComplete }: CoverBannerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const { uploadCoverBanner, removeCoverBanner, uploading, progress } = useAvatarUpload();
