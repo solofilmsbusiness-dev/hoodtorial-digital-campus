@@ -14,6 +14,8 @@ export interface CommentPreview {
   author?: {
     display_name: string | null;
     avatar_url: string | null;
+    profile_accent_color?: string | null;
+    avatar_border_style?: string | null;
   };
 }
 
