@@ -110,6 +110,7 @@ export default function StudentProfile() {
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
+  const [bannerPosition, setBannerPosition] = useState<number>(50);
   const [gallery, setGallery] = useState<string[]>([]);
 
   // Gallery hook for managing portfolio items
