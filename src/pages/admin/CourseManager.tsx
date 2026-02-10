@@ -40,6 +40,7 @@ interface Course {
   level: string;
   is_published: boolean;
   is_locked: boolean;
+  isStaticOnly: boolean;
 }
 
 export default function CourseManager() {
