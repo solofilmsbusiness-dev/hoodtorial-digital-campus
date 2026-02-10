@@ -44,10 +44,10 @@ export function useMentions() {
     queryKey: ['mention-users'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('profiles_public' as any)
+        .from('profiles_public')
         .select('user_id, display_name, avatar_url')
         .not('display_name', 'is', null)
-        .order('display_name') as { data: { user_id: string; display_name: string | null; avatar_url: string | null }[] | null; error: any };
+        .order('display_name');
 
       if (error) throw error;
       
