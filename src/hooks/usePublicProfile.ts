@@ -28,8 +28,9 @@
   featured_project_title: string | null;
   featured_project_thumbnail: string | null;
   profile_section_order: string[] | null;
- card_section_order: string[] | null;
- }
+  card_section_order: string[] | null;
+  cover_banner_position: number | null;
+}
  
  export type UserRole = "admin" | "professor" | "moderator" | "tester" | "student";
  

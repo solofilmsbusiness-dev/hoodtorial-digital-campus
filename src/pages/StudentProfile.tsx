@@ -394,7 +394,12 @@ export default function StudentProfile() {
                     {/* Cover Banner */}
                     <CoverBanner
                       currentBannerUrl={bannerUrl}
+                      currentPosition={bannerPosition}
                       onBannerChange={setBannerUrl}
+                      onPositionChange={(pos) => {
+                        setBannerPosition(pos);
+                        updateProfile({ cover_banner_position: pos } as any);
+                      }}
                       onUploadComplete={refetch}
                     />
 
