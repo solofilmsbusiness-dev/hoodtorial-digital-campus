@@ -434,7 +434,8 @@ export default function CourseManager() {
                                 is_locked: !course.is_locked,
                               })
                             }
-                            disabled={isUsingStaticData}
+                            disabled={course.isStaticOnly}
+                            title={course.isStaticOnly ? "Initialize this course first" : undefined}
                             className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${
                               course.is_locked
                                 ? "bg-amber-600 text-white hover:bg-amber-700"
