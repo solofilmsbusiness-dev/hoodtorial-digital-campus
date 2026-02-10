@@ -201,9 +201,9 @@ export function useCommunityPosts(filters?: {
           // Get unique user IDs from comments
           const commentUserIds = [...new Set(commentsPreviewData.map(c => c.user_id))];
           const { data: commentProfiles } = await supabase
-            .from('profiles_public' as any)
-            .select('user_id, display_name, avatar_url')
-            .in('user_id', commentUserIds) as { data: { user_id: string; display_name: string | null; avatar_url: string | null }[] | null };
+            .from('profiles_public')
+            .select('user_id, display_name, avatar_url, profile_accent_color, avatar_border_style')
+            .in('user_id', commentUserIds);
 
           const commentProfilesMap = (commentProfiles || []).reduce((acc, p) => {
             acc[p.user_id] = p;
