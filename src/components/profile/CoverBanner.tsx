@@ -118,6 +118,7 @@ export function CoverBanner({ currentBannerUrl, currentPosition, onBannerChange,
               src={currentBannerUrl}
               alt="Cover banner"
               className="w-full h-full object-cover"
+              style={{ objectPosition: `center ${position}%` }}
             />
             {/* Gradient overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
