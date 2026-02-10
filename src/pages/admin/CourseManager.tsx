@@ -40,6 +40,7 @@ interface Course {
   level: string;
   is_published: boolean;
   is_locked: boolean;
+  isStaticOnly: boolean;
 }
 
 export default function CourseManager() {
@@ -62,7 +63,7 @@ export default function CourseManager() {
         .order("sort_order", { ascending: true });
 
       if (error) throw error;
-      return data as Course[];
+      return (data as any[]).map((c) => ({ ...c, isStaticOnly: false })) as Course[];
     },
   });
 
@@ -78,10 +79,11 @@ export default function CourseManager() {
         level: c.level,
         is_published: true,
         is_locked: false,
+        isStaticOnly: true,
       }));
     }
 
-    const merged: Course[] = [...dbCourses];
+    const merged: Course[] = dbCourses.map((c) => ({ ...c, isStaticOnly: false }));
     const dbCodes = new Set(dbCourses.map((c) => c.code));
 
     staticCourses.forEach((c) => {
@@ -95,6 +97,7 @@ export default function CourseManager() {
           level: c.level,
           is_published: true,
           is_locked: false,
+          isStaticOnly: true,
         });
       }
     });
@@ -407,8 +410,8 @@ export default function CourseManager() {
                                 is_published: !course.is_published,
                               })
                             }
-                            disabled={isUsingStaticData}
-                            title={course.is_published ? "Click to hide from Academics page" : "Click to show on Academics page"}
+                            disabled={course.isStaticOnly}
+                            title={course.isStaticOnly ? "Initialize this course first" : course.is_published ? "Click to hide from Academics page" : "Click to show on Academics page"}
                             className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${
                               course.is_published
                                 ? "bg-green-600 text-white hover:bg-green-700"
@@ -431,7 +434,8 @@ export default function CourseManager() {
                                 is_locked: !course.is_locked,
                               })
                             }
-                            disabled={isUsingStaticData}
+                            disabled={course.isStaticOnly}
+                            title={course.isStaticOnly ? "Initialize this course first" : undefined}
                             className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${
                               course.is_locked
                                 ? "bg-amber-600 text-white hover:bg-amber-700"
@@ -470,9 +474,9 @@ export default function CourseManager() {
                             variant="ghost" 
                             size="icon"
                             onClick={() => setCourseToDelete(course)}
-                            disabled={isUsingStaticData}
+                            disabled={course.isStaticOnly}
                             className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            title="Delete course"
+                            title={course.isStaticOnly ? "Initialize this course first" : "Delete course"}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
