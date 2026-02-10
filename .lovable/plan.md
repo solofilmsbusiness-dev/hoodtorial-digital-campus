@@ -1,88 +1,103 @@
 
 
-# Interactive Walkthrough System for Hoodtorial University
+# Fix: Profile Accent Colors, Avatar Borders, Cover Positioning, and Community Names
 
-## Overview
+## Issues Found
 
-Build a guided walkthrough system that helps new students understand how to navigate the platform, choose a degree path, enroll in courses, and complete coursework. The system combines two approaches: an **interactive step-by-step tour** with spotlight highlights, and a **welcome tour modal** for first-time visitors.
+### 1. Accent Color and Border Style Missing in Community
+The community feed queries (`useCommunityPosts`, `useCommunityComments`, `useProfileWall`, etc.) only fetch `user_id, display_name, avatar_url` from `profiles_public`. The `profile_accent_color` and `avatar_border_style` fields exist in the view but are never fetched or passed to the `UserProfileLink` component. The `UserProfileLink` component itself has no props for these values -- it renders a plain avatar with no accent styling.
 
----
+### 2. Cover Image Not Adjustable
+The cover banner uploads as a full image but uses `object-cover` with no position control. There is no `cover_banner_position` column in the database, so users cannot reposition the crop focus (e.g., move it up/down to center on their face).
 
-## How It Works
-
-When a student arrives at the Student Center for the first time (after completing the assessment and choosing a degree path), they will see a **Welcome Tour** -- a multi-step modal that walks them through the key areas of the platform. Each step highlights a specific part of the page with a spotlight effect and provides clear, friendly explanations.
-
-Students can also re-trigger the tour at any time from a "Take Tour" button in the Quick Links section.
-
----
-
-## Tour Steps
-
-The walkthrough will cover 6 key steps:
-
-1. **Active Courses** -- "These are your enrolled courses. You start with up to 3 courses auto-enrolled from your degree path."
-2. **Course Slots** -- "You have a limited number of course slots. Complete or drop a course to free up space for new ones."
-3. **Course Progress** -- "Each course has lessons and quizzes. Complete them all to earn credits toward your degree."
-4. **Browse Courses** -- "Visit Academics to explore all 16 courses. Click any course to see details and enroll."
-5. **Degree Progress** -- "Track how close you are to graduating. Credits, courses, and quizzes all count."
-6. **Quick Links** -- "Use these shortcuts to access your grades, profile, community, and more."
+### 3. Display Names Showing Incorrectly
+The community queries cast `profiles_public` as `any` and hardcode the select to only `user_id, display_name, avatar_url`. All existing users have display names set, so the issue may be that some queries return stale cached data or the `as any` type casting silently swallows errors. The fix is to remove the `as any` casts and ensure consistent data fetching.
 
 ---
 
-## Technical Changes
+## Solution
 
-### New Files
+### Database Changes
 
-**1. `src/components/walkthrough/WalkthroughOverlay.tsx`**
-- Full-screen overlay component with a spotlight cutout effect
-- Renders a tooltip/card next to the highlighted element
-- Supports Next/Back/Skip/Finish navigation
-- Uses `framer-motion` for smooth transitions between steps
-- Positions tooltip dynamically based on the target element's bounding rect
+**Add `cover_banner_position` column to `profiles` table:**
+- Type: `integer` (0-100, representing vertical percentage, default 50 = center)
+- Add it to the `profiles_public` view
 
-**2. `src/components/walkthrough/WalkthroughStep.tsx`**
-- Individual step card component with step number, title, description, and navigation buttons
-- Shows progress dots (e.g., step 3 of 6)
+### Frontend Changes
 
-**3. `src/components/walkthrough/index.ts`**
-- Barrel export file
+**1. Update `UserProfileLink` to support accent colors and border styles**
 
-**4. `src/hooks/useWalkthrough.ts`**
-- Manages walkthrough state (current step, active/inactive, completed)
-- Persists completion status in `localStorage` (key: `walkthrough_completed`)
-- Provides `startTour()`, `nextStep()`, `prevStep()`, `skipTour()` methods
-- Auto-triggers on first visit when `localStorage` flag is not set
+Add optional `accentColor` and `borderStyle` props. When provided, apply the accent color as a border color and glow effect on the avatar.
 
-### Modified Files
+**2. Update community data fetching hooks to include accent/border data**
 
-**5. `src/pages/StudentCenter.tsx`**
-- Add `data-tour="step-name"` attributes to key sections (Active Courses card, slots indicator, Quick Links card, Degree Progress card)
-- Import and render the `WalkthroughOverlay` component
-- Add a "Take a Tour" button in Quick Links section
-- Connect the walkthrough hook
+Update the `profiles_public` select in these hooks to also fetch `profile_accent_color` and `avatar_border_style`:
+- `useCommunityPosts.ts` (post authors + comment preview authors)
+- `useCommunityComments.ts` (comment authors)
+- `useProfileWall.ts` (wall post authors)
+- `useCommunityLeaderboard.ts` (leaderboard users)
+
+Update the `CommunityPost.author` type to include `profile_accent_color` and `avatar_border_style`.
+
+**3. Pass accent data through to `UserProfileLink` in community components**
+
+Update these components to forward the new author fields:
+- `TimelinePost.tsx`
+- `PostCard.tsx`
+- `FeedCard.tsx`
+- `CommentThread.tsx`
+
+**4. Add cover banner position control**
+
+- Update `CoverBanner.tsx` (edit mode): Add a vertical slider/drag handle that appears when a banner is uploaded, allowing users to set the Y-position (0-100%)
+- Update `ProfileCoverBanner.tsx` (display mode): Apply `object-position: center {position}%` to the banner image
+- Save the position value to the `cover_banner_position` column
+
+**5. Fix `as any` type casts on `profiles_public` queries**
+
+Remove the `as any` casts from `useCommunityPosts.ts`, `useCommunityComments.ts`, `useProfileWall.ts`, `useNotifications.ts`, and `useMentions.ts` since `profiles_public` is properly typed in the generated types.
 
 ---
 
-## Architecture
+## Technical Details
 
-The walkthrough system is entirely client-side with no database changes:
-- Tour step definitions are stored as a static config array
-- Completion state persists in `localStorage` so it only shows once automatically
-- The overlay uses CSS `clip-path` or `box-shadow` with a large spread to create the spotlight effect around the target element
-- `getBoundingClientRect()` is used to position the tooltip relative to the highlighted element
-- The system is reusable -- new tours for other pages (Academics, Course Detail) can be added later using the same components
+### Files to Modify
 
----
+| File | Change |
+|------|--------|
+| `src/components/profile/UserProfileLink.tsx` | Add `accentColor` and `borderStyle` props; apply accent border color |
+| `src/hooks/useCommunityPosts.ts` | Fetch `profile_accent_color, avatar_border_style` from profiles_public; update author type; remove `as any` |
+| `src/hooks/useCommunityComments.ts` | Same as above |
+| `src/hooks/useProfileWall.ts` | Same as above |
+| `src/hooks/useCommunityLeaderboard.ts` | Same as above |
+| `src/hooks/useNotifications.ts` | Remove `as any` cast |
+| `src/hooks/useMentions.ts` | Remove `as any` cast |
+| `src/components/community/TimelinePost.tsx` | Pass `accentColor`/`borderStyle` to UserProfileLink |
+| `src/components/community/PostCard.tsx` | Pass `accentColor`/`borderStyle` to UserProfileLink |
+| `src/components/community/FeedCard.tsx` | Pass `accentColor`/`borderStyle` to UserProfileLink |
+| `src/components/community/CommentThread.tsx` | Pass `accentColor`/`borderStyle` to UserProfileLink |
+| `src/components/profile/CoverBanner.tsx` | Add vertical position slider for repositioning |
+| `src/components/profile/ProfileCoverBanner.tsx` | Apply `object-position` from saved position value |
 
-## Summary
+### Database Migration
 
-| File | Action | Purpose |
-|------|--------|---------|
-| `src/components/walkthrough/WalkthroughOverlay.tsx` | Create | Main overlay with spotlight + tooltip |
-| `src/components/walkthrough/WalkthroughStep.tsx` | Create | Step card UI component |
-| `src/components/walkthrough/index.ts` | Create | Barrel exports |
-| `src/hooks/useWalkthrough.ts` | Create | State management + localStorage persistence |
-| `src/pages/StudentCenter.tsx` | Modify | Add `data-tour` attributes, render overlay, add "Take Tour" button |
+```sql
+ALTER TABLE public.profiles
+  ADD COLUMN cover_banner_position INTEGER DEFAULT 50;
 
-No database migrations or backend changes required. This is a pure frontend feature using existing UI patterns and animation utilities.
+DROP VIEW IF EXISTS public.profiles_public;
+CREATE VIEW public.profiles_public
+WITH (security_invoker = on) AS
+SELECT
+  user_id, display_name, avatar_url, cover_banner_url,
+  bio, filmmaking_style, camera_gear, current_project,
+  favorite_films, influences, portfolio_url, imdb_url,
+  vimeo_url, instagram_url, youtube_url, twitter_url, tiktok_url,
+  profile_accent_color, avatar_border_style, portfolio_gallery,
+  featured_project_url, featured_project_title, featured_project_thumbnail,
+  profile_section_order, card_section_order, cover_banner_position
+FROM profiles;
+```
+
+No new RLS policies needed -- the existing profile policies cover this new column.
 
