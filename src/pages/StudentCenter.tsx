@@ -674,6 +674,16 @@ export default function StudentCenter() {
         open={supportSheetOpen} 
         onOpenChange={setSupportSheetOpen} 
       />
+
+      <WalkthroughOverlay
+        isActive={walkthrough.isActive}
+        currentStep={walkthrough.currentStep}
+        currentStepIndex={walkthrough.currentStepIndex}
+        totalSteps={walkthrough.totalSteps}
+        onNext={walkthrough.nextStep}
+        onPrev={walkthrough.prevStep}
+        onSkip={walkthrough.skipTour}
+      />
     </PageLayout>
   );
 }
