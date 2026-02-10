@@ -63,7 +63,7 @@ export default function CourseManager() {
         .order("sort_order", { ascending: true });
 
       if (error) throw error;
-      return data as Course[];
+      return (data as any[]).map((c) => ({ ...c, isStaticOnly: false })) as Course[];
     },
   });
 
