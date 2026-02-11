@@ -1,31 +1,34 @@
 
 
-## Fix: Ensure All Courses Can Be Deleted and Hidden
+## Make the Tour Only Auto-Trigger for Brand New Users
 
 ### Problem
-When courses have been initialized into the database, static-only courses (ones that exist in code but weren't imported to the DB) still appear in the table. These courses use their code (e.g., "MF-201") as a fake ID. Clicking Delete or toggling Published/Hidden targets a database row that doesn't exist, so nothing happens.
-
-Additionally, the `isUsingStaticData` flag only disables buttons when there are **zero** DB courses. Once some courses are in the DB, the buttons become enabled for all rows -- including static-only ones that have no matching DB record.
+The walkthrough tour currently uses `localStorage` to track completion. This means:
+- A returning user on a new device/browser will see the tour again
+- A new user on a device where someone already completed the tour won't see it
+- It's not tied to the actual user account at all
 
 ### Solution
-Track which courses are "static-only" (not in the database) on a per-row basis, and disable actions for those rows while enabling them for all real DB courses.
+Store tour completion in the `profiles` database table (new column: `walkthrough_completed`) and only auto-trigger the tour for users who have **never** completed it in the database. Keep localStorage as a fast cache to avoid unnecessary DB reads on every page load.
 
 ### Technical Changes
 
-**File: `src/pages/admin/CourseManager.tsx`**
+**1. Database migration** -- Add `walkthrough_completed` column to `profiles`
+- `ALTER TABLE public.profiles ADD COLUMN walkthrough_completed boolean DEFAULT false;`
+- Update the `profiles_public` view to include this column (it's not sensitive data)
 
-1. **Add an `isStaticOnly` flag to each course in the merge logic** -- courses from the static fallback that have no matching DB record get `isStaticOnly: true`. DB courses get `isStaticOnly: false`.
+**2. Update `src/hooks/useWalkthrough.ts`**
+- Accept the user's profile data (specifically `walkthrough_completed`) as input
+- Auto-trigger only when `profile.walkthrough_completed` is `false`
+- On tour completion or skip, update the `profiles` table (`walkthrough_completed = true`) AND set localStorage as a fast cache
+- On mount, check localStorage first (fast path), then fall back to the profile data
 
-2. **Use `isStaticOnly` per-row instead of the global `isUsingStaticData`** to disable the Published toggle, Coming Soon toggle, and Delete button. This means:
-   - DB courses: all actions work (delete, hide, lock)
-   - Static-only courses: actions are disabled with a tooltip explaining the course needs to be initialized first
-
-3. **Update the `Course` interface** to include `isStaticOnly: boolean`.
-
-4. **Keep the global `isUsingStaticData` banner** at the top for when zero courses are in the DB (unchanged).
+**3. Update `src/pages/StudentCenter.tsx`**
+- Pass the profile's `walkthrough_completed` value into the `useWalkthrough` hook
+- The manual "Retake Tour" button continues to work as before (it just calls `startTour()` without resetting the DB flag)
 
 ### What This Fixes
-- "Lighting for Mobile Film" and any other static-only course will show disabled action buttons with a clear explanation
-- All database-backed courses will be fully deletable and hideable regardless of whether static courses also exist
-- No silent failures -- the UI accurately reflects what actions are possible
+- Returning users who log in will never see the auto-tour again, regardless of device
+- New users will always see the tour on their first visit to Student Center, regardless of device
+- The manual "Retake Tour" button still works anytime
 
