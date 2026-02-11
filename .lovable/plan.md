@@ -1,34 +1,26 @@
 
 
-## Make the Tour Only Auto-Trigger for Brand New Users
+## Add "Hoodtorials" Branded Section
 
-### Problem
-The walkthrough tour currently uses `localStorage` to track completion. This means:
-- A returning user on a new device/browser will see the tour again
-- A new user on a device where someone already completed the tour won't see it
-- It's not tied to the actual user account at all
+### What
+Add a bold, eye-catching "Hoodtorials" section to the homepage with the slogan **"We Look Under the Hood of Filmmaking."** This ties the brand name directly to its meaning and gives visitors a clear, memorable tagline.
 
-### Solution
-Store tour completion in the `profiles` database table (new column: `walkthrough_completed`) and only auto-trigger the tour for users who have **never** completed it in the database. Keep localStorage as a fast cache to avoid unnecessary DB reads on every page load.
+### Where
+New section on the **homepage** (`src/pages/Index.tsx`), placed between the "Features" section and the "How Graduation Works" section -- a natural spot to reinforce the brand identity before diving into process details.
 
-### Technical Changes
+### Design
+- Full-width section with the dark noise background for contrast
+- Large, bold "HOODTORIALS" heading in the gold gradient with glow effect
+- Slogan "We Look Under the Hood of Filmmaking" in prominent uppercase tracking text
+- A short supporting paragraph reinforcing the concept (e.g., breaking down the craft, demystifying professional techniques)
+- Framed with the brutalist border style consistent with the rest of the site
+- Uses a wrench/cog or film-related icon from Lucide (e.g., `Clapperboard` or `Wrench`) to visually reinforce "under the hood"
 
-**1. Database migration** -- Add `walkthrough_completed` column to `profiles`
-- `ALTER TABLE public.profiles ADD COLUMN walkthrough_completed boolean DEFAULT false;`
-- Update the `profiles_public` view to include this column (it's not sensitive data)
+### Technical Details
 
-**2. Update `src/hooks/useWalkthrough.ts`**
-- Accept the user's profile data (specifically `walkthrough_completed`) as input
-- Auto-trigger only when `profile.walkthrough_completed` is `false`
-- On tour completion or skip, update the `profiles` table (`walkthrough_completed = true`) AND set localStorage as a fast cache
-- On mount, check localStorage first (fast path), then fall back to the profile data
-
-**3. Update `src/pages/StudentCenter.tsx`**
-- Pass the profile's `walkthrough_completed` value into the `useWalkthrough` hook
-- The manual "Retake Tour" button continues to work as before (it just calls `startTour()` without resetting the DB flag)
-
-### What This Fixes
-- Returning users who log in will never see the auto-tour again, regardless of device
-- New users will always see the tour on their first visit to Student Center, regardless of device
-- The manual "Retake Tour" button still works anytime
+**File: `src/pages/Index.tsx`**
+- Add a new `<Section>` block after the Features section
+- Uses existing `Section`, `SectionHeader`, and `ScrollReveal` components
+- No new dependencies or database changes needed
+- Purely a frontend content addition using the existing design system
 
