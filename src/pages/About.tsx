@@ -1,5 +1,5 @@
 import { PageLayout } from "@/components/layout/PageLayout";
-import { Target, Film, Users, Award, Zap, Heart } from "lucide-react";
+import { Target, Film, Users, Award, Zap, Heart, Clapperboard } from "lucide-react";
 
 const coreValues = [
   {
@@ -57,6 +57,38 @@ export default function About() {
               Democratizing cinematic education for the next generation of filmmakers. 
               No gatekeepers. No barriers. Just pure craft.
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Hoodtorials Brand Section */}
+      <section className="py-16 md:py-24 bg-background">
+        <div className="container-wide">
+          <div className="max-w-4xl mx-auto text-center">
+            <div className="border-4 border-border bg-card/30 backdrop-blur-sm p-12 md:p-20 relative">
+              <div className="absolute -top-2 -left-2 w-4 h-4 bg-primary" />
+              <div className="absolute -top-2 -right-2 w-4 h-4 bg-primary" />
+              <div className="absolute -bottom-2 -left-2 w-4 h-4 bg-primary" />
+              <div className="absolute -bottom-2 -right-2 w-4 h-4 bg-primary" />
+
+              <div className="flex justify-center mb-6">
+                <div className="w-16 h-16 bg-primary/10 border-2 border-primary/50 flex items-center justify-center">
+                  <Clapperboard className="h-8 w-8 text-primary" />
+                </div>
+              </div>
+
+              <h2 className="text-4xl md:text-6xl lg:text-7xl font-black text-gold-gradient text-glow tracking-tight">
+                HOODTORIALS
+              </h2>
+
+              <p className="text-lg md:text-2xl font-bold uppercase tracking-[0.25em] text-muted-foreground mt-6">
+                Where We Look Under the Hood of Filmmaking
+              </p>
+
+              <p className="body-large text-muted-foreground mt-6 max-w-2xl mx-auto">
+                We break down every technique, every tool, every decision that separates amateur footage from professional cinema. No gatekeeping — just the real craft, decoded.
+              </p>
+            </div>
           </div>
         </div>
       </section>
