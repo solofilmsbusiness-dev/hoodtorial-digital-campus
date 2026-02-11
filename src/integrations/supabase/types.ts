@@ -871,6 +871,7 @@ export type Database = {
           updated_at: string
           user_id: string
           vimeo_url: string | null
+          walkthrough_completed: boolean | null
           youtube_url: string | null
         }
         Insert: {
@@ -919,6 +920,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           vimeo_url?: string | null
+          walkthrough_completed?: boolean | null
           youtube_url?: string | null
         }
         Update: {
@@ -967,6 +969,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           vimeo_url?: string | null
+          walkthrough_completed?: boolean | null
           youtube_url?: string | null
         }
         Relationships: []
@@ -1378,6 +1381,7 @@ export type Database = {
           twitter_url: string | null
           user_id: string | null
           vimeo_url: string | null
+          walkthrough_completed: boolean | null
           youtube_url: string | null
         }
         Insert: {
@@ -1406,6 +1410,7 @@ export type Database = {
           twitter_url?: string | null
           user_id?: string | null
           vimeo_url?: string | null
+          walkthrough_completed?: boolean | null
           youtube_url?: string | null
         }
         Update: {
@@ -1434,6 +1439,7 @@ export type Database = {
           twitter_url?: string | null
           user_id?: string | null
           vimeo_url?: string | null
+          walkthrough_completed?: boolean | null
           youtube_url?: string | null
         }
         Relationships: []

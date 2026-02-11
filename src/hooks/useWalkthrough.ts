@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface WalkthroughStep {
   id: string;
@@ -55,34 +56,59 @@ const TOUR_STEPS: WalkthroughStep[] = [
 
 const STORAGE_KEY = "walkthrough_completed";
 
-export function useWalkthrough() {
+interface UseWalkthroughOptions {
+  walkthroughCompleted?: boolean | null;
+  userId?: string;
+}
+
+export function useWalkthrough(options: UseWalkthroughOptions = {}) {
+  const { walkthroughCompleted, userId } = options;
   const [isActive, setIsActive] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
-  // Auto-trigger on first visit
+  // Auto-trigger only for users who haven't completed the tour
   useEffect(() => {
-    const completed = localStorage.getItem(STORAGE_KEY);
-    if (!completed) {
-      // Small delay to let the page render and elements mount
+    // Fast path: check localStorage cache first
+    const cachedCompleted = localStorage.getItem(STORAGE_KEY);
+    if (cachedCompleted === "true") return;
+
+    // If profile says completed, cache it and skip
+    if (walkthroughCompleted === true) {
+      localStorage.setItem(STORAGE_KEY, "true");
+      return;
+    }
+
+    // Only auto-trigger if we know for sure it's not completed (false, not undefined/null while loading)
+    if (walkthroughCompleted === false) {
       const timer = setTimeout(() => setIsActive(true), 800);
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [walkthroughCompleted]);
 
   const startTour = useCallback(() => {
     setCurrentStepIndex(0);
     setIsActive(true);
   }, []);
 
+  const markCompleted = useCallback(() => {
+    localStorage.setItem(STORAGE_KEY, "true");
+    if (userId) {
+      supabase
+        .from("profiles")
+        .update({ walkthrough_completed: true } as any)
+        .eq("user_id", userId)
+        .then();
+    }
+  }, [userId]);
+
   const nextStep = useCallback(() => {
     if (currentStepIndex < TOUR_STEPS.length - 1) {
       setCurrentStepIndex((i) => i + 1);
     } else {
-      // Finished
       setIsActive(false);
-      localStorage.setItem(STORAGE_KEY, "true");
+      markCompleted();
     }
-  }, [currentStepIndex]);
+  }, [currentStepIndex, markCompleted]);
 
   const prevStep = useCallback(() => {
     if (currentStepIndex > 0) {
@@ -92,8 +118,8 @@ export function useWalkthrough() {
 
   const skipTour = useCallback(() => {
     setIsActive(false);
-    localStorage.setItem(STORAGE_KEY, "true");
-  }, []);
+    markCompleted();
+  }, [markCompleted]);
 
   return {
     isActive,
