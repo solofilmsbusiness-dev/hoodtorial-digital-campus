@@ -1,58 +1,73 @@
 
 
-## Enrich Demo User Profiles with Full Data and Images
+## Improve AI Learning Insights with Granular Student Data
 
 ### Problem
-Demo users currently have minimal profiles: just a name, bio, basic avatar placeholder (from ui-avatars.com), location, and filmmaking style. They lack profile images, cover banners, creative roles, collaboration info, social links, and all other profile fields -- making them look obviously fake and not useful for showcasing the platform.
+The AI Insights edge function currently receives only pre-aggregated summary metrics (e.g., "avgWatchPercentage: 45%", "quizPassRate: 60%"). It never sees the actual raw data -- individual quiz scores, per-lesson watch times, or per-course breakdowns. This means the AI is essentially commenting on numbers it could have computed itself, rather than analyzing real learning patterns.
 
 ### Solution
-Enhance the `generate-demo-data` edge function to populate every profile field with realistic data, including real-looking avatar photos and cinematic cover banner images from free image services.
+Have the edge function fetch granular student data directly from the database and build a rich, detailed prompt so the AI can identify specific problem areas, trends, and actionable insights.
 
 ### What Changes
 
-**Edge Function: `supabase/functions/generate-demo-data/index.ts`**
+**Edge Function: `supabase/functions/student-insights/index.ts`**
 
-Replace the basic profile generation with a rich profile builder that populates:
+Instead of relying solely on the pre-computed metrics object from the client, the function will:
 
-1. **Avatar Images** -- Use `randomuser.me` API for realistic headshot photos instead of `ui-avatars.com` letter icons
-2. **Cover Banners** -- Use `picsum.photos` (Lorem Picsum) for cinematic-looking cover images at 1200x400
-3. **Creative Role** -- Randomly assign from the role list (Director, Writer, Editor, Cinematographer, Producer, Sound Designer, etc.)
-4. **Tools & Equipment** (`camera_gear`) -- Role-appropriate gear/software (e.g., "DaVinci Resolve, Premiere Pro" for Editors, "Sony A7III, Blackmagic" for Cinematographers)
-5. **Looking For** (`looking_for`) -- Random subset of 1-3 complementary roles they're seeking
-6. **Collaboration Brief** (`collaboration_brief`) -- AI-generated short project brief describing what help they need
-7. **Favorite Films** (`favorite_films`) -- 2-4 films from a curated list
-8. **Influences** -- AI-generated or picked from a list of famous filmmakers
-9. **Current Project** -- AI-generated brief project description
-10. **Social Links** -- Randomized placeholder URLs for portfolio, Instagram, YouTube, Vimeo (some profiles get some links, not all)
-11. **Profile Accent Color** -- Random selection from a palette of accent colors
-12. **Avatar Border Style** -- Random pick from square, hexagon, glow options
+1. **Fetch per-course quiz results** from `quiz_results` table -- individual scores, dates, pass/fail for each quiz attempt, grouped by course
+2. **Fetch per-lesson video progress** from `user_progress` table -- watch percentage and watched seconds for each lesson, grouped by course
+3. **Fetch enrollment data** from `enrollments` table -- which courses, enrollment dates, status
+4. **Fetch course titles** from `courses` table -- for readable output
 
-**Data Arrays to Add:**
-- `CREATIVE_ROLES` -- matching the roles defined in the profile editor
-- `TOOLS_BY_ROLE` -- role-specific gear/software lists
-- `FAVORITE_FILMS` -- curated list of ~30 well-known films
-- `INFLUENCES` -- list of ~20 famous filmmakers
-- `ACCENT_COLORS` -- palette of hex colors
-- `BORDER_STYLES` -- ["square", "hexagon", "glow"]
-- `SOCIAL_DOMAINS` -- template URLs for social profiles
+The prompt will then include structured data like:
 
-**AI Generation Enhancements:**
-- Update the `generateBioWithAI` prompt to incorporate the user's creative role for more authentic bios
-- Add a new `generateCollaborationBriefWithAI` function for the collaboration brief
-- Add a new `generateCurrentProjectWithAI` function
+```text
+COURSE-BY-COURSE BREAKDOWN:
 
-**Profile Object Update (line ~323-334):**
-The profile insert will go from ~10 fields to ~25 fields, covering the full profile schema.
+Course: "Introduction to Cinematography" (CIN101)
+  Enrolled: Jan 15, 2026
+  Video Progress:
+    - Lesson 1: 100% watched (12 min)
+    - Lesson 2: 85% watched (8 min)
+    - Lesson 3: 22% watched (3 min)  <-- dropped off here
+    - Lesson 4: 0% watched
+  Quiz Results:
+    - Quiz 1: 80% (passed) - Jan 18
+    - Quiz 2: 45% (failed) - Jan 22
+    - Quiz 2 (retake): 55% (failed) - Jan 25  <-- struggling
+
+Course: "Film Editing Fundamentals" (EDIT201)
+  Enrolled: Feb 1, 2026
+  Video Progress: No lessons started
+  Quiz Results: None
+```
+
+This gives the AI real patterns to analyze: where students drop off in videos, which specific quizzes they're failing, whether they improve on retakes, and which courses they've abandoned.
+
+**Client: `src/components/admin/AIInsightsPanel.tsx`**
+
+Simplify the payload sent to the edge function -- just send `userId` and `studentName`. The edge function will fetch everything it needs from the database directly, ensuring it always has the most current and complete data.
+
+### Technical Details
+
+**File: `supabase/functions/student-insights/index.ts`**
+- Create a Supabase service-role client (using `SUPABASE_SERVICE_ROLE_KEY`) so the function can read student data regardless of RLS
+- Fetch from `user_progress`, `quiz_results`, `enrollments`, and `courses` tables filtered by the student's user ID
+- Build a detailed per-course breakdown in the prompt text
+- Include a timeline of activity (most recent quiz dates, last video watched)
+- Include per-quiz score history to show retake patterns
+- Keep the existing fallback logic but enhance it with per-course awareness
+- Keep the same response JSON format so the frontend doesn't need major changes
+
+**File: `src/components/admin/AIInsightsPanel.tsx`**
+- Remove the `metrics` prop dependency for the edge function call
+- Send only `{ userId, studentName }` in the request body
+- Keep the `metrics` prop for local display in `StudentAnalyticsCard` (unchanged)
+- Keep all existing UI rendering logic as-is
+
+**No database changes required** -- all the data already exists in the tables.
 
 ### Files Affected
-- `supabase/functions/generate-demo-data/index.ts` -- the only file that needs changes
-
-### Clear Function
-No changes needed to the clear function -- it already deletes all `is_demo` profiles which cascades properly.
-
-### Notes
-- Avatar images come from `randomuser.me/api/portraits/` (free, no API key needed, realistic photos)
-- Cover banners from `picsum.photos/1200/400` with random seed for variety
-- No storage bucket uploads needed -- we use direct URLs from these free services
-- The function will take slightly longer due to additional AI calls for collaboration briefs and current projects, but the delay per user should be minimal since we're using the fast `gemini-2.5-flash-lite` model
+- `supabase/functions/student-insights/index.ts` -- major rewrite of data fetching and prompt building
+- `src/components/admin/AIInsightsPanel.tsx` -- simplify the request payload
 
