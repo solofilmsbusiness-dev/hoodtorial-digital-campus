@@ -12,7 +12,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Card } from "@/components/ui/card";
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface MessageComposerProps {
@@ -167,18 +167,30 @@ export function MessageComposer({ conversationId, onTyping }: MessageComposerPro
           <PopoverContent className="w-72" align="start">
             <div className="space-y-3">
               <p className="text-sm font-semibold">Share Your Contact Card</p>
-              <Card className="p-3 bg-muted/50">
-                <div className="flex items-center gap-2">
-                  <Avatar className="h-10 w-10">
+              <div className="rounded-lg border-l-4 border-l-primary bg-gradient-to-br from-card to-muted/30 border border-border p-3">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-11 w-11 ring-2 ring-primary ring-offset-1 ring-offset-background">
                     <AvatarImage src={profile?.avatar_url || undefined} />
-                    <AvatarFallback>{getInitials(profile?.display_name)}</AvatarFallback>
+                    <AvatarFallback className="bg-primary/20 text-primary font-bold">
+                      {getInitials(profile?.display_name)}
+                    </AvatarFallback>
                   </Avatar>
-                  <div>
-                    <p className="font-semibold text-sm">{profile?.display_name || "Your Name"}</p>
-                    <p className="text-xs text-muted-foreground">{profile?.filmmaking_style || "Filmmaker"}</p>
+                  <div className="min-w-0">
+                    <p className="font-bold text-sm truncate">{profile?.display_name || "Your Name"}</p>
+                    <p className="text-[10px] text-primary/80 truncate">
+                      {(profile as any)?.creative_role || profile?.filmmaking_style || "Filmmaker"}
+                    </p>
                   </div>
                 </div>
-              </Card>
+                {profile?.bio && (
+                  <p className="text-[11px] text-muted-foreground italic border-l-2 border-primary/30 pl-2 mt-2 line-clamp-1">
+                    {profile.bio}
+                  </p>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Recipients will see your profile info and a link to your page.
+              </p>
               <Button size="sm" className="w-full" onClick={handleShareContact} disabled={sending}>
                 <Send className="h-4 w-4 mr-1" />
                 Send Card
