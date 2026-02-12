@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { LayoutGrid, Newspaper, Users } from "lucide-react";
+import { LayoutGrid, Newspaper, Bookmark } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type ViewMode = 'timeline' | 'grid' | 'following';
@@ -13,7 +13,7 @@ export function ViewToggle({ value, onChange }: ViewToggleProps) {
   const options: { value: ViewMode; icon: React.ReactNode; label: string }[] = [
     { value: 'timeline', icon: <Newspaper className="h-4 w-4" />, label: 'Timeline' },
     { value: 'grid', icon: <LayoutGrid className="h-4 w-4" />, label: 'Gallery' },
-    { value: 'following', icon: <Users className="h-4 w-4" />, label: 'Following' },
+    { value: 'following', icon: <Bookmark className="h-4 w-4" />, label: 'Saved' },
   ];
 
   return (
