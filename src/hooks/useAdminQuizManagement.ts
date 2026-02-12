@@ -69,26 +69,68 @@ export function useAdminQuizManagement() {
       });
     });
 
+    // Collect unique quiz IDs and check which ones need DB fallback
+    const uniqueQuizIds = [...new Set(results.map((r) => r.quiz_id))];
+    const staticQuestionsByQuizId: Record<string, QuizQuestion[]> = {};
+    const quizIdsNeedingDbFetch: string[] = [];
+
+    for (const quizId of uniqueQuizIds) {
+      const staticQs = getQuizQuestions(quizId);
+      if (staticQs.length > 0) {
+        staticQuestionsByQuizId[quizId] = staticQs;
+      } else {
+        quizIdsNeedingDbFetch.push(quizId);
+      }
+    }
+
+    // Fetch DB questions for quizzes not found in static data
+    const dbQuestionsById: Record<string, { question: string; options: string[]; correctAnswer: number }> = {};
+    if (quizIdsNeedingDbFetch.length > 0) {
+      const { data: dbQuestions } = await supabase
+        .from("quiz_questions")
+        .select("id, quiz_id, question, options, correct_answer")
+        .in("quiz_id", quizIdsNeedingDbFetch);
+
+      if (dbQuestions) {
+        for (const q of dbQuestions) {
+          const opts = Array.isArray(q.options) ? (q.options as string[]) : [];
+          dbQuestionsById[q.id] = {
+            question: q.question,
+            options: opts,
+            correctAnswer: q.correct_answer,
+          };
+        }
+      }
+    }
+
     // Build the detailed results
     return results.map((result) => {
-      const quizQuestions = getQuizQuestions(result.quiz_id);
+      const staticQuestions = staticQuestionsByQuizId[result.quiz_id] || [];
       const resultAnswers = answersByResultId[result.id] || [];
       
       // Map answers to include question details
       const answersWithDetails = resultAnswers.map((answer, idx) => {
-        const question = quizQuestions.find((q) => q.id === answer.questionId);
-        
-        // Log warning if question not found for debugging
-        if (!question) {
-          console.warn(`Admin Quiz View: Question not found - questionId: ${answer.questionId}, quizId: ${result.quiz_id}`);
+        // Try static lookup first
+        const staticQ = staticQuestions.find((q) => q.id === answer.questionId);
+        if (staticQ) {
+          return {
+            questionId: answer.questionId,
+            questionText: staticQ.question,
+            options: staticQ.options,
+            selectedAnswer: answer.selectedAnswer,
+            correctAnswer: staticQ.correctAnswer,
+            isCorrect: answer.isCorrect,
+          };
         }
-        
+
+        // Fallback to DB lookup
+        const dbQ = dbQuestionsById[answer.questionId];
         return {
           questionId: answer.questionId,
-          questionText: question?.question || `Question ${idx + 1} (data not available)`,
-          options: question?.options || [],
+          questionText: dbQ?.question || `Question ${idx + 1} (data not available)`,
+          options: dbQ?.options || [],
           selectedAnswer: answer.selectedAnswer,
-          correctAnswer: question?.correctAnswer ?? -1,
+          correctAnswer: dbQ?.correctAnswer ?? -1,
           isCorrect: answer.isCorrect,
         };
       });
