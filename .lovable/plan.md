@@ -1,54 +1,109 @@
 
-## Three Fixes: Faculty Photos, Intro Videos, and Gallery Comments
 
-### Issue 1: Faculty Image Shows Blank
+## Profile, Messaging & Safety Improvements
 
-**Root Cause:** The existing faculty member has a YouTube URL (`https://www.youtube.com/watch?v=ME1_SxxAr4o`) stored in the `image_url` column. The template renders this as an `<img>` tag, which can't display a YouTube link -- resulting in a blank box.
+### Overview
+This plan adds three major features: a profile customization guided tour for new editors, user blocking/reporting for safety, and messaging UX improvements. The existing profile editor is already well-structured, so the focus is on discoverability and safety rather than restructuring.
 
-**Fix (Admin side):** Replace the plain "Image URL" text input in `FacultyManager.tsx` with a proper file upload button that uploads to the existing `site-assets` storage bucket and saves the resulting public URL. Keep the URL input as a fallback for pasting external image links.
+### Part 1: Profile Customization Walkthrough Tour
 
-**Fix (Faculty page):** No changes needed -- the `<img>` tag will work once `image_url` contains an actual image URL from the upload.
+Add a guided tour that auto-triggers the first time a user visits their profile editor, highlighting the key sections they should customize.
 
-**Files:** `src/pages/admin/FacultyManager.tsx`
+**New file: `src/hooks/useProfileWalkthrough.ts`**
+- 5-step tour targeting: Cover/Avatar area, Theme Picker, Bio fields, Portfolio tab, Layout tab
+- Persists completion via a `profile_editor_toured` field in `profiles` table
+- Auto-triggers once, can be replayed via a "Retake Tour" button
+- Reuses the existing `WalkthroughOverlay` and `WalkthroughStep` components
+
+**Modified file: `src/pages/StudentProfile.tsx`**
+- Add `data-tour` attributes to key sections (cover/avatar card, theme picker, bio card, portfolio tab trigger, layout tab trigger)
+- Add a small "Take the Tour" button in the header for replaying
+- Initialize the walkthrough hook with profile state
+
+**Database migration:**
+- Add `profile_editor_toured boolean DEFAULT false` to `profiles` table
+
+Tour steps:
+1. "Your Look" -- Cover banner and avatar upload area
+2. "Pick Your Vibe" -- Theme/accent color picker
+3. "Tell Your Story" -- Bio, role, and creative identity fields
+4. "Showcase Your Work" -- Portfolio tab with gallery and featured project
+5. "Arrange Your Page" -- Layout tab for drag-and-drop section ordering
 
 ---
 
-### Issue 2: "Watch Intro" Button Does Nothing
+### Part 2: Block & Report Users
 
-**Root Cause:** The "Watch Intro" buttons in `Faculty.tsx` are plain `<Button>` elements with no `onClick` handler and no video URL stored in the database. The `faculty_members` table has no `intro_video_url` column.
+**Database migration -- two new tables:**
 
-**Fix:**
-- Add an `intro_video_url` column to the `faculty_members` table (text, nullable)
-- Add a "Video URL" input field to the admin Faculty Manager form
-- Update `Faculty.tsx` to open a dialog/modal that plays the intro video (supports YouTube, Vimeo, and direct video URLs using the existing `videoUtils.ts` helpers)
-- Hide the "Watch Intro" button when no video URL is set
+`user_blocks` table:
+- `id` (uuid PK), `blocker_id` (uuid, references auth.users), `blocked_id` (uuid, references auth.users), `created_at` (timestamptz)
+- Unique constraint on (blocker_id, blocked_id)
+- RLS: Users can see/manage only their own blocks
 
-**Files:** Database migration, `src/pages/admin/FacultyManager.tsx`, `src/pages/Faculty.tsx`, `src/hooks/useFacultyMembers.ts`
+`user_reports` table:
+- `id` (uuid PK), `reporter_id` (uuid, references auth.users), `reported_id` (uuid, references auth.users), `reason` (text -- harassment, spam, abuse, inappropriate content, other), `details` (text, nullable), `status` (text DEFAULT 'pending'), `created_at` (timestamptz)
+- RLS: Users can create reports and see their own; admins can see all
+
+**New file: `src/hooks/useUserSafety.ts`**
+- `blockUser(userId)` / `unblockUser(userId)` mutations
+- `reportUser(userId, reason, details)` mutation
+- `blockedUserIds` -- reactive set of blocked user IDs
+- `isBlocked(userId)` check
+
+**New file: `src/components/safety/BlockUserDialog.tsx`**
+- Confirmation modal: "Block [name]? They won't be able to message you or see your profile."
+- Unblock option for already-blocked users
+
+**New file: `src/components/safety/ReportUserDialog.tsx`**
+- Reason selector (Harassment, Spam, Abuse, Inappropriate Content, Other)
+- Optional details textarea
+- Confirmation with "Thank you for reporting" toast
+
+**Modified files:**
+- `src/pages/PublicProfile.tsx` -- Add Block/Report buttons (dropdown menu) on other users' profiles
+- `src/components/messaging/ChatWindow.tsx` -- Add Block/Report option in header; show "You have blocked this user" state; hide composer when blocked
+- `src/hooks/useConversations.ts` -- Filter out conversations with blocked users
+- `src/hooks/useDirectMessages.ts` -- Prevent sending messages to blocked users
+- `src/pages/admin/UserManager.tsx` -- Show reports count, ability to view and resolve reports
 
 ---
 
-### Issue 3: Users Cannot Comment on Portfolio Gallery Images
+### Part 3: Messaging Improvements
 
-**Root Cause:** The `ProfileGallery` component is a standalone lightbox with no commenting system. There's no database table or UI to support per-image comments.
+The delete-own-message feature already exists. This section improves the UX:
 
-**Fix:**
-- Create a new `gallery_comments` table with columns: `id`, `gallery_owner_id` (the profile owner), `image_url` (which gallery image), `user_id` (commenter), `content`, `created_at`
-- Add RLS policies allowing authenticated users to read and create comments, and delete their own
-- Create a `useGalleryComments` hook for fetching/creating/deleting comments on a specific gallery image
-- Update the `ProfileGallery` lightbox dialog to show a comment thread below the image, with an input to add a comment (similar to the existing community comment system but simpler)
-- Include commenter avatar, name (linked to their profile), and timestamp
+**Modified file: `src/components/messaging/MessageBubble.tsx`**
+- Show "Message deleted" placeholder (gray italic text) for deleted messages instead of removing them entirely -- this provides context in conversations
+- This requires a soft-delete approach
 
-**Files:** Database migration, new `src/hooks/useGalleryComments.ts`, `src/components/profile/ProfileGallery.tsx`
+**Modified file: `src/hooks/useDirectMessages.ts`**
+- Change `deleteMessage` from hard delete to soft delete (update `is_deleted = true` instead of deleting the row)
+- Filter display: show deleted messages as "[Message deleted]" instead of hiding them
+
+**Database migration:**
+- Add `is_deleted boolean DEFAULT false` to `direct_messages` table
+
+**Modified file: `src/components/messaging/MessageActions.tsx`**
+- Already has delete for own messages with confirmation -- no changes needed
+- Add delete option for received messages (hides from your view only) -- this uses a separate `hidden_messages` approach or simply skips rendering
 
 ---
 
 ### Technical Summary
 
-| File | Change |
+| File | Action |
 |------|--------|
-| Database migration | Add `intro_video_url` to `faculty_members`; create `gallery_comments` table with RLS |
-| `src/pages/admin/FacultyManager.tsx` | Add image file upload button + intro video URL field |
-| `src/pages/Faculty.tsx` | Video playback modal for "Watch Intro"; hide button when no video |
-| `src/hooks/useFacultyMembers.ts` | Add `intro_video_url` to types |
-| `src/hooks/useGalleryComments.ts` | New hook: fetch, create, delete gallery comments |
-| `src/components/profile/ProfileGallery.tsx` | Add comment thread to lightbox dialog |
+| Database migration | Add `profile_editor_toured` to profiles, create `user_blocks` and `user_reports` tables, add `is_deleted` to `direct_messages` |
+| `src/hooks/useProfileWalkthrough.ts` | New -- 5-step profile editor tour |
+| `src/hooks/useUserSafety.ts` | New -- block/report mutations and state |
+| `src/components/safety/BlockUserDialog.tsx` | New -- block confirmation modal |
+| `src/components/safety/ReportUserDialog.tsx` | New -- report form with reasons |
+| `src/pages/StudentProfile.tsx` | Add tour data attributes and replay button |
+| `src/pages/PublicProfile.tsx` | Add block/report dropdown |
+| `src/components/messaging/ChatWindow.tsx` | Block/report in header, blocked state |
+| `src/components/messaging/MessageBubble.tsx` | Soft-delete display |
+| `src/hooks/useDirectMessages.ts` | Soft delete instead of hard delete |
+| `src/hooks/useConversations.ts` | Filter blocked users |
+| `src/pages/admin/UserManager.tsx` | View/resolve reports |
+
