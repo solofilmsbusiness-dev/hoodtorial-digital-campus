@@ -1,109 +1,91 @@
 
 
-## Profile, Messaging & Safety Improvements
+## Visual Layout Editor with Live Preview
 
-### Overview
-This plan adds three major features: a profile customization guided tour for new editors, user blocking/reporting for safety, and messaging UX improvements. The existing profile editor is already well-structured, so the focus is on discoverability and safety rather than restructuring.
+### Problem
+The current Layout tab shows two plain drag-and-drop lists with text labels and icons. Users can't see what the sections actually look like, making it hard to understand what they're rearranging.
 
-### Part 1: Profile Customization Walkthrough Tour
-
-Add a guided tour that auto-triggers the first time a user visits their profile editor, highlighting the key sections they should customize.
-
-**New file: `src/hooks/useProfileWalkthrough.ts`**
-- 5-step tour targeting: Cover/Avatar area, Theme Picker, Bio fields, Portfolio tab, Layout tab
-- Persists completion via a `profile_editor_toured` field in `profiles` table
-- Auto-triggers once, can be replayed via a "Retake Tour" button
-- Reuses the existing `WalkthroughOverlay` and `WalkthroughStep` components
-
-**Modified file: `src/pages/StudentProfile.tsx`**
-- Add `data-tour` attributes to key sections (cover/avatar card, theme picker, bio card, portfolio tab trigger, layout tab trigger)
-- Add a small "Take the Tour" button in the header for replaying
-- Initialize the walkthrough hook with profile state
-
-**Database migration:**
-- Add `profile_editor_toured boolean DEFAULT false` to `profiles` table
-
-Tour steps:
-1. "Your Look" -- Cover banner and avatar upload area
-2. "Pick Your Vibe" -- Theme/accent color picker
-3. "Tell Your Story" -- Bio, role, and creative identity fields
-4. "Showcase Your Work" -- Portfolio tab with gallery and featured project
-5. "Arrange Your Page" -- Layout tab for drag-and-drop section ordering
+### Solution
+Replace the abstract list-based editors with a **visual mini-preview layout** that shows a simplified representation of each section (like a wireframe/blueprint). As users drag sections, the preview updates in real-time so they can immediately see the result.
 
 ---
 
-### Part 2: Block & Report Users
+### Design Approach
 
-**Database migration -- two new tables:**
+Each section gets a small visual "block" preview instead of a plain text row:
 
-`user_blocks` table:
-- `id` (uuid PK), `blocker_id` (uuid, references auth.users), `blocked_id` (uuid, references auth.users), `created_at` (timestamptz)
-- Unique constraint on (blocker_id, blocked_id)
-- RLS: Users can see/manage only their own blocks
+**Profile Card sections** (bio, featured project, info cards, social links):
+- **Bio block**: Shows a quote icon with gray placeholder lines mimicking text
+- **Featured Project block**: Shows a film/play icon with a thumbnail-style rectangle
+- **Info Cards block**: Shows a 2x2 grid of small card outlines
+- **Social Links block**: Shows a row of circular social media icon placeholders
 
-`user_reports` table:
-- `id` (uuid PK), `reporter_id` (uuid, references auth.users), `reported_id` (uuid, references auth.users), `reason` (text -- harassment, spam, abuse, inappropriate content, other), `details` (text, nullable), `status` (text DEFAULT 'pending'), `created_at` (timestamptz)
-- RLS: Users can create reports and see their own; admins can see all
+**Page sections** (stats, achievements, gallery, wall):
+- **Academic Stats block**: Shows a mini bar-chart style graphic with numbers
+- **Achievements block**: Shows trophy icons in a row with badge shapes
+- **Gallery block**: Shows a grid of small image placeholder squares
+- **Wall block**: Shows stacked message bubble outlines
 
-**New file: `src/hooks/useUserSafety.ts`**
-- `blockUser(userId)` / `unblockUser(userId)` mutations
-- `reportUser(userId, reason, details)` mutation
-- `blockedUserIds` -- reactive set of blocked user IDs
-- `isBlocked(userId)` check
+Each block is ~80px tall, draggable, and styled with the section's accent color when active. A subtle "numbered position" badge (1, 2, 3, 4) appears in the corner of each block.
 
-**New file: `src/components/safety/BlockUserDialog.tsx`**
-- Confirmation modal: "Block [name]? They won't be able to message you or see your profile."
-- Unblock option for already-blocked users
+### Side-by-Side Layout
+On desktop, the Layout tab will show a **two-column layout**:
+- Left column: The interactive drag-and-drop blocks
+- Right column: A combined "profile page preview" wireframe that reflects the current order in real-time
 
-**New file: `src/components/safety/ReportUserDialog.tsx`**
-- Reason selector (Harassment, Spam, Abuse, Inappropriate Content, Other)
-- Optional details textarea
-- Confirmation with "Thank you for reporting" toast
-
-**Modified files:**
-- `src/pages/PublicProfile.tsx` -- Add Block/Report buttons (dropdown menu) on other users' profiles
-- `src/components/messaging/ChatWindow.tsx` -- Add Block/Report option in header; show "You have blocked this user" state; hide composer when blocked
-- `src/hooks/useConversations.ts` -- Filter out conversations with blocked users
-- `src/hooks/useDirectMessages.ts` -- Prevent sending messages to blocked users
-- `src/pages/admin/UserManager.tsx` -- Show reports count, ability to view and resolve reports
+On mobile, only the drag blocks are shown (the sidebar ProfilePreviewCard already serves as a general preview).
 
 ---
 
-### Part 3: Messaging Improvements
+### Technical Changes
 
-The delete-own-message feature already exists. This section improves the UX:
+**Modified: `src/components/profile/SectionLayoutEditor.tsx`**
+- Replace `SortableSectionItem` with new `SortableVisualBlock` component
+- Each block renders a small visual representation of its section content
+- Add numbered position badges
+- Add a mini wireframe preview column on the right
 
-**Modified file: `src/components/messaging/MessageBubble.tsx`**
-- Show "Message deleted" placeholder (gray italic text) for deleted messages instead of removing them entirely -- this provides context in conversations
-- This requires a soft-delete approach
+**Modified: `src/components/profile/CardSectionLayoutEditor.tsx`**
+- Same treatment: replace text items with visual blocks
+- Each card section gets a miniature visual representation
 
-**Modified file: `src/hooks/useDirectMessages.ts`**
-- Change `deleteMessage` from hard delete to soft delete (update `is_deleted = true` instead of deleting the row)
-- Filter display: show deleted messages as "[Message deleted]" instead of hiding them
+**New: `src/components/profile/SortableVisualBlock.tsx`**
+- New drag-and-drop item component with:
+  - Section icon and label at top
+  - Visual wireframe preview area (~60px) showing what the section looks like
+  - Position number badge
+  - Drag handle
+  - Highlighted border with accent color on drag
 
-**Database migration:**
-- Add `is_deleted boolean DEFAULT false` to `direct_messages` table
+**Modified: `src/components/profile/SortableSectionItem.tsx`**
+- Keep as-is (other parts of the app may use it), but the layout editors will use the new visual block
 
-**Modified file: `src/components/messaging/MessageActions.tsx`**
-- Already has delete for own messages with confirmation -- no changes needed
-- Add delete option for received messages (hides from your view only) -- this uses a separate `hidden_messages` approach or simply skips rendering
+**Modified: `src/pages/StudentProfile.tsx`** (Layout tab only, lines 902-912)
+- Pass accent color and profile data to layout editors so previews can reflect real content
+- Add descriptive header with explanation
 
 ---
 
-### Technical Summary
+### Visual Block Previews (what each block renders)
+
+| Section | Visual Representation |
+|---------|----------------------|
+| Bio | Quote mark icon + 3 gray lines (text placeholder) |
+| Featured Project | 16:9 rectangle with play button triangle in center |
+| Info Cards | 2x2 grid of small rounded rectangles with tiny icons |
+| Social Links | Row of 4 small circles (social icon placeholders) |
+| Academic Stats | 3 vertical bars (chart) with numbers below |
+| Achievements | 3 trophy/star shapes in a row |
+| Gallery | 2x3 grid of small square image placeholders |
+| Wall | 3 stacked rounded message bubble outlines |
+
+### Files Summary
 
 | File | Action |
 |------|--------|
-| Database migration | Add `profile_editor_toured` to profiles, create `user_blocks` and `user_reports` tables, add `is_deleted` to `direct_messages` |
-| `src/hooks/useProfileWalkthrough.ts` | New -- 5-step profile editor tour |
-| `src/hooks/useUserSafety.ts` | New -- block/report mutations and state |
-| `src/components/safety/BlockUserDialog.tsx` | New -- block confirmation modal |
-| `src/components/safety/ReportUserDialog.tsx` | New -- report form with reasons |
-| `src/pages/StudentProfile.tsx` | Add tour data attributes and replay button |
-| `src/pages/PublicProfile.tsx` | Add block/report dropdown |
-| `src/components/messaging/ChatWindow.tsx` | Block/report in header, blocked state |
-| `src/components/messaging/MessageBubble.tsx` | Soft-delete display |
-| `src/hooks/useDirectMessages.ts` | Soft delete instead of hard delete |
-| `src/hooks/useConversations.ts` | Filter blocked users |
-| `src/pages/admin/UserManager.tsx` | View/resolve reports |
+| `src/components/profile/SortableVisualBlock.tsx` | New -- visual drag item with wireframe preview |
+| `src/components/profile/SectionLayoutEditor.tsx` | Update to use visual blocks + add live preview column |
+| `src/components/profile/CardSectionLayoutEditor.tsx` | Update to use visual blocks + add live preview column |
+| `src/pages/StudentProfile.tsx` | Pass accent color to layout editors |
+| `src/components/profile/index.ts` | Export new component if needed |
 
