@@ -31,6 +31,7 @@
   card_section_order: string[] | null;
   cover_banner_position: number | null;
   creative_role: string | null;
+  looking_for: string[] | null;
 }
  
  export type UserRole = "admin" | "professor" | "moderator" | "tester" | "student";

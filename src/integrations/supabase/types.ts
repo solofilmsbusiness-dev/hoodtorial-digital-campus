@@ -854,6 +854,7 @@ export type Database = {
           is_banned: boolean
           is_demo: boolean
           location: string | null
+          looking_for: string[] | null
           membership_tier: Database["public"]["Enums"]["membership_tier"]
           onboarding_completed: boolean | null
           portfolio_gallery: string[] | null
@@ -904,6 +905,7 @@ export type Database = {
           is_banned?: boolean
           is_demo?: boolean
           location?: string | null
+          looking_for?: string[] | null
           membership_tier?: Database["public"]["Enums"]["membership_tier"]
           onboarding_completed?: boolean | null
           portfolio_gallery?: string[] | null
@@ -954,6 +956,7 @@ export type Database = {
           is_banned?: boolean
           is_demo?: boolean
           location?: string | null
+          looking_for?: string[] | null
           membership_tier?: Database["public"]["Enums"]["membership_tier"]
           onboarding_completed?: boolean | null
           portfolio_gallery?: string[] | null
@@ -1377,6 +1380,7 @@ export type Database = {
           imdb_url: string | null
           influences: string | null
           instagram_url: string | null
+          looking_for: string[] | null
           portfolio_gallery: string[] | null
           portfolio_url: string | null
           profile_accent_color: string | null
@@ -1407,6 +1411,7 @@ export type Database = {
           imdb_url?: string | null
           influences?: string | null
           instagram_url?: string | null
+          looking_for?: string[] | null
           portfolio_gallery?: string[] | null
           portfolio_url?: string | null
           profile_accent_color?: string | null
@@ -1437,6 +1442,7 @@ export type Database = {
           imdb_url?: string | null
           influences?: string | null
           instagram_url?: string | null
+          looking_for?: string[] | null
           portfolio_gallery?: string[] | null
           portfolio_url?: string | null
           profile_accent_color?: string | null

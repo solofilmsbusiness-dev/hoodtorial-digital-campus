@@ -130,6 +130,7 @@ export default function StudentProfile() {
     avatar_border_style: "solid",
     filmmaking_style: "",
     favorite_films: [] as string[],
+    looking_for: [] as string[],
     influences: "",
     current_project: "",
     portfolio_url: "",
@@ -185,6 +186,7 @@ export default function StudentProfile() {
         avatar_border_style: profile.avatar_border_style || "solid",
         filmmaking_style: profile.filmmaking_style || "",
         favorite_films: profile.favorite_films || [],
+        looking_for: (profile as any).looking_for || [],
         influences: profile.influences || "",
         current_project: profile.current_project || "",
         portfolio_url: profile.portfolio_url || "",
@@ -604,7 +606,6 @@ export default function StudentProfile() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
                       <div className="space-y-2">
                         <Label htmlFor="current_project" className="text-sm font-bold uppercase tracking-wide">
                           Current Project
@@ -617,6 +618,40 @@ export default function StudentProfile() {
                           placeholder="What are you working on?"
                           className="bg-background border-2 border-border focus:border-primary"
                         />
+                      </div>
+                    </div>
+
+                    {/* Looking For */}
+                    <div className="space-y-3">
+                      <Label className="text-sm font-bold uppercase tracking-wide">
+                        🤝 Looking For Collaborators
+                      </Label>
+                      <p className="text-xs text-muted-foreground">Select the roles you need for your projects</p>
+                      <div className="flex flex-wrap gap-2">
+                        {CREATIVE_ROLES.filter(r => r !== "Other").map((role) => {
+                          const isSelected = formData.looking_for.includes(role);
+                          return (
+                            <button
+                              key={role}
+                              type="button"
+                              onClick={() => {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  looking_for: isSelected
+                                    ? prev.looking_for.filter((r) => r !== role)
+                                    : [...prev.looking_for, role],
+                                }));
+                              }}
+                              className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-all ${
+                                isSelected
+                                  ? "border-primary bg-primary/20 text-primary"
+                                  : "border-border bg-background text-muted-foreground hover:border-primary/50"
+                              }`}
+                            >
+                              {isSelected ? "✓ " : "+ "}{role}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
 

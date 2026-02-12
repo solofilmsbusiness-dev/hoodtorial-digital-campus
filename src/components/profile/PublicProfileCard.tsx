@@ -1,19 +1,20 @@
  import { motion } from "framer-motion";
  import { Badge } from "@/components/ui/badge";
  import { Button } from "@/components/ui/button";
- import { 
-   Camera, 
-   Film, 
-   Sparkles, 
-   Clapperboard,
-   GraduationCap,
-   Shield,
-   FlaskConical,
-   UserPlus,
-   MessageCircle,
-   Pencil,
-   Share2
- } from "lucide-react";
+import { 
+  Camera, 
+  Film, 
+  Sparkles, 
+  Clapperboard,
+  GraduationCap,
+  Shield,
+  FlaskConical,
+  UserPlus,
+  MessageCircle,
+  Pencil,
+  Share2,
+  Handshake
+} from "lucide-react";
  import { PublicProfile, UserRole } from "@/hooks/usePublicProfile";
  import { cn } from "@/lib/utils";
  import { ProfileCoverBanner } from "./ProfileCoverBanner";
@@ -193,12 +194,17 @@ import { FeaturedProjectShowcase } from "./FeaturedProjectShowcase";
        label: "Influences",
        content: profile.influences
      },
-     profile.favorite_films && profile.favorite_films.length > 0 && {
-       icon: <Film className="h-5 w-5" />,
-       label: "Favorite Films",
-       content: profile.favorite_films
-     }
-   ].filter(Boolean);
+      profile.favorite_films && profile.favorite_films.length > 0 && {
+        icon: <Film className="h-5 w-5" />,
+        label: "Favorite Films",
+        content: profile.favorite_films
+      },
+      profile.looking_for && profile.looking_for.length > 0 && {
+        icon: <Handshake className="h-5 w-5" />,
+        label: "Looking For",
+        content: profile.looking_for
+      }
+    ].filter(Boolean);
  
    // Render a single card section by ID
    const renderCardSection = (sectionId: string, index: number) => {
