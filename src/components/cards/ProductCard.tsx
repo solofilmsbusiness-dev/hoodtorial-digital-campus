@@ -10,6 +10,9 @@ export interface Product {
   image: string;
   status: "available" | "sold-out" | "coming-soon";
   sizes?: string[];
+  description?: string;
+  stock?: number;
+  color?: string;
 }
 
 interface ProductCardProps {
@@ -71,9 +74,19 @@ export function ProductCard({ product, onClick }: ProductCardProps) {
         <h3 className="font-bold text-foreground uppercase tracking-wide text-sm line-clamp-2">
           {product.name}
         </h3>
-        <p className="text-primary font-black text-xl">
-          ${product.price}
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-primary font-black text-xl">
+            ${product.price}
+          </p>
+          {product.status === "available" && product.stock != null && (
+            <span className={cn(
+              "text-[10px] font-bold uppercase tracking-wider",
+              product.stock <= 3 ? "text-destructive" : product.stock <= 10 ? "text-amber-500" : "text-emerald-500"
+            )}>
+              {product.stock <= 3 ? `Only ${product.stock} left` : product.stock <= 10 ? `${product.stock} left` : "In Stock"}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Hover Glow Effect */}
