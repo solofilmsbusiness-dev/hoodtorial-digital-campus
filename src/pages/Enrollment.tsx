@@ -1,6 +1,6 @@
 import { PageLayout } from "@/components/layout/PageLayout";
 import { TierCard } from "@/components/cards/TierCard";
-import { Check, X, Clock, AlertCircle } from "lucide-react";
+import { Check, X, Clock, AlertCircle, Info } from "lucide-react";
 import mascot from "@/assets/mascot.png";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useAuth } from "@/contexts/AuthContext";
@@ -299,6 +299,32 @@ export default function Enrollment() {
                   Graduate tier members can earn an official HU degree by completing all 
                   16 courses, passing exams with 80%+, submitting 6 projects, and completing 
                   a capstone film.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Disclosure Section */}
+      <section className="py-10 md:py-14 bg-charcoal border-t-2 border-border">
+        <div className="container-wide">
+          <div className="max-w-3xl mx-auto">
+            <div className="bg-card/50 border-2 border-border p-6 md:p-8">
+              <div className="flex items-start gap-3 mb-3">
+                <div className="w-8 h-8 bg-primary/20 border-2 border-primary/50 flex items-center justify-center shrink-0 mt-0.5">
+                  <Info className="h-4 w-4 text-primary" />
+                </div>
+                <h3 className="font-bold text-foreground">
+                  A Quick Note About Our Platform
+                </h3>
+              </div>
+              <div className="space-y-3 text-sm text-muted-foreground leading-relaxed pl-11">
+                <p>
+                  Hoodtorial University is a <strong className="text-foreground">teaching platform, learning community, and skill-building environment</strong> — not a traditional or accredited college. Terms like "university," "degree paths," and "credits" are used to structure your learning journey.
+                </p>
+                <p>
+                  Upon completion, you'll receive a <strong className="text-foreground">certificate of completion</strong> and recognition for your progress — not a formal academic degree or professional certification.
                 </p>
               </div>
             </div>

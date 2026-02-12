@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { TestPaymentForm, PaymentSuccessModal } from "@/components/checkout";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Check, AlertCircle, Shield } from "lucide-react";
+import { ArrowLeft, Check, AlertCircle, Shield, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -247,6 +247,16 @@ export default function Checkout() {
                 onSubmit={handlePayment}
                 isProcessing={isProcessing}
               />
+            </div>
+          </div>
+
+          {/* Disclosure */}
+          <div className="mt-8 bg-card/50 border-2 border-border p-6">
+            <div className="flex items-start gap-3 mb-2">
+              <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                <strong className="text-foreground">Note:</strong> Hoodtorial University is a teaching platform and learning community — not an accredited institution. Completion results in a certificate of completion, not a formal academic degree.
+              </p>
             </div>
           </div>
         </div>
