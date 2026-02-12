@@ -24,7 +24,8 @@
  
    const getLastMessagePreview = () => {
      if (!conversation.lastMessage) return "No messages yet";
-     if (conversation.lastMessage.message_type === "contact_card") return "📇 Contact card";
+      if (conversation.lastMessage.message_type === "image") return "📷 Image";
+      if (conversation.lastMessage.message_type === "contact_card") return "📇 Contact card";
      return conversation.lastMessage.content || "";
    };
  

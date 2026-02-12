@@ -2,4 +2,5 @@
  export { FriendCard } from "./FriendCard";
  export { FriendRequestCard } from "./FriendRequestCard";
  export { FriendRequestsPanel } from "./FriendRequestsPanel";
- export { FriendsList } from "./FriendsList";
+export { FriendsList } from "./FriendsList";
+export { UserSearch } from "./UserSearch";

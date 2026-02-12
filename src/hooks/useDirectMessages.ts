@@ -8,7 +8,7 @@
    conversation_id: string;
    sender_id: string;
    content: string | null;
-   message_type: "text" | "contact_card";
+   message_type: "text" | "contact_card" | "image";
    contact_card_data: ContactCardData | null;
    is_read: boolean;
    created_at: string;
@@ -49,11 +49,11 @@
  
        if (error) throw error;
  
-       const typedMessages: DirectMessage[] = (data || []).map((msg) => ({
-         ...msg,
-         message_type: msg.message_type as "text" | "contact_card",
-         contact_card_data: msg.contact_card_data as unknown as ContactCardData | null,
-       }));
+        const typedMessages: DirectMessage[] = (data || []).map((msg) => ({
+          ...msg,
+          message_type: msg.message_type as "text" | "contact_card" | "image",
+          contact_card_data: msg.contact_card_data as unknown as ContactCardData | null,
+        }));
  
        setMessages(typedMessages);
      } catch (error) {
@@ -177,8 +177,8 @@
              // Avoid duplicates
              if (prev.some((m) => m.id === newMsg.id)) return prev;
              return [...prev, {
-               ...newMsg,
-               message_type: newMsg.message_type as "text" | "contact_card",
+                ...newMsg,
+                message_type: newMsg.message_type as "text" | "contact_card" | "image",
                contact_card_data: newMsg.contact_card_data as ContactCardData | null,
              }];
            });
