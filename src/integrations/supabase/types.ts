@@ -362,6 +362,7 @@ export type Database = {
           credits_reward: number
           description: string
           difficulty: string
+          end_date: string
           id: string
           is_active: boolean
           prompt: string
@@ -376,6 +377,7 @@ export type Database = {
           credits_reward?: number
           description: string
           difficulty?: string
+          end_date?: string
           id?: string
           is_active?: boolean
           prompt: string
@@ -390,6 +392,7 @@ export type Database = {
           credits_reward?: number
           description?: string
           difficulty?: string
+          end_date?: string
           id?: string
           is_active?: boolean
           prompt?: string

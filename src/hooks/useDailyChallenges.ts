@@ -12,6 +12,7 @@ export interface DailyChallenge {
   credits_reward: number;
   category: 'lighting' | 'composition' | 'movement' | 'storytelling' | 'general';
   active_date: string;
+  end_date: string;
   is_active: boolean;
   created_at: string;
 }
@@ -30,7 +31,7 @@ export function useDailyChallenges() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  // Fetch today's challenge
+  // Fetch current active challenge (spans multiple days)
   const { data: todaysChallenge, isLoading: isLoadingToday } = useQuery({
     queryKey: ['daily-challenge-today'],
     queryFn: async () => {
@@ -39,11 +40,14 @@ export function useDailyChallenges() {
       const { data, error } = await supabase
         .from('daily_challenges')
         .select('*')
-        .eq('active_date', today)
+        .lte('active_date', today)
+        .gte('end_date', today)
         .eq('is_active', true)
-        .single();
+        .order('active_date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error) throw error;
       return data as DailyChallenge | null;
     },
   });
@@ -58,7 +62,7 @@ export function useDailyChallenges() {
         .eq('is_active', true)
         .lte('active_date', new Date().toISOString().split('T')[0])
         .order('active_date', { ascending: false })
-        .limit(30);
+        .limit(100);
 
       if (error) throw error;
       return data as DailyChallenge[];
@@ -158,11 +162,17 @@ export function useDailyChallenges() {
     },
   });
 
+  // Calculate days remaining on current challenge
+  const daysRemaining = todaysChallenge
+    ? Math.max(0, Math.ceil((new Date(todaysChallenge.end_date + 'T23:59:59').getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : 0;
+
   return {
     todaysChallenge,
     challenges,
     userSubmission,
     hasSubmittedToday: !!userSubmission,
+    daysRemaining,
     isLoading: isLoadingToday || isLoadingAll || isLoadingSubmission,
     submitChallenge,
   };
