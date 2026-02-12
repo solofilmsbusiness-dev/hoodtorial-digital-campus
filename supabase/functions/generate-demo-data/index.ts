@@ -16,6 +16,8 @@ interface ClearConfig {
   action: 'clear';
 }
 
+// ─── Name Data ───────────────────────────────────────────────
+
 const FILMMAKER_FIRST_NAMES = [
   "Alex", "Jordan", "Casey", "Riley", "Morgan", "Taylor", "Quinn", "Skyler",
   "Jamie", "Avery", "Blake", "Cameron", "Dakota", "Drew", "Emery", "Finley",
@@ -42,6 +44,59 @@ const FILMMAKING_STYLES = [
   "Horror", "Comedy", "Drama", "Action", "Sci-Fi", "Animation", "Nature",
   "Portrait", "Cinematic", "Guerrilla", "Run-and-gun"
 ];
+
+// ─── Rich Profile Data ──────────────────────────────────────
+
+const CREATIVE_ROLES = [
+  "Director", "Writer", "Editor", "Cinematographer", "Producer",
+  "Sound Designer", "Colorist", "VFX Artist", "Production Designer",
+  "Gaffer", "Screenwriter", "Animator"
+];
+
+const TOOLS_BY_ROLE: Record<string, string[]> = {
+  "Director": ["Shotdeck", "Artemis Pro", "Storyboarder", "Frame.io"],
+  "Writer": ["Final Draft", "Scrivener", "Celtx", "WriterSolo", "Highland 2"],
+  "Editor": ["DaVinci Resolve", "Premiere Pro", "Avid Media Composer", "Final Cut Pro"],
+  "Cinematographer": ["RED Komodo", "Arri Alexa Mini", "Sony A7SIII", "Blackmagic Pocket 6K", "Canon C70"],
+  "Producer": ["Movie Magic Budgeting", "StudioBinder", "Celtx", "Assemble"],
+  "Sound Designer": ["Pro Tools", "Logic Pro", "Ableton Live", "iZotope RX", "Reaper"],
+  "Colorist": ["DaVinci Resolve", "Baselight", "FilmLight", "Nucoda"],
+  "VFX Artist": ["After Effects", "Nuke", "Houdini", "Blender", "Cinema 4D"],
+  "Production Designer": ["SketchUp", "AutoCAD", "Vectorworks", "Procreate"],
+  "Gaffer": ["Arri SkyPanel", "Aputure 600d", "Litepanels Gemini", "Kino Flo"],
+  "Screenwriter": ["Final Draft", "Highland 2", "WriterSolo", "Arc Studio Pro"],
+  "Animator": ["Blender", "Maya", "Toon Boom", "After Effects", "Procreate"],
+};
+
+const FAVORITE_FILMS = [
+  "Moonlight", "Parasite", "The Godfather", "Spirited Away", "Inception",
+  "Blade Runner 2049", "Her", "Whiplash", "Get Out", "Amélie",
+  "The Grand Budapest Hotel", "No Country for Old Men", "Eternal Sunshine of the Spotless Mind",
+  "Mad Max: Fury Road", "Arrival", "The Social Network", "Lady Bird",
+  "12 Years a Slave", "Children of Men", "Pan's Labyrinth",
+  "Dune", "Everything Everywhere All at Once", "The Batman",
+  "Aftersun", "Past Lives", "Portrait of a Lady on Fire",
+  "Roma", "Burning", "Shoplifters", "The Lighthouse"
+];
+
+const INFLUENCES = [
+  "Denis Villeneuve", "Greta Gerwig", "Barry Jenkins", "Bong Joon-ho",
+  "Chloé Zhao", "Christopher Nolan", "Ava DuVernay", "Jordan Peele",
+  "Wes Anderson", "Sofia Coppola", "Spike Lee", "David Fincher",
+  "Hayao Miyazaki", "Guillermo del Toro", "Céline Sciamma",
+  "Roger Deakins", "Robert Eggers", "Terrence Malick",
+  "Wong Kar-wai", "Lynne Ramsay"
+];
+
+const ACCENT_COLORS = [
+  "#E07A5F", "#81B29A", "#F4A261", "#8B5CF6", "#EC4899",
+  "#10B981", "#F59E0B", "#6366F1", "#EF4444", "#14B8A6",
+  "#F97316", "#A855F7", "#3B82F6", "#D946EF", "#0EA5E9"
+];
+
+const BORDER_STYLES = ["square", "hexagon", "glow"];
+
+// ─── Post Data ───────────────────────────────────────────────
 
 const POST_TITLES_BY_CATEGORY = {
   general: [
@@ -94,25 +149,64 @@ const POST_TITLES_BY_CATEGORY = {
   ]
 };
 
-const AVATAR_COLORS = [
-  "4A90A4", "E07A5F", "81B29A", "F4A261", "8B5CF6", 
-  "EC4899", "10B981", "F59E0B", "6366F1", "EF4444"
-];
+// ─── Helpers ─────────────────────────────────────────────────
 
 function getRandomElement<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function getRandomSubset<T>(arr: T[], min: number, max: number): T[] {
+  const count = Math.floor(Math.random() * (max - min + 1)) + min;
+  const shuffled = [...arr].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
 }
 
 function generateDisplayName(): string {
   return `${getRandomElement(FILMMAKER_FIRST_NAMES)} ${getRandomElement(FILMMAKER_LAST_NAMES)}`;
 }
 
-function generateAvatarUrl(name: string): string {
-  const color = getRandomElement(AVATAR_COLORS);
-  return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=${color}&color=fff&size=128&bold=true`;
+function generateAvatarUrl(index: number): string {
+  const gender = index % 2 === 0 ? "men" : "women";
+  const id = index % 100; // randomuser.me has 0-99 for each gender
+  return `https://randomuser.me/api/portraits/${gender}/${id}.jpg`;
 }
 
-async function generateBioWithAI(apiKey: string, name: string): Promise<string> {
+function generateCoverBannerUrl(seed: string): string {
+  return `https://picsum.photos/seed/${seed}/1200/400`;
+}
+
+function generateSocialLinks(name: string): Record<string, string | null> {
+  const slug = name.toLowerCase().replace(/\s+/g, '');
+  const links: Record<string, string | null> = {
+    portfolio_url: null,
+    instagram_url: null,
+    youtube_url: null,
+    vimeo_url: null,
+    twitter_url: null,
+    tiktok_url: null,
+    imdb_url: null,
+  };
+
+  // Each link has a random chance of being present
+  if (Math.random() > 0.4) links.portfolio_url = `https://${slug}.myportfolio.com`;
+  if (Math.random() > 0.3) links.instagram_url = `https://instagram.com/${slug}`;
+  if (Math.random() > 0.5) links.youtube_url = `https://youtube.com/@${slug}`;
+  if (Math.random() > 0.5) links.vimeo_url = `https://vimeo.com/${slug}`;
+  if (Math.random() > 0.6) links.twitter_url = `https://x.com/${slug}`;
+  if (Math.random() > 0.7) links.tiktok_url = `https://tiktok.com/@${slug}`;
+  if (Math.random() > 0.8) links.imdb_url = `https://imdb.com/name/${slug}`;
+
+  return links;
+}
+
+function getComplementaryRoles(role: string): string[] {
+  const all = CREATIVE_ROLES.filter(r => r !== role);
+  return getRandomSubset(all, 1, 3);
+}
+
+// ─── AI Generation ───────────────────────────────────────────
+
+async function callAI(apiKey: string, system: string, user: string): Promise<string> {
   try {
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -123,99 +217,65 @@ async function generateBioWithAI(apiKey: string, name: string): Promise<string> 
       body: JSON.stringify({
         model: "google/gemini-2.5-flash-lite",
         messages: [
-          {
-            role: "system",
-            content: "You are generating realistic bios for film students. Keep bios 1-2 sentences, casual and authentic."
-          },
-          {
-            role: "user",
-            content: `Generate a brief bio for a film student named ${name}. Include their interest area (cinematography, directing, editing, sound, etc.) and maybe a current project or goal. Keep it under 30 words.`
-          }
+          { role: "system", content: system },
+          { role: "user", content: user },
         ],
       }),
     });
-    
-    if (!response.ok) {
-      console.error("AI bio generation failed:", response.status);
-      return `Passionate filmmaker exploring the art of visual storytelling.`;
-    }
-    
+    if (!response.ok) return "";
     const data = await response.json();
-    return data.choices?.[0]?.message?.content || `Aspiring filmmaker with a love for visual storytelling.`;
-  } catch (error) {
-    console.error("AI bio error:", error);
-    return `Film enthusiast dedicated to learning the craft.`;
+    return data.choices?.[0]?.message?.content || "";
+  } catch {
+    return "";
   }
+}
+
+async function generateBioWithAI(apiKey: string, name: string, role: string): Promise<string> {
+  const result = await callAI(
+    apiKey,
+    "You are generating realistic bios for film students. Keep bios 1-2 sentences, casual and authentic.",
+    `Generate a brief bio for a film student named ${name} who specializes in ${role}. Mention their specialty and maybe a current project or aspiration. Keep it under 30 words.`
+  );
+  return result || `Passionate ${role.toLowerCase()} exploring the art of visual storytelling.`;
+}
+
+async function generateCollaborationBriefWithAI(apiKey: string, name: string, role: string, lookingFor: string[]): Promise<string> {
+  const result = await callAI(
+    apiKey,
+    "You write short project briefs for film students seeking collaborators. Be specific and enthusiastic. 1-2 sentences max.",
+    `Write a collaboration brief for ${name}, a ${role}, who is looking for a ${lookingFor.join(" and ")} to work on their next project. Under 35 words.`
+  );
+  return result || `Looking for talented collaborators for an upcoming short film project.`;
+}
+
+async function generateCurrentProjectWithAI(apiKey: string, name: string, role: string): Promise<string> {
+  const result = await callAI(
+    apiKey,
+    "You describe current film projects for students. Be creative, specific, and concise. One sentence.",
+    `Describe a current film project for ${name}, a ${role}. Include a genre and brief concept. Under 20 words.`
+  );
+  return result || `Working on a short film exploring identity and connection.`;
 }
 
 async function generatePostContentWithAI(apiKey: string, title: string, category: string): Promise<string> {
-  try {
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
-        messages: [
-          {
-            role: "system",
-            content: "You are a film student writing posts in a community forum. Write authentic, engaging content that sounds like a real student. 2-3 paragraphs max."
-          },
-          {
-            role: "user",
-            content: `Write a community forum post with the title: "${title}" in the ${category} category. Be authentic and conversational. Keep it under 150 words.`
-          }
-        ],
-      }),
-    });
-    
-    if (!response.ok) {
-      return `Just wanted to share my thoughts on this topic. Looking forward to hearing what others think!`;
-    }
-    
-    const data = await response.json();
-    return data.choices?.[0]?.message?.content || `Excited to discuss this with the community!`;
-  } catch (error) {
-    console.error("AI content error:", error);
-    return `Would love to get the community's perspective on this.`;
-  }
+  const result = await callAI(
+    apiKey,
+    "You are a film student writing posts in a community forum. Write authentic, engaging content that sounds like a real student. 2-3 paragraphs max.",
+    `Write a community forum post with the title: "${title}" in the ${category} category. Be authentic and conversational. Keep it under 150 words.`
+  );
+  return result || `Just wanted to share my thoughts on this topic. Looking forward to hearing what others think!`;
 }
 
 async function generateCommentWithAI(apiKey: string, postTitle: string): Promise<string> {
-  try {
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
-        messages: [
-          {
-            role: "system",
-            content: "You are a film student commenting on a community post. Be supportive, constructive, and authentic. 1-2 sentences."
-          },
-          {
-            role: "user",
-            content: `Write a brief comment for a post titled "${postTitle}". Be encouraging and add value to the discussion. Under 40 words.`
-          }
-        ],
-      }),
-    });
-    
-    if (!response.ok) {
-      return `Great work! Keep pushing forward.`;
-    }
-    
-    const data = await response.json();
-    return data.choices?.[0]?.message?.content || `Really appreciate you sharing this!`;
-  } catch (error) {
-    return `Love seeing this kind of content in our community!`;
-  }
+  const result = await callAI(
+    apiKey,
+    "You are a film student commenting on a community post. Be supportive, constructive, and authentic. 1-2 sentences.",
+    `Write a brief comment for a post titled "${postTitle}". Be encouraging and add value to the discussion. Under 40 words.`
+  );
+  return result || `Really appreciate you sharing this!`;
 }
+
+// ─── Main Server ─────────────────────────────────────────────
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -227,57 +287,43 @@ serve(async (req) => {
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY")!;
-    
-    // Verify auth from header
+
+    // Verify auth
     const authHeader = req.headers.get("authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    
-    // Create auth client with user's token to verify
+
     const authClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
-    
+
     const token = authHeader.replace("Bearer ", "");
     const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
-    
+
     if (claimsError || !claimsData?.claims) {
-      console.error("Token validation error:", claimsError);
       return new Response(JSON.stringify({ error: "Invalid token" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    
+
     const userId = claimsData.claims.sub as string;
-    
-    // Create service role client for data operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
-    // Check admin role
-    const { data: isAdmin } = await supabase.rpc("has_role", {
-      _user_id: userId,
-      _role: "admin",
-    });
-    
+
+    const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
     if (!isAdmin) {
       return new Response(JSON.stringify({ error: "Admin access required" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    
+
     const body = await req.json() as GenerateConfig | ClearConfig;
-    
-    // Handle clear action
+
+    // ─── Clear Action ──────────────────────────────────────
     if ('action' in body && body.action === 'clear') {
       console.log("Clearing all demo data...");
-      
-      // Delete in order of dependencies
       await supabase.from('comment_likes').delete().eq('is_demo', true);
       await supabase.from('post_likes').delete().eq('is_demo', true);
       await supabase.from('community_comments').delete().eq('is_demo', true);
@@ -287,202 +333,165 @@ serve(async (req) => {
       await supabase.from('enrollments').delete().eq('is_demo', true);
       await supabase.from('challenge_submissions').delete().eq('is_demo', true);
       await supabase.from('profiles').delete().eq('is_demo', true);
-      
-      // Update demo settings
-      await supabase
-        .from('demo_settings')
-        .update({ 
-          is_active: false,
-          updated_by: userId,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', '00000000-0000-0000-0000-000000000001');
-      
-      return new Response(JSON.stringify({ 
-        success: true, 
-        message: "All demo data cleared" 
-      }), {
+
+      await supabase.from('demo_settings').update({
+        is_active: false, updated_by: userId, updated_at: new Date().toISOString()
+      }).eq('id', '00000000-0000-0000-0000-000000000001');
+
+      return new Response(JSON.stringify({ success: true, message: "All demo data cleared" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    
-    // Handle generate action
+
+    // ─── Generate Action ───────────────────────────────────
     const config = body as GenerateConfig;
     const { userCount = 25, postCount = 50, commentCount = 100 } = config;
-    
+
     console.log(`Generating demo data: ${userCount} users, ${postCount} posts, ${commentCount} comments`);
-    
-    // Generate demo profiles
+
+    // Generate demo profiles with rich data
     const demoUsers: { user_id: string; display_name: string }[] = [];
-    
+
     for (let i = 0; i < userCount; i++) {
       const displayName = generateDisplayName();
       const fakeUserId = crypto.randomUUID();
-      const bio = await generateBioWithAI(lovableApiKey, displayName);
-      
+      const creativeRole = getRandomElement(CREATIVE_ROLES);
+      const lookingFor = getComplementaryRoles(creativeRole);
+      const tools = getRandomSubset(TOOLS_BY_ROLE[creativeRole] || [], 2, 3);
+      const socialLinks = generateSocialLinks(displayName);
+
+      // Generate AI content in parallel
+      const [bio, collaborationBrief, currentProject] = await Promise.all([
+        generateBioWithAI(lovableApiKey, displayName, creativeRole),
+        generateCollaborationBriefWithAI(lovableApiKey, displayName, creativeRole, lookingFor),
+        generateCurrentProjectWithAI(lovableApiKey, displayName, creativeRole),
+      ]);
+
       const profile = {
         user_id: fakeUserId,
         display_name: displayName,
-        bio: bio,
-        avatar_url: generateAvatarUrl(displayName),
+        bio,
+        avatar_url: generateAvatarUrl(i),
+        cover_banner_url: generateCoverBannerUrl(`demo-${fakeUserId.slice(0, 8)}`),
+        cover_banner_position: Math.floor(Math.random() * 80) + 10,
         location: getRandomElement(LOCATIONS),
         filmmaking_style: getRandomElement(FILMMAKING_STYLES),
+        creative_role: creativeRole,
+        camera_gear: tools.join(", "),
+        looking_for: lookingFor,
+        collaboration_brief: collaborationBrief,
+        favorite_films: getRandomSubset(FAVORITE_FILMS, 2, 4),
+        influences: getRandomSubset(INFLUENCES, 2, 3).join(", "),
+        current_project: currentProject,
+        profile_accent_color: getRandomElement(ACCENT_COLORS),
+        avatar_border_style: getRandomElement(BORDER_STYLES),
+        ...socialLinks,
         is_demo: true,
         subscription_status: getRandomElement(['trial', 'active', 'active', 'active']),
         trial_started_at: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
         trial_ends_at: new Date(Date.now() + Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
       };
-      
+
       const { error } = await supabase.from('profiles').insert(profile);
       if (error) {
         console.error(`Failed to create demo user ${i + 1}:`, error.message);
       } else {
         demoUsers.push({ user_id: fakeUserId, display_name: displayName });
       }
-      
-      // Small delay to avoid rate limiting
-      if (i % 5 === 0) {
-        await new Promise(r => setTimeout(r, 100));
-      }
+
+      if (i % 5 === 0) await new Promise(r => setTimeout(r, 100));
     }
-    
+
     console.log(`Created ${demoUsers.length} demo users`);
-    
-    // Fail early if no users were created
+
     if (demoUsers.length === 0) {
-      return new Response(JSON.stringify({ 
-        success: false, 
-        error: "Failed to create any demo users. Check RLS policies or database constraints." 
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(JSON.stringify({
+        success: false, error: "Failed to create any demo users. Check RLS policies or database constraints."
+      }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-    
+
     // Generate demo posts
     const categories = Object.keys(POST_TITLES_BY_CATEGORY) as (keyof typeof POST_TITLES_BY_CATEGORY)[];
     const demoPosts: { id: string; title: string; user_id: string }[] = [];
-    
+
     for (let i = 0; i < postCount; i++) {
       const category = getRandomElement(categories);
       const title = getRandomElement(POST_TITLES_BY_CATEGORY[category]);
       const author = getRandomElement(demoUsers);
-      if (!author) {
-        console.error(`No author available for post ${i + 1}`);
-        continue;
-      }
+      if (!author) continue;
       const content = await generatePostContentWithAI(lovableApiKey, title, category);
-      
+
       const post = {
         user_id: author.user_id,
-        title: title,
-        content: content,
-        category: category,
-        is_demo: true,
-        media_urls: [],
-        is_pinned: false,
+        title, content, category,
+        is_demo: true, media_urls: [], is_pinned: false,
         is_highlighted: Math.random() > 0.9,
         is_project_post: category === 'project_submission',
         created_at: new Date(Date.now() - Math.random() * 14 * 24 * 60 * 60 * 1000).toISOString(),
       };
-      
+
       const { data, error } = await supabase.from('community_posts').insert(post).select('id').single();
-      if (error) {
-        console.error(`Failed to create post ${i + 1}:`, error.message);
-      } else if (data) {
-        demoPosts.push({ id: data.id, title: title, user_id: author.user_id });
-      }
-      
-      if (i % 5 === 0) {
-        await new Promise(r => setTimeout(r, 100));
-      }
+      if (!error && data) demoPosts.push({ id: data.id, title, user_id: author.user_id });
+
+      if (i % 5 === 0) await new Promise(r => setTimeout(r, 100));
     }
-    
+
     console.log(`Created ${demoPosts.length} demo posts`);
-    
+
     // Generate demo comments
     let commentsCreated = 0;
     for (let i = 0; i < commentCount; i++) {
       const post = getRandomElement(demoPosts);
       const author = getRandomElement(demoUsers.filter(u => u.user_id !== post.user_id));
       if (!author) continue;
-      
       const content = await generateCommentWithAI(lovableApiKey, post.title);
-      
-      const comment = {
-        post_id: post.id,
-        user_id: author.user_id,
-        content: content,
-        is_demo: true,
-        is_highlighted: Math.random() > 0.95,
-        is_instructor_comment: false,
+
+      const { error } = await supabase.from('community_comments').insert({
+        post_id: post.id, user_id: author.user_id, content,
+        is_demo: true, is_highlighted: Math.random() > 0.95, is_instructor_comment: false,
         created_at: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
-      };
-      
-      const { error } = await supabase.from('community_comments').insert(comment);
+      });
       if (!error) commentsCreated++;
-      
-      if (i % 10 === 0) {
-        await new Promise(r => setTimeout(r, 50));
-      }
+      if (i % 10 === 0) await new Promise(r => setTimeout(r, 50));
     }
-    
+
     console.log(`Created ${commentsCreated} demo comments`);
-    
+
     // Generate demo likes
     let likesCreated = 0;
     for (const post of demoPosts) {
       const likeCount = Math.floor(Math.random() * 12) + 3;
-      const likers = demoUsers
-        .filter(u => u.user_id !== post.user_id)
-        .sort(() => Math.random() - 0.5)
-        .slice(0, likeCount);
-      
+      const likers = demoUsers.filter(u => u.user_id !== post.user_id).sort(() => Math.random() - 0.5).slice(0, likeCount);
       for (const liker of likers) {
         const { error } = await supabase.from('post_likes').insert({
-          post_id: post.id,
-          user_id: liker.user_id,
-          is_demo: true,
+          post_id: post.id, user_id: liker.user_id, is_demo: true,
         });
         if (!error) likesCreated++;
       }
     }
-    
+
     console.log(`Created ${likesCreated} demo likes`);
-    
+
     // Update demo settings
-    await supabase
-      .from('demo_settings')
-      .update({
-        is_active: true,
-        demo_user_count: demoUsers.length,
-        demo_post_count: demoPosts.length,
-        demo_comment_count: commentsCreated,
-        last_generated_at: new Date().toISOString(),
-        updated_by: userId,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', '00000000-0000-0000-0000-000000000001');
-    
+    await supabase.from('demo_settings').update({
+      is_active: true,
+      demo_user_count: demoUsers.length,
+      demo_post_count: demoPosts.length,
+      demo_comment_count: commentsCreated,
+      last_generated_at: new Date().toISOString(),
+      updated_by: userId,
+      updated_at: new Date().toISOString(),
+    }).eq('id', '00000000-0000-0000-0000-000000000001');
+
     return new Response(JSON.stringify({
       success: true,
-      stats: {
-        users: demoUsers.length,
-        posts: demoPosts.length,
-        comments: commentsCreated,
-        likes: likesCreated,
-      }
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-    
+      stats: { users: demoUsers.length, posts: demoPosts.length, comments: commentsCreated, likes: likesCreated }
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
   } catch (error) {
     console.error("Generate demo data error:", error);
-    return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : "Unknown error" 
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({
+      error: error instanceof Error ? error.message : "Unknown error"
+    }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
