@@ -110,7 +110,8 @@ import { useMemo } from "react";
           >
             <ProfileGallery 
               gallery={profile?.portfolio_gallery || []} 
-              isOwnProfile={isOwnProfile} 
+              isOwnProfile={isOwnProfile}
+              profileUserId={userId}
             />
           </motion.div>
         );

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import {
   useFacultyMembers,
@@ -8,6 +8,7 @@ import {
   type FacultyMember,
   type FacultyMemberInsert,
 } from "@/hooks/useFacultyMembers";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,12 +47,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "@/hooks/use-toast";
 
 const DEPARTMENTS = ["Cinematography", "Post-Production", "Directing", "Production"];
 
-const emptyForm: FacultyMemberInsert = {
+const emptyForm: FacultyMemberInsert & { intro_video_url: string | null } = {
   name: "",
   role: "",
   department: "Cinematography",
@@ -60,6 +62,7 @@ const emptyForm: FacultyMemberInsert = {
   featured: false,
   display_order: 0,
   image_url: null,
+  intro_video_url: null,
 };
 
 export default function FacultyManager() {
@@ -70,9 +73,11 @@ export default function FacultyManager() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<FacultyMemberInsert>(emptyForm);
+  const [form, setForm] = useState(emptyForm);
   const [expertiseInput, setExpertiseInput] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<FacultyMember | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const openCreate = () => {
     setEditingId(null);
@@ -92,9 +97,30 @@ export default function FacultyManager() {
       featured: m.featured,
       display_order: m.display_order,
       image_url: m.image_url,
+      intro_video_url: m.intro_video_url,
     });
     setExpertiseInput(m.expertise.join(", "));
     setDialogOpen(true);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `faculty/${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from("site-assets").upload(path, file);
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from("site-assets").getPublicUrl(path);
+      setForm((prev) => ({ ...prev, image_url: urlData.publicUrl }));
+      toast({ title: "Image uploaded" });
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   const handleSave = () => {
@@ -178,7 +204,7 @@ export default function FacultyManager() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingId ? "Edit Faculty Member" : "Add Faculty Member"}</DialogTitle>
           </DialogHeader>
@@ -210,10 +236,53 @@ export default function FacultyManager() {
               <Label>Expertise (comma-separated)</Label>
               <Input value={expertiseInput} onChange={(e) => setExpertiseInput(e.target.value)} placeholder="Lighting, Camera Movement, ..." />
             </div>
-            <div className="space-y-1">
-              <Label>Image URL</Label>
-              <Input value={form.image_url ?? ""} onChange={(e) => setForm({ ...form, image_url: e.target.value || null })} placeholder="https://..." />
+
+            {/* Image upload */}
+            <div className="space-y-2">
+              <Label>Faculty Photo</Label>
+              {form.image_url && (
+                <div className="w-20 h-20 rounded border border-border overflow-hidden mb-2">
+                  <img src={form.image_url} alt="Preview" className="w-full h-full object-cover" />
+                </div>
+              )}
+              <div className="flex gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageUpload}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="gap-2"
+                >
+                  {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  Upload Photo
+                </Button>
+              </div>
+              <Input
+                value={form.image_url ?? ""}
+                onChange={(e) => setForm({ ...form, image_url: e.target.value || null })}
+                placeholder="Or paste image URL..."
+                className="text-xs"
+              />
             </div>
+
+            {/* Intro Video URL */}
+            <div className="space-y-1">
+              <Label>Intro Video URL</Label>
+              <Input
+                value={form.intro_video_url ?? ""}
+                onChange={(e) => setForm({ ...form, intro_video_url: e.target.value || null })}
+                placeholder="YouTube, Vimeo, or direct video URL"
+              />
+            </div>
+
             <div className="space-y-1">
               <Label>Display Order</Label>
               <Input type="number" value={form.display_order} onChange={(e) => setForm({ ...form, display_order: parseInt(e.target.value) || 0 })} />

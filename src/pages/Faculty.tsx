@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Play } from "lucide-react";
 import { useFacultyMembers, type FacultyMember } from "@/hooks/useFacultyMembers";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getVideoType, getYouTubeId, getYouTubeEmbedUrl, getVimeoId, getVimeoEmbedUrl } from "@/lib/videoUtils";
 
 const departments = [
   { name: "All", value: "all" },
@@ -13,7 +15,42 @@ const departments = [
   { name: "Production", value: "Production" },
 ];
 
-function FeaturedCard({ faculty }: { faculty: FacultyMember }) {
+function VideoModal({ url, open, onClose }: { url: string; open: boolean; onClose: () => void }) {
+  const type = getVideoType(url);
+
+  let content: React.ReactNode = null;
+  if (type === "youtube") {
+    const id = getYouTubeId(url);
+    if (id) content = <iframe src={getYouTubeEmbedUrl(id)} className="w-full aspect-video" allowFullScreen allow="autoplay" />;
+  } else if (type === "vimeo") {
+    const id = getVimeoId(url);
+    if (id) content = <iframe src={getVimeoEmbedUrl(id)} className="w-full aspect-video" allowFullScreen allow="autoplay" />;
+  } else if (type === "direct") {
+    content = <video src={url} controls autoPlay className="w-full max-h-[70vh]" />;
+  } else {
+    // Try as iframe fallback for unrecognized URLs
+    content = <iframe src={url} className="w-full aspect-video" allowFullScreen />;
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-3xl p-0 overflow-hidden bg-background border-border">
+        <div className="p-1">{content}</div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function WatchIntroButton({ faculty, onClick }: { faculty: FacultyMember; onClick: () => void }) {
+  if (!faculty.intro_video_url) return null;
+  return (
+    <Button variant="outline" size="sm" className="gap-2 border-2" onClick={onClick}>
+      <Play className="h-3 w-3" /> Watch Intro
+    </Button>
+  );
+}
+
+function FeaturedCard({ faculty, onWatch }: { faculty: FacultyMember; onWatch: () => void }) {
   return (
     <div className="relative bg-card border-2 border-border p-6 md:p-8 flex flex-col md:flex-row gap-6 hover:border-primary transition-colors">
       <div className="w-24 h-24 md:w-32 md:h-32 shrink-0 bg-gradient-to-br from-primary/20 to-primary/5 border-2 border-primary flex items-center justify-center overflow-hidden">
@@ -33,15 +70,13 @@ function FeaturedCard({ faculty }: { faculty: FacultyMember }) {
             <span key={skill} className="text-xs px-2 py-1 bg-muted text-muted-foreground">{skill}</span>
           ))}
         </div>
-        <Button variant="outline" size="sm" className="gap-2 border-2">
-          <Play className="h-3 w-3" /> Watch Intro
-        </Button>
+        <WatchIntroButton faculty={faculty} onClick={onWatch} />
       </div>
     </div>
   );
 }
 
-function FacultyCard({ faculty }: { faculty: FacultyMember }) {
+function FacultyCard({ faculty, onWatch }: { faculty: FacultyMember; onWatch: () => void }) {
   return (
     <div className="bg-card border-2 border-border p-6 hover:border-primary transition-all duration-300 hover:-translate-y-1">
       <div className="w-16 h-16 mb-4 bg-gradient-to-br from-charcoal-light to-charcoal border border-border flex items-center justify-center overflow-hidden">
@@ -63,9 +98,7 @@ function FacultyCard({ faculty }: { faculty: FacultyMember }) {
         )}
       </div>
       <p className="text-xs text-muted-foreground line-clamp-3 mb-4">{faculty.bio}</p>
-      <Button variant="ghost" size="sm" className="gap-1 text-xs p-0 h-auto hover:text-primary">
-        <Play className="h-3 w-3" /> Watch Intro
-      </Button>
+      <WatchIntroButton faculty={faculty} onClick={onWatch} />
     </div>
   );
 }
@@ -73,6 +106,7 @@ function FacultyCard({ faculty }: { faculty: FacultyMember }) {
 export default function Faculty() {
   const { data: facultyMembers, isLoading } = useFacultyMembers();
   const [activeDept, setActiveDept] = useState("all");
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
 
   const filtered = facultyMembers?.filter(
     (f) => activeDept === "all" || f.department === activeDept
@@ -136,7 +170,9 @@ export default function Faculty() {
                     <p className="text-muted-foreground">Leading the curriculum and setting the standard.</p>
                   </div>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {featured.map((f) => <FeaturedCard key={f.id} faculty={f} />)}
+                    {featured.map((f) => (
+                      <FeaturedCard key={f.id} faculty={f} onWatch={() => setVideoUrl(f.intro_video_url)} />
+                    ))}
                   </div>
                 </div>
               )}
@@ -149,7 +185,9 @@ export default function Faculty() {
                     <p className="text-muted-foreground">Industry veterans bringing real-world experience to every lesson.</p>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {regular.map((f) => <FacultyCard key={f.id} faculty={f} />)}
+                    {regular.map((f) => (
+                      <FacultyCard key={f.id} faculty={f} onWatch={() => setVideoUrl(f.intro_video_url)} />
+                    ))}
                   </div>
                 </>
               )}
@@ -172,6 +210,11 @@ export default function Faculty() {
           <a href="/enrollment" className="btn-brutal">Start Learning Today</a>
         </div>
       </section>
+
+      {/* Video Modal */}
+      {videoUrl && (
+        <VideoModal url={videoUrl} open={!!videoUrl} onClose={() => setVideoUrl(null)} />
+      )}
     </PageLayout>
   );
 }

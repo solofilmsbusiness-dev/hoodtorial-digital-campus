@@ -5,13 +5,15 @@
  import { Dialog, DialogContent } from "@/components/ui/dialog";
  import { AspectRatio } from "@/components/ui/aspect-ratio";
  import { useProfileGallery } from "@/hooks/useProfileGallery";
+ import { GalleryCommentThread } from "./GalleryCommentThread";
  
  interface ProfileGalleryProps {
    gallery: string[];
    isOwnProfile: boolean;
+   profileUserId?: string;
  }
  
- export function ProfileGallery({ gallery, isOwnProfile }: ProfileGalleryProps) {
+ export function ProfileGallery({ gallery, isOwnProfile, profileUserId }: ProfileGalleryProps) {
    const fileInputRef = useRef<HTMLInputElement>(null);
    const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
    const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -172,25 +174,31 @@
        <Dialog open={selectedIndex !== null} onOpenChange={() => setSelectedIndex(null)}>
          <DialogContent className="max-w-4xl p-0 bg-background/95 backdrop-blur border-border">
            {selectedIndex !== null && (
-             <div className="relative p-4">
+             <div className="relative p-4 space-y-4">
                {isVideo(gallery[selectedIndex]) ? (
                  <video
                    src={gallery[selectedIndex]}
                    controls
                    autoPlay
-                   className="w-full max-h-[70vh] rounded"
+                   className="w-full max-h-[60vh] rounded"
                  />
                ) : (
                  <img
                    src={gallery[selectedIndex]}
                    alt={`Portfolio item ${selectedIndex + 1}`}
-                   className="w-full max-h-[70vh] object-contain rounded"
+                   className="w-full max-h-[60vh] object-contain rounded"
                  />
                )}
                {gallery.length > 1 && (
-                 <div className="text-center pt-4 text-sm text-muted-foreground">
+                 <div className="text-center text-sm text-muted-foreground">
                    {selectedIndex + 1} / {gallery.length}
                  </div>
+               )}
+               {profileUserId && (
+                 <GalleryCommentThread
+                   galleryOwnerId={profileUserId}
+                   imageUrl={gallery[selectedIndex]}
+                 />
                )}
              </div>
            )}
