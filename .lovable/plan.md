@@ -1,28 +1,22 @@
 
 
-## Fix Broken Links on Academics Page and Site-Wide
+## Update Disclosure Section on About Page
 
-### Issue Found
-The "Enroll Now" / "Start Learning" CTA buttons link to `/enroll`, which **does not exist** as a route. The correct route is `/enrollment`. Clicking these buttons sends users to the 404 Not Found page -- a dead end.
+The disclosure section was partially added in the previous edit. This plan refines it to fully match the detailed requirements — adding clear platform definition, credential clarification (certificates of completion), and a warmer trust-building tone.
 
-### Affected Files and Locations
+### What Changes
 
-| File | Line | Current Link | Fix |
-|------|------|-------------|-----|
-| `src/pages/Academics.tsx` | 325 | `/enroll` | `/enrollment` |
-| `src/pages/Index.tsx` | 169 | `/enroll` | `/enrollment` |
-| `src/components/cards/TierCard.tsx` | 26 | `/enroll` (default prop) | `/enrollment` |
+**File: `src/pages/About.tsx`** — Update the existing disclosure section content (lines 229-261) to include:
 
-### Other Elements Checked (All Working)
-- Department filter buttons (All, Cinematography, etc.) -- work correctly, toggle filter state
-- Grid/List view toggle -- works correctly
-- Search input with clear button -- works correctly
-- Course cards -- link to `/course/:code` (valid route), Coming Soon cards show toast and prevent navigation
-- "View Degree Paths" CTA -- links to `/degrees` (valid route)
-- Footer links (All Courses, Degree Paths, Faculty, Student Center, Shop, Community, About) -- all valid routes
-- Navigation bar links (Academics, Degrees, Faculty, About, Shop) -- all valid routes
-- Dropdown menu links (Profile, Student Hub, Community, Friends, Messages, Admin) -- all valid routes
+1. **Platform Definition** — Explicitly describe Hoodtorial University as a teaching platform, learning community, and skill-building environment (not just "online educational platform").
 
-### Fix
-Simple 1-line change in each of the 3 files: replace `/enroll` with `/enrollment`.
+2. **Credential Clarification** — Add a clear statement that users receive a certificate of course completion and recognition for completed learning paths, rather than academic degrees. Avoid legal jargon.
+
+3. **Tone Adjustment** — Keep the existing reassuring closing paragraph but ensure the overall tone is friendly and human throughout, emphasizing real value, growth, and community.
+
+### Technical Details
+
+- Only the text content within the existing disclosure `<section>` changes — no structural or styling modifications needed.
+- The three `<p>` tags will be updated/expanded to four paragraphs covering: (1) what the platform is, (2) what it is not, (3) what users receive, (4) reassurance/value statement.
+- No new imports or dependencies required.
 
