@@ -6,7 +6,7 @@
   import { MessageComposer } from "./MessageComposer";
   import { TypingIndicator } from "./TypingIndicator";
   import { Skeleton } from "@/components/ui/skeleton";
-  import { ScrollArea } from "@/components/ui/scroll-area";
+  // ScrollArea removed - using plain div for reliable scroll control
   import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
   import { Button } from "@/components/ui/button";
   import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -30,7 +30,7 @@
   export function ChatWindow({ conversationId, otherUser }: ChatWindowProps) {
     const { user } = useAuth();
     const { messages, loading, deleteMessage } = useDirectMessages(conversationId);
-    const bottomRef = useRef<HTMLDivElement>(null);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
     const { typingUsers, setTyping } = useTypingIndicator(conversationId);
     const { toggleReaction, getReactionSummary } = useMessageReactions(conversationId);
     const { onlineUserIds } = useOnlineUsers();
@@ -42,7 +42,9 @@
     const userIsBlocked = otherUser ? isBlocked(otherUser.user_id) : false;
 
      useEffect(() => {
-       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+       if (scrollContainerRef.current) {
+         scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+       }
      }, [messages]);
 
     const getInitials = (name?: string | null) => {
@@ -109,7 +111,7 @@
         )}
  
        {/* Messages */}
-        <ScrollArea className="flex-1 p-4">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4">
           {loading ? (
             <div className="space-y-4">
               {[1, 2, 3].map((i) => (
@@ -139,14 +141,14 @@
                  reactions={getReactionSummary(message.id)}
                 />
               ))}
-              <div ref={bottomRef} />
+              
             </div>
           )}
          
          {/* Typing Indicator */}
          <TypingIndicator typingUsers={typingUsers} className="mt-2" />
-        </ScrollArea>
- 
+        </div>
+
        {/* Blocked state or Composer */}
       {userIsBlocked ? (
         <div className="p-4 border-t text-center text-sm text-muted-foreground bg-muted/30">

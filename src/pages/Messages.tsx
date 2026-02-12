@@ -84,7 +84,7 @@ export default function Messages() {
             <div
               className={cn(
                 "flex-1 flex flex-col",
-                "md:block",
+                "md:flex",
                 !showMobileList ? "block" : "hidden"
               )}
             >
@@ -96,7 +96,7 @@ export default function Messages() {
                   ← Back to conversations
                 </button>
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-h-0">
                 <ChatWindow
                   conversationId={activeConversationId}
                   otherUser={activeConversation?.otherUser}
