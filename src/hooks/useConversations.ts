@@ -1,6 +1,7 @@
  import { useState, useEffect, useCallback } from "react";
  import { supabase } from "@/integrations/supabase/client";
  import { useAuth } from "@/contexts/AuthContext";
+ import { useUserSafety } from "@/hooks/useUserSafety";
  
  export interface Conversation {
    id: string;
@@ -25,11 +26,12 @@
    unreadCount: number;
  }
  
- export function useConversations() {
-   const { user } = useAuth();
-   const [conversations, setConversations] = useState<ConversationWithProfile[]>([]);
-   const [loading, setLoading] = useState(true);
-   const [totalUnread, setTotalUnread] = useState(0);
+  export function useConversations() {
+    const { user } = useAuth();
+    const { blockedUserIds } = useUserSafety();
+    const [conversations, setConversations] = useState<ConversationWithProfile[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [totalUnread, setTotalUnread] = useState(0);
  
    const fetchConversations = useCallback(async () => {
      if (!user) return;
@@ -100,12 +102,16 @@
          };
        });
  
-       setConversations(conversationsWithProfiles);
-       setTotalUnread(conversationsWithProfiles.reduce((sum, c) => sum + c.unreadCount, 0));
+        // Filter out blocked users
+        const filtered = conversationsWithProfiles.filter(
+          (c) => !blockedUserIds.has(c.otherUser.user_id)
+        );
+        setConversations(filtered);
+        setTotalUnread(filtered.reduce((sum, c) => sum + c.unreadCount, 0));
      } catch (error) {
        console.error("Error fetching conversations:", error);
      }
-   }, [user]);
+   }, [user, blockedUserIds]);
  
    const getOrCreateConversation = async (otherUserId: string): Promise<string | null> => {
      if (!user) return null;

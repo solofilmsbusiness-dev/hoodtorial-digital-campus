@@ -444,6 +444,7 @@ export type Database = {
           conversation_id: string
           created_at: string
           id: string
+          is_deleted: boolean | null
           is_read: boolean
           message_type: string
           sender_id: string
@@ -454,6 +455,7 @@ export type Database = {
           conversation_id: string
           created_at?: string
           id?: string
+          is_deleted?: boolean | null
           is_read?: boolean
           message_type?: string
           sender_id: string
@@ -464,6 +466,7 @@ export type Database = {
           conversation_id?: string
           created_at?: string
           id?: string
+          is_deleted?: boolean | null
           is_read?: boolean
           message_type?: string
           sender_id?: string
@@ -894,6 +897,7 @@ export type Database = {
           portfolio_gallery: string[] | null
           portfolio_url: string | null
           profile_accent_color: string | null
+          profile_editor_toured: boolean | null
           profile_section_order: string[] | null
           recommended_degree_path: string | null
           subscription_ends_at: string | null
@@ -946,6 +950,7 @@ export type Database = {
           portfolio_gallery?: string[] | null
           portfolio_url?: string | null
           profile_accent_color?: string | null
+          profile_editor_toured?: boolean | null
           profile_section_order?: string[] | null
           recommended_degree_path?: string | null
           subscription_ends_at?: string | null
@@ -998,6 +1003,7 @@ export type Database = {
           portfolio_gallery?: string[] | null
           portfolio_url?: string | null
           profile_accent_color?: string | null
+          profile_editor_toured?: boolean | null
           profile_section_order?: string[] | null
           recommended_degree_path?: string | null
           subscription_ends_at?: string | null
@@ -1286,6 +1292,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
       user_progress: {
         Row: {
           completed: boolean
@@ -1331,6 +1358,36 @@ export type Database = {
           video_duration_seconds?: number | null
           watch_percentage?: number | null
           watched_seconds?: number | null
+        }
+        Relationships: []
+      }
+      user_reports: {
+        Row: {
+          created_at: string
+          details: string | null
+          id: string
+          reason: string
+          reported_id: string
+          reporter_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason: string
+          reported_id: string
+          reporter_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason?: string
+          reported_id?: string
+          reporter_id?: string
+          status?: string
         }
         Relationships: []
       }

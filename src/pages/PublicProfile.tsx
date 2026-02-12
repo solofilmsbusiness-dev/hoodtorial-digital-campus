@@ -1,21 +1,25 @@
- import { useParams, useNavigate } from "react-router-dom";
- import { Link } from "react-router-dom";
- import { motion } from "framer-motion";
-  import { ArrowLeft, Eye, Pencil, Home } from "lucide-react";
- import { Button } from "@/components/ui/button";
- import { Alert, AlertDescription } from "@/components/ui/alert";
- import { PageLayout } from "@/components/layout";
- import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
- import { PublicProfileCard } from "@/components/profile/PublicProfileCard";
- import { ProfileWall } from "@/components/profile/ProfileWall";
+import { useState, useMemo } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import { ArrowLeft, Eye, Pencil, Home, MoreHorizontal, ShieldOff, Flag } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { PageLayout } from "@/components/layout";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+import { PublicProfileCard } from "@/components/profile/PublicProfileCard";
+import { ProfileWall } from "@/components/profile/ProfileWall";
 import { ProfileAcademicStats, ProfileAchievements, ProfileGallery, FeaturedProjectShowcase } from "@/components/profile";
- import { usePublicProfile } from "@/hooks/usePublicProfile";
+import { usePublicProfile } from "@/hooks/usePublicProfile";
 import { useProfileAchievements } from "@/hooks/useProfileAchievements";
- import { useAuth } from "@/contexts/AuthContext";
- import { useFriendships } from "@/hooks/useFriendships";
- import { useConversations } from "@/hooks/useConversations";
- import { toast } from "sonner";
-import { useMemo } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useFriendships } from "@/hooks/useFriendships";
+import { useConversations } from "@/hooks/useConversations";
+import { useUserSafety } from "@/hooks/useUserSafety";
+import { BlockUserDialog } from "@/components/safety/BlockUserDialog";
+import { ReportUserDialog } from "@/components/safety/ReportUserDialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
  
  export default function PublicProfile() {
    const { userId } = useParams<{ userId: string }>();
@@ -26,8 +30,13 @@ import { useMemo } from "react";
    const { sendFriendRequest, hasPendingRequest: checkPendingRequest, loading: friendshipLoading } = useFriendships();
    const { getOrCreateConversation } = useConversations();
  
-   const hasPendingRequest = userId ? checkPendingRequest(userId) : false;
- 
+    const { blockUser, unblockUser, reportUser, isBlocked } = useUserSafety();
+    const [showBlockDialog, setShowBlockDialog] = useState(false);
+    const [showReportDialog, setShowReportDialog] = useState(false);
+
+    const hasPendingRequest = userId ? checkPendingRequest(userId) : false;
+    const userIsBlocked = userId ? isBlocked(userId) : false;
+  
    const handleAddFriend = async () => {
      if (userId) {
        await sendFriendRequest(userId);
@@ -267,18 +276,36 @@ import { useMemo } from "react";
              {isOwnProfile ? "Student Hub" : "Back"}
            </Button>
             
-            {isOwnProfile && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleEditProfile}
-                className="gap-2"
-              >
-                <Pencil className="h-4 w-4" />
-                Edit Profile
-              </Button>
-            )}
-         </motion.div>
+             {isOwnProfile ? (
+               <Button
+                 variant="outline"
+                 size="sm"
+                 onClick={handleEditProfile}
+                 className="gap-2"
+               >
+                 <Pencil className="h-4 w-4" />
+                 Edit Profile
+               </Button>
+             ) : (
+               <DropdownMenu>
+                 <DropdownMenuTrigger asChild>
+                   <Button variant="ghost" size="icon">
+                     <MoreHorizontal className="h-5 w-5" />
+                   </Button>
+                 </DropdownMenuTrigger>
+                 <DropdownMenuContent align="end">
+                   <DropdownMenuItem onClick={() => setShowBlockDialog(true)}>
+                     <ShieldOff className="h-4 w-4 mr-2" />
+                     {userIsBlocked ? "Unblock User" : "Block User"}
+                   </DropdownMenuItem>
+                   <DropdownMenuItem onClick={() => setShowReportDialog(true)} className="text-destructive">
+                     <Flag className="h-4 w-4 mr-2" />
+                     Report User
+                   </DropdownMenuItem>
+                 </DropdownMenuContent>
+               </DropdownMenu>
+             )}
+          </motion.div>
  
          {/* Own profile indicator */}
          {isOwnProfile && (
@@ -313,7 +340,32 @@ import { useMemo } from "react";
           {/* Dynamic sections based on user's order preference */}
           {sectionOrder.map((sectionId, index) => renderSection(sectionId, index))}
          </div>
-       </div>
-     </PageLayout>
-   );
- }
+        </div>
+
+        {userId && !isOwnProfile && (
+          <>
+            <BlockUserDialog
+              open={showBlockDialog}
+              onOpenChange={setShowBlockDialog}
+              userName={profile?.display_name || "this user"}
+              isBlocked={userIsBlocked}
+              onConfirm={() => {
+                if (userIsBlocked) {
+                  unblockUser(userId);
+                } else {
+                  blockUser(userId);
+                }
+                setShowBlockDialog(false);
+              }}
+            />
+            <ReportUserDialog
+              open={showReportDialog}
+              onOpenChange={setShowReportDialog}
+              userName={profile?.display_name || "this user"}
+              onSubmit={(reason, details) => reportUser(userId, reason, details)}
+            />
+          </>
+        )}
+      </PageLayout>
+    );
+  }
