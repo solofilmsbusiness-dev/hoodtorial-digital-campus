@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { 
   AvatarEditor, 
@@ -39,7 +40,11 @@ import {
   Sparkles,
   Lock,
   Eye,
-  AlertTriangle
+  AlertTriangle,
+  Link2,
+  LayoutGrid,
+  Briefcase,
+  Handshake
 } from "lucide-react";
 import {
   Select,
@@ -131,6 +136,7 @@ export default function StudentProfile() {
     filmmaking_style: "",
     favorite_films: [] as string[],
     looking_for: [] as string[],
+    collaboration_brief: "",
     influences: "",
     current_project: "",
     portfolio_url: "",
@@ -187,6 +193,7 @@ export default function StudentProfile() {
         filmmaking_style: profile.filmmaking_style || "",
         favorite_films: profile.favorite_films || [],
         looking_for: (profile as any).looking_for || [],
+        collaboration_brief: (profile as any).collaboration_brief || "",
         influences: profile.influences || "",
         current_project: profile.current_project || "",
         portfolio_url: profile.portfolio_url || "",
@@ -228,7 +235,6 @@ export default function StudentProfile() {
 
   const handleGalleryAdd = async (files: File[]) => {
     await addMedia(files);
-    // Refetch profile to get updated gallery
     await refetch();
   };
 
@@ -238,7 +244,7 @@ export default function StudentProfile() {
   };
 
   const handleGalleryReorder = async (newOrder: string[]) => {
-    setGallery(newOrder); // Optimistic update
+    setGallery(newOrder);
     await reorderGallery(newOrder);
     await refetch();
   };
@@ -255,9 +261,9 @@ export default function StudentProfile() {
     setFormData((prev) => ({ ...prev, profile_section_order: newOrder }));
   };
  
-   const handleCardSectionOrderChange = (newOrder: string[]) => {
-     setFormData((prev) => ({ ...prev, card_section_order: newOrder }));
-   };
+  const handleCardSectionOrderChange = (newOrder: string[]) => {
+    setFormData((prev) => ({ ...prev, card_section_order: newOrder }));
+  };
 
   const handleNavigateAway = (path: string) => {
     if (hasUnsavedChanges) {
@@ -296,7 +302,6 @@ export default function StudentProfile() {
         description: "Failed to update profile. Please try again.",
       });
     } else {
-      // Reset initial form data to current to clear unsaved state
       setInitialFormData(formData);
       toast({
         title: "Profile updated",
@@ -414,426 +419,479 @@ export default function StudentProfile() {
                 instagramUrl={formData.instagram_url}
                 youtubeUrl={formData.youtube_url}
                 vimeoUrl={formData.vimeo_url}
+                lookingFor={formData.looking_for}
+                collaborationBrief={formData.collaboration_brief}
               />
             </div>
 
             {/* Main Form */}
             <div className="lg:col-span-2 order-1 lg:order-2">
-              <form onSubmit={handleSubmit} className="space-y-8 pb-12">
-                {/* Cover Banner Section */}
-                <Card className="card-urban overflow-visible">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Palette className="h-5 w-5 text-primary" />
-                      Cover & Avatar
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-8">
-                    {/* Cover Banner */}
-                    <CoverBanner
-                      currentBannerUrl={bannerUrl}
-                      currentPosition={bannerPosition}
-                      onBannerChange={setBannerUrl}
-                      onPositionChange={(pos) => {
-                        setBannerPosition(pos);
-                        updateProfile({ cover_banner_position: pos } as any);
-                      }}
-                      onUploadComplete={refetch}
-                    />
+              <form onSubmit={handleSubmit} className="space-y-6 pb-12">
+                <Tabs defaultValue="appearance" className="w-full">
+                  <TabsList className="w-full flex flex-wrap h-auto gap-1 bg-charcoal/50 p-1.5 rounded-lg">
+                    <TabsTrigger value="appearance" className="flex items-center gap-1.5 text-xs sm:text-sm">
+                      <Palette className="h-4 w-4" />
+                      <span className="hidden sm:inline">Appearance</span>
+                      <span className="sm:hidden">Look</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="about" className="flex items-center gap-1.5 text-xs sm:text-sm">
+                      <User className="h-4 w-4" />
+                      <span className="hidden sm:inline">About You</span>
+                      <span className="sm:hidden">About</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="portfolio" className="flex items-center gap-1.5 text-xs sm:text-sm">
+                      <Briefcase className="h-4 w-4" />
+                      Portfolio
+                    </TabsTrigger>
+                    <TabsTrigger value="links" className="flex items-center gap-1.5 text-xs sm:text-sm">
+                      <Link2 className="h-4 w-4" />
+                      Links
+                    </TabsTrigger>
+                    <TabsTrigger value="layout" className="flex items-center gap-1.5 text-xs sm:text-sm">
+                      <LayoutGrid className="h-4 w-4" />
+                      Layout
+                    </TabsTrigger>
+                  </TabsList>
 
-                    {/* Avatar & Theme */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      {/* Avatar Editor */}
-                      <div className="flex flex-col items-center">
-                        <AvatarEditor
-                          currentAvatarUrl={avatarUrl}
-                          displayName={formData.display_name}
-                          accentColor={formData.profile_accent_color}
-                          borderStyle={formData.avatar_border_style}
-                          onAvatarChange={setAvatarUrl}
+                  {/* Tab 1: Appearance */}
+                  <TabsContent value="appearance" className="space-y-6 mt-6">
+                    <Card className="card-urban overflow-visible">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Palette className="h-5 w-5 text-primary" />
+                          Cover & Avatar
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-8">
+                        <CoverBanner
+                          currentBannerUrl={bannerUrl}
+                          currentPosition={bannerPosition}
+                          onBannerChange={setBannerUrl}
+                          onPositionChange={(pos) => {
+                            setBannerPosition(pos);
+                            updateProfile({ cover_banner_position: pos } as any);
+                          }}
                           onUploadComplete={refetch}
                         />
-                      </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          <div className="flex flex-col items-center">
+                            <AvatarEditor
+                              currentAvatarUrl={avatarUrl}
+                              displayName={formData.display_name}
+                              accentColor={formData.profile_accent_color}
+                              borderStyle={formData.avatar_border_style}
+                              onAvatarChange={setAvatarUrl}
+                              onUploadComplete={refetch}
+                            />
+                          </div>
+                          <ThemePicker
+                            accentColor={formData.profile_accent_color}
+                            borderStyle={formData.avatar_border_style}
+                            onAccentColorChange={(color) => 
+                              setFormData((prev) => ({ ...prev, profile_accent_color: color }))
+                            }
+                            onBorderStyleChange={(style) => 
+                              setFormData((prev) => ({ ...prev, avatar_border_style: style }))
+                            }
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
 
-                      {/* Theme Picker */}
-                      <ThemePicker
-                        accentColor={formData.profile_accent_color}
-                        borderStyle={formData.avatar_border_style}
-                        onAccentColorChange={(color) => 
-                          setFormData((prev) => ({ ...prev, profile_accent_color: color }))
-                        }
-                        onBorderStyleChange={(style) => 
-                          setFormData((prev) => ({ ...prev, avatar_border_style: style }))
-                        }
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Basic Info */}
-                <Card className="card-urban">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <User className="h-5 w-5 text-primary" />
-                      Basic Information
-                      <span className="ml-auto text-xs font-normal text-muted-foreground flex items-center gap-1">
-                        <Eye className="h-3 w-3" /> Public
-                      </span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <Label htmlFor="display_name" className="text-sm font-bold uppercase tracking-wide">
-                          Display Name
-                        </Label>
-                        <Input
-                          id="display_name"
-                          name="display_name"
-                          value={formData.display_name}
-                          onChange={handleChange}
-                          placeholder="Your name"
-                          className="bg-background border-2 border-border focus:border-primary"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="location" className="text-sm font-bold uppercase tracking-wide">
-                          <MapPin className="inline h-4 w-4 mr-1" />
-                          Location
-                          <span className="ml-2 text-xs font-normal text-muted-foreground">
-                            <Lock className="inline h-3 w-3" /> Private
+                  {/* Tab 2: About You */}
+                  <TabsContent value="about" className="space-y-6 mt-6">
+                    <Card className="card-urban">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <User className="h-5 w-5 text-primary" />
+                          Basic Information
+                          <span className="ml-auto text-xs font-normal text-muted-foreground flex items-center gap-1">
+                            <Eye className="h-3 w-3" /> Public
                           </span>
-                        </Label>
-                        <Input
-                          id="location"
-                          name="location"
-                          value={formData.location}
-                          onChange={handleChange}
-                          placeholder="City, Country"
-                          className="bg-background border-2 border-border focus:border-primary"
-                        />
-                      </div>
-                    </div>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-2">
+                            <Label htmlFor="display_name" className="text-sm font-bold uppercase tracking-wide">
+                              Display Name
+                            </Label>
+                            <Input
+                              id="display_name"
+                              name="display_name"
+                              value={formData.display_name}
+                              onChange={handleChange}
+                              placeholder="Your name"
+                              className="bg-background border-2 border-border focus:border-primary"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="location" className="text-sm font-bold uppercase tracking-wide">
+                              <MapPin className="inline h-4 w-4 mr-1" />
+                              Location
+                              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                                <Lock className="inline h-3 w-3" /> Private
+                              </span>
+                            </Label>
+                            <Input
+                              id="location"
+                              name="location"
+                              value={formData.location}
+                              onChange={handleChange}
+                              placeholder="City, Country"
+                              className="bg-background border-2 border-border focus:border-primary"
+                            />
+                          </div>
+                        </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="bio" className="text-sm font-bold uppercase tracking-wide">
-                        Bio
-                      </Label>
-                      <Textarea
-                        id="bio"
-                        name="bio"
-                        value={formData.bio}
-                        onChange={handleChange}
-                        placeholder="Tell us about yourself and your filmmaking journey..."
-                        rows={4}
-                        className="bg-background border-2 border-border focus:border-primary resize-none"
-                      />
-                    </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="bio" className="text-sm font-bold uppercase tracking-wide">
+                            Bio
+                          </Label>
+                          <Textarea
+                            id="bio"
+                            name="bio"
+                            value={formData.bio}
+                            onChange={handleChange}
+                            placeholder="Tell us about yourself and your filmmaking journey..."
+                            rows={4}
+                            className="bg-background border-2 border-border focus:border-primary resize-none"
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="camera_gear" className="text-sm font-bold uppercase tracking-wide">
-                        <Camera className="inline h-4 w-4 mr-1" />
-                        Tools & Equipment
-                      </Label>
-                      <Input
-                        id="camera_gear"
-                        name="camera_gear"
-                        value={formData.camera_gear}
-                        onChange={handleChange}
-                        placeholder={TOOLS_PLACEHOLDERS[formData.creative_role] || "Your primary tools and software..."}
-                        className="bg-background border-2 border-border focus:border-primary"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Creative Identity */}
-                <Card className="card-urban">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Clapperboard className="h-5 w-5 text-primary" />
-                      Creative Identity
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <Label className="text-sm font-bold uppercase tracking-wide">
-                          Creative Role
-                        </Label>
-                        <Select
-                          value={formData.creative_role}
-                          onValueChange={(value) => 
-                            setFormData((prev) => ({ ...prev, creative_role: value }))
-                          }
-                        >
-                          <SelectTrigger className="bg-background border-2 border-border focus:border-primary">
-                            <SelectValue placeholder="What do you do?" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {CREATIVE_ROLES.map((role) => (
-                              <SelectItem key={role} value={role}>
-                                {role}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label className="text-sm font-bold uppercase tracking-wide">
-                          Creative Style
-                        </Label>
-                        <Select
-                          value={formData.filmmaking_style}
-                          onValueChange={(value) => 
-                            setFormData((prev) => ({ ...prev, filmmaking_style: value }))
-                          }
-                        >
-                          <SelectTrigger className="bg-background border-2 border-border focus:border-primary">
-                            <SelectValue placeholder="Select your style" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {CREATIVE_STYLES.map((style) => (
-                              <SelectItem key={style} value={style}>
-                                {style}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <Label htmlFor="current_project" className="text-sm font-bold uppercase tracking-wide">
-                          Current Project
-                        </Label>
-                        <Input
-                          id="current_project"
-                          name="current_project"
-                          value={formData.current_project}
-                          onChange={handleChange}
-                          placeholder="What are you working on?"
-                          className="bg-background border-2 border-border focus:border-primary"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Looking For */}
-                    <div className="space-y-3">
-                      <Label className="text-sm font-bold uppercase tracking-wide">
-                        🤝 Looking For Collaborators
-                      </Label>
-                      <p className="text-xs text-muted-foreground">Select the roles you need for your projects</p>
-                      <div className="flex flex-wrap gap-2">
-                        {CREATIVE_ROLES.filter(r => r !== "Other").map((role) => {
-                          const isSelected = formData.looking_for.includes(role);
-                          return (
-                            <button
-                              key={role}
-                              type="button"
-                              onClick={() => {
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  looking_for: isSelected
-                                    ? prev.looking_for.filter((r) => r !== role)
-                                    : [...prev.looking_for, role],
-                                }));
-                              }}
-                              className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-all ${
-                                isSelected
-                                  ? "border-primary bg-primary/20 text-primary"
-                                  : "border-border bg-background text-muted-foreground hover:border-primary/50"
-                              }`}
+                    <Card className="card-urban">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Clapperboard className="h-5 w-5 text-primary" />
+                          Creative Identity
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-2">
+                            <Label className="text-sm font-bold uppercase tracking-wide">
+                              Creative Role
+                            </Label>
+                            <Select
+                              value={formData.creative_role}
+                              onValueChange={(value) => 
+                                setFormData((prev) => ({ ...prev, creative_role: value }))
+                              }
                             >
-                              {isSelected ? "✓ " : "+ "}{role}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
+                              <SelectTrigger className="bg-background border-2 border-border focus:border-primary">
+                                <SelectValue placeholder="What do you do?" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {CREATIVE_ROLES.map((role) => (
+                                  <SelectItem key={role} value={role}>
+                                    {role}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-sm font-bold uppercase tracking-wide">
+                              Creative Style
+                            </Label>
+                            <Select
+                              value={formData.filmmaking_style}
+                              onValueChange={(value) => 
+                                setFormData((prev) => ({ ...prev, filmmaking_style: value }))
+                              }
+                            >
+                              <SelectTrigger className="bg-background border-2 border-border focus:border-primary">
+                                <SelectValue placeholder="Select your style" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {CREATIVE_STYLES.map((style) => (
+                                  <SelectItem key={style} value={style}>
+                                    {style}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
 
-                    <div className="space-y-2">
-                      <Label className="text-sm font-bold uppercase tracking-wide">
-                        <Film className="inline h-4 w-4 mr-1" />
-                        Favorite Films
-                      </Label>
-                      <FavoriteFilmsInput
-                        films={formData.favorite_films}
-                        onChange={(films) => 
-                          setFormData((prev) => ({ ...prev, favorite_films: films }))
-                        }
-                      />
-                    </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="camera_gear" className="text-sm font-bold uppercase tracking-wide">
+                            <Camera className="inline h-4 w-4 mr-1" />
+                            Tools & Equipment
+                          </Label>
+                          <Input
+                            id="camera_gear"
+                            name="camera_gear"
+                            value={formData.camera_gear}
+                            onChange={handleChange}
+                            placeholder={TOOLS_PLACEHOLDERS[formData.creative_role] || "Your primary tools and software..."}
+                            className="bg-background border-2 border-border focus:border-primary"
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="influences" className="text-sm font-bold uppercase tracking-wide">
-                        Influences & Inspirations
-                      </Label>
-                      <Textarea
-                        id="influences"
-                        name="influences"
-                        value={formData.influences}
-                        onChange={handleChange}
-                        placeholder="Directors, cinematographers, or artists that inspire your work..."
-                        rows={3}
-                        className="bg-background border-2 border-border focus:border-primary resize-none"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
+                  {/* Tab 3: Portfolio */}
+                  <TabsContent value="portfolio" className="space-y-6 mt-6">
+                    <FeaturedProjectEditor
+                      title={formData.featured_project_title}
+                      url={formData.featured_project_url}
+                      thumbnail={formData.featured_project_thumbnail}
+                      onChange={handleFeaturedProjectChange}
+                    />
 
-                {/* Portfolio & Social Links */}
-                {/* Featured Project */}
-                <FeaturedProjectEditor
-                  title={formData.featured_project_title}
-                  url={formData.featured_project_url}
-                  thumbnail={formData.featured_project_thumbnail}
-                  onChange={handleFeaturedProjectChange}
-                />
+                    <GalleryEditor
+                      gallery={gallery}
+                      onReorder={handleGalleryReorder}
+                      onAdd={handleGalleryAdd}
+                      onRemove={handleGalleryRemove}
+                      isUploading={galleryUploading}
+                    />
 
-                {/* Portfolio Gallery */}
-                <GalleryEditor
-                  gallery={gallery}
-                  onReorder={handleGalleryReorder}
-                  onAdd={handleGalleryAdd}
-                  onRemove={handleGalleryRemove}
-                  isUploading={galleryUploading}
-                />
+                    <Card className="card-urban">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Film className="h-5 w-5 text-primary" />
+                          Films & Influences
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-bold uppercase tracking-wide">
+                            Favorite Films
+                          </Label>
+                          <FavoriteFilmsInput
+                            films={formData.favorite_films}
+                            onChange={(films) => 
+                              setFormData((prev) => ({ ...prev, favorite_films: films }))
+                            }
+                          />
+                        </div>
 
-                {/* Section Layout */}
-                <CardSectionLayoutEditor
-                  order={formData.card_section_order}
-                  onChange={handleCardSectionOrderChange}
-                />
+                        <div className="space-y-2">
+                          <Label htmlFor="influences" className="text-sm font-bold uppercase tracking-wide">
+                            Influences & Inspirations
+                          </Label>
+                          <Textarea
+                            id="influences"
+                            name="influences"
+                            value={formData.influences}
+                            onChange={handleChange}
+                            placeholder="Directors, cinematographers, or artists that inspire your work..."
+                            rows={3}
+                            className="bg-background border-2 border-border focus:border-primary resize-none"
+                          />
+                        </div>
 
-                <SectionLayoutEditor
-                  order={formData.profile_section_order}
-                  onChange={handleSectionOrderChange}
-                />
+                        <div className="space-y-2">
+                          <Label htmlFor="current_project" className="text-sm font-bold uppercase tracking-wide">
+                            <Clapperboard className="inline h-4 w-4 mr-1" />
+                            Current Project
+                          </Label>
+                          <Input
+                            id="current_project"
+                            name="current_project"
+                            value={formData.current_project}
+                            onChange={handleChange}
+                            placeholder="What are you working on?"
+                            className="bg-background border-2 border-border focus:border-primary"
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
 
-                {/* Portfolio & Social Links */}
-                <Card className="card-urban">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Globe className="h-5 w-5 text-primary" />
-                      Portfolio & Social Links
-                      <span className="ml-auto text-xs font-normal text-muted-foreground flex items-center gap-1">
-                        <Eye className="h-3 w-3" /> Public
-                      </span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    {/* Portfolio Links */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="space-y-2">
-                        <Label htmlFor="portfolio_url" className="text-sm font-bold uppercase tracking-wide">
-                          Portfolio Website
-                        </Label>
-                        <Input
-                          id="portfolio_url"
-                          name="portfolio_url"
-                          value={formData.portfolio_url}
-                          onChange={handleChange}
-                          placeholder="https://yoursite.com"
-                          className="bg-background border-2 border-border focus:border-primary"
-                        />
-                      </div>
+                    {/* Looking For & Collaboration */}
+                    <Card className="card-urban">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Handshake className="h-5 w-5 text-primary" />
+                          Collaboration
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        <div className="space-y-3">
+                          <Label className="text-sm font-bold uppercase tracking-wide">
+                            🤝 Looking For Collaborators
+                          </Label>
+                          <p className="text-xs text-muted-foreground">Select the roles you need for your projects</p>
+                          <div className="flex flex-wrap gap-2">
+                            {CREATIVE_ROLES.filter(r => r !== "Other").map((role) => {
+                              const isSelected = formData.looking_for.includes(role);
+                              return (
+                                <button
+                                  key={role}
+                                  type="button"
+                                  onClick={() => {
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      looking_for: isSelected
+                                        ? prev.looking_for.filter((r) => r !== role)
+                                        : [...prev.looking_for, role],
+                                    }));
+                                  }}
+                                  className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-all ${
+                                    isSelected
+                                      ? "border-primary bg-primary/20 text-primary"
+                                      : "border-border bg-background text-muted-foreground hover:border-primary/50"
+                                  }`}
+                                >
+                                  {isSelected ? "✓ " : "+ "}{role}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="imdb_url" className="text-sm font-bold uppercase tracking-wide">
-                          IMDb
-                        </Label>
-                        <Input
-                          id="imdb_url"
-                          name="imdb_url"
-                          value={formData.imdb_url}
-                          onChange={handleChange}
-                          placeholder="https://imdb.com/name/..."
-                          className="bg-background border-2 border-border focus:border-primary"
-                        />
-                      </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="collaboration_brief" className="text-sm font-bold uppercase tracking-wide">
+                            Project Brief
+                          </Label>
+                          <p className="text-xs text-muted-foreground">Describe what you're working on and what kind of help you need</p>
+                          <Textarea
+                            id="collaboration_brief"
+                            name="collaboration_brief"
+                            value={formData.collaboration_brief}
+                            onChange={handleChange}
+                            placeholder="I'm working on a short film about... and I need help with..."
+                            rows={3}
+                            className="bg-background border-2 border-border focus:border-primary resize-none"
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="vimeo_url" className="text-sm font-bold uppercase tracking-wide">
-                          Vimeo
-                        </Label>
-                        <Input
-                          id="vimeo_url"
-                          name="vimeo_url"
-                          value={formData.vimeo_url}
-                          onChange={handleChange}
-                          placeholder="https://vimeo.com/yourname"
-                          className="bg-background border-2 border-border focus:border-primary"
-                        />
-                      </div>
-                    </div>
+                  {/* Tab 4: Links */}
+                  <TabsContent value="links" className="space-y-6 mt-6">
+                    <Card className="card-urban">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Globe className="h-5 w-5 text-primary" />
+                          Portfolio & Social Links
+                          <span className="ml-auto text-xs font-normal text-muted-foreground flex items-center gap-1">
+                            <Eye className="h-3 w-3" /> Public
+                          </span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                          <div className="space-y-2">
+                            <Label htmlFor="portfolio_url" className="text-sm font-bold uppercase tracking-wide">
+                              Portfolio Website
+                            </Label>
+                            <Input
+                              id="portfolio_url"
+                              name="portfolio_url"
+                              value={formData.portfolio_url}
+                              onChange={handleChange}
+                              placeholder="https://yoursite.com"
+                              className="bg-background border-2 border-border focus:border-primary"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="imdb_url" className="text-sm font-bold uppercase tracking-wide">
+                              IMDb
+                            </Label>
+                            <Input
+                              id="imdb_url"
+                              name="imdb_url"
+                              value={formData.imdb_url}
+                              onChange={handleChange}
+                              placeholder="https://imdb.com/name/..."
+                              className="bg-background border-2 border-border focus:border-primary"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="vimeo_url" className="text-sm font-bold uppercase tracking-wide">
+                              Vimeo
+                            </Label>
+                            <Input
+                              id="vimeo_url"
+                              name="vimeo_url"
+                              value={formData.vimeo_url}
+                              onChange={handleChange}
+                              placeholder="https://vimeo.com/yourname"
+                              className="bg-background border-2 border-border focus:border-primary"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-2">
+                            <Label htmlFor="instagram_url" className="text-sm font-bold uppercase tracking-wide">
+                              <Instagram className="inline h-4 w-4 mr-1" />
+                              Instagram
+                            </Label>
+                            <Input
+                              id="instagram_url"
+                              name="instagram_url"
+                              value={formData.instagram_url}
+                              onChange={handleChange}
+                              placeholder="https://instagram.com/yourhandle"
+                              className="bg-background border-2 border-border focus:border-primary"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="youtube_url" className="text-sm font-bold uppercase tracking-wide">
+                              <Youtube className="inline h-4 w-4 mr-1" />
+                              YouTube
+                            </Label>
+                            <Input
+                              id="youtube_url"
+                              name="youtube_url"
+                              value={formData.youtube_url}
+                              onChange={handleChange}
+                              placeholder="https://youtube.com/@yourchannel"
+                              className="bg-background border-2 border-border focus:border-primary"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="twitter_url" className="text-sm font-bold uppercase tracking-wide">
+                              <Twitter className="inline h-4 w-4 mr-1" />
+                              Twitter / X
+                            </Label>
+                            <Input
+                              id="twitter_url"
+                              name="twitter_url"
+                              value={formData.twitter_url}
+                              onChange={handleChange}
+                              placeholder="https://twitter.com/yourhandle"
+                              className="bg-background border-2 border-border focus:border-primary"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="tiktok_url" className="text-sm font-bold uppercase tracking-wide">
+                              TikTok
+                            </Label>
+                            <Input
+                              id="tiktok_url"
+                              name="tiktok_url"
+                              value={formData.tiktok_url}
+                              onChange={handleChange}
+                              placeholder="https://tiktok.com/@yourhandle"
+                              className="bg-background border-2 border-border focus:border-primary"
+                            />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
 
-                    {/* Social Links */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <Label htmlFor="instagram_url" className="text-sm font-bold uppercase tracking-wide">
-                          <Instagram className="inline h-4 w-4 mr-1" />
-                          Instagram
-                        </Label>
-                        <Input
-                          id="instagram_url"
-                          name="instagram_url"
-                          value={formData.instagram_url}
-                          onChange={handleChange}
-                          placeholder="https://instagram.com/yourhandle"
-                          className="bg-background border-2 border-border focus:border-primary"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="youtube_url" className="text-sm font-bold uppercase tracking-wide">
-                          <Youtube className="inline h-4 w-4 mr-1" />
-                          YouTube
-                        </Label>
-                        <Input
-                          id="youtube_url"
-                          name="youtube_url"
-                          value={formData.youtube_url}
-                          onChange={handleChange}
-                          placeholder="https://youtube.com/@yourchannel"
-                          className="bg-background border-2 border-border focus:border-primary"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="twitter_url" className="text-sm font-bold uppercase tracking-wide">
-                          <Twitter className="inline h-4 w-4 mr-1" />
-                          Twitter / X
-                        </Label>
-                        <Input
-                          id="twitter_url"
-                          name="twitter_url"
-                          value={formData.twitter_url}
-                          onChange={handleChange}
-                          placeholder="https://twitter.com/yourhandle"
-                          className="bg-background border-2 border-border focus:border-primary"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="tiktok_url" className="text-sm font-bold uppercase tracking-wide">
-                          TikTok
-                        </Label>
-                        <Input
-                          id="tiktok_url"
-                          name="tiktok_url"
-                          value={formData.tiktok_url}
-                          onChange={handleChange}
-                          placeholder="https://tiktok.com/@yourhandle"
-                          className="bg-background border-2 border-border focus:border-primary"
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                  {/* Tab 5: Layout */}
+                  <TabsContent value="layout" className="space-y-6 mt-6">
+                    <CardSectionLayoutEditor
+                      order={formData.card_section_order}
+                      onChange={handleCardSectionOrderChange}
+                    />
+                    <SectionLayoutEditor
+                      order={formData.profile_section_order}
+                      onChange={handleSectionOrderChange}
+                    />
+                  </TabsContent>
+                </Tabs>
 
                 {/* Submit Button */}
                 <div className="flex justify-end gap-4 sticky bottom-4 bg-background/95 backdrop-blur-sm p-4 -mx-4 border-t border-border lg:static lg:bg-transparent lg:p-0 lg:mx-0 lg:border-0">
