@@ -122,6 +122,7 @@ export function MessageComposer({ conversationId, onTyping }: MessageComposerPro
       avatar_url: profile.avatar_url,
       bio: profile.bio,
       filmmaking_style: profile.filmmaking_style,
+      creative_role: (profile as any).creative_role || null,
       camera_gear: profile.camera_gear,
       portfolio_url: profile.portfolio_url,
       instagram_url: profile.instagram_url,

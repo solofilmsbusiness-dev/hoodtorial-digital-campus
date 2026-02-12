@@ -837,6 +837,7 @@ export type Database = {
           certificate_department: string | null
           cover_banner_position: number | null
           cover_banner_url: string | null
+          creative_role: string | null
           current_project: string | null
           degree_path: string | null
           display_name: string | null
@@ -886,6 +887,7 @@ export type Database = {
           certificate_department?: string | null
           cover_banner_position?: number | null
           cover_banner_url?: string | null
+          creative_role?: string | null
           current_project?: string | null
           degree_path?: string | null
           display_name?: string | null
@@ -935,6 +937,7 @@ export type Database = {
           certificate_department?: string | null
           cover_banner_position?: number | null
           cover_banner_url?: string | null
+          creative_role?: string | null
           current_project?: string | null
           degree_path?: string | null
           display_name?: string | null
@@ -1363,6 +1366,7 @@ export type Database = {
           card_section_order: string[] | null
           cover_banner_position: number | null
           cover_banner_url: string | null
+          creative_role: string | null
           current_project: string | null
           display_name: string | null
           favorite_films: string[] | null
@@ -1392,6 +1396,7 @@ export type Database = {
           card_section_order?: string[] | null
           cover_banner_position?: number | null
           cover_banner_url?: string | null
+          creative_role?: string | null
           current_project?: string | null
           display_name?: string | null
           favorite_films?: string[] | null
@@ -1421,6 +1426,7 @@ export type Database = {
           card_section_order?: string[] | null
           cover_banner_position?: number | null
           cover_banner_url?: string | null
+          creative_role?: string | null
           current_project?: string | null
           display_name?: string | null
           favorite_films?: string[] | null

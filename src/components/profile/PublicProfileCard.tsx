@@ -178,11 +178,11 @@ import { FeaturedProjectShowcase } from "./FeaturedProjectShowcase";
  
    // Collect info cards data
    const infoCards = [
-     profile.camera_gear && {
-       icon: <Camera className="h-5 w-5" />,
-       label: "Camera Gear",
-       content: profile.camera_gear
-     },
+    profile.camera_gear && {
+      icon: <Camera className="h-5 w-5" />,
+      label: "Tools & Equipment",
+      content: profile.camera_gear
+    },
      profile.current_project && {
        icon: <Clapperboard className="h-5 w-5" />,
        label: "Current Project",
@@ -280,17 +280,20 @@ import { FeaturedProjectShowcase } from "./FeaturedProjectShowcase";
                {profile.display_name || "Anonymous"}
              </motion.h1>
  
-             {/* Filmmaking style */}
-             {profile.filmmaking_style && (
-               <motion.p
-                 initial={{ opacity: 0 }}
-                 animate={{ opacity: 1 }}
-                 transition={{ duration: 0.5, delay: 0.4 }}
-                 className="text-muted-foreground mt-2 flex items-center justify-center md:justify-start gap-2"
-               >
-                 <span className="text-primary">🎬</span> {profile.filmmaking_style}
-               </motion.p>
-             )}
+            {/* Creative Role & Style */}
+            {(profile.creative_role || profile.filmmaking_style) && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+                className="text-muted-foreground mt-2 flex items-center justify-center md:justify-start gap-2"
+              >
+                <span className="text-primary">🎬</span> 
+                {profile.creative_role || ""}
+                {profile.creative_role && profile.filmmaking_style && " · "}
+                {profile.filmmaking_style || ""}
+              </motion.p>
+            )}
  
              {/* Action buttons */}
              <motion.div

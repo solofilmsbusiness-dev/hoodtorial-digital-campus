@@ -19,6 +19,7 @@ interface ProfilePreviewCardProps {
   bio: string;
   location: string;
   cameraGear: string;
+  creativeRole?: string;
   filmmakingStyle: string;
   currentProject: string;
   favoriteFilms: string[];
@@ -37,6 +38,7 @@ export function ProfilePreviewCard({
   bio,
   location,
   cameraGear,
+  creativeRole,
   filmmakingStyle,
   currentProject,
   favoriteFilms,
@@ -104,9 +106,15 @@ export function ProfilePreviewCard({
           </h4>
           
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mb-3">
-            {filmmakingStyle && (
+            {creativeRole && (
               <span className="flex items-center gap-1">
                 <Clapperboard className="h-3 w-3" />
+                {creativeRole}
+              </span>
+            )}
+            {filmmakingStyle && (
+              <span className="flex items-center gap-1">
+                {!creativeRole && <Clapperboard className="h-3 w-3" />}
                 {filmmakingStyle}
               </span>
             )}
@@ -125,7 +133,7 @@ export function ProfilePreviewCard({
             </p>
           )}
 
-          {/* Gear & Project */}
+          {/* Tools & Project */}
           <div className="space-y-1 text-xs mb-3">
             {cameraGear && (
               <p className="flex items-center gap-2 text-muted-foreground">
