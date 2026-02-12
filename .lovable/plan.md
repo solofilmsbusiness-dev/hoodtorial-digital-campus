@@ -1,73 +1,39 @@
 
 
-## Improve AI Learning Insights with Granular Student Data
+## Fix: User Deletion Error & Static Course Management
 
-### Problem
-The AI Insights edge function currently receives only pre-aggregated summary metrics (e.g., "avgWatchPercentage: 45%", "quizPassRate: 60%"). It never sees the actual raw data -- individual quiz scores, per-lesson watch times, or per-course breakdowns. This means the AI is essentially commenting on numbers it could have computed itself, rather than analyzing real learning patterns.
+### Issue 1: Admin Cannot Delete Users
 
-### Solution
-Have the edge function fetch granular student data directly from the database and build a rich, detailed prompt so the AI can identify specific problem areas, trends, and actionable insights.
+**Root Cause:** When a user's auth record has already been removed (e.g., previously deleted or orphaned), the `delete-user` edge function calls `auth.admin.deleteUser()` which throws a 404 "User not found" error. The profile row remains in the database, leaving a ghost entry the admin can never remove.
 
-### What Changes
+**Fix:** Update the `delete-user` edge function to:
+- Catch the "User not found" error from `auth.admin.deleteUser()` and treat it as a success (the auth record is already gone)
+- After deleting (or confirming absence of) the auth record, explicitly delete the profile row and any other orphaned data using the service-role client
+- This ensures admins can always clean up user entries regardless of auth state
 
-**Edge Function: `supabase/functions/student-insights/index.ts`**
+**File:** `supabase/functions/delete-user/index.ts`
 
-Instead of relying solely on the pre-computed metrics object from the client, the function will:
+---
 
-1. **Fetch per-course quiz results** from `quiz_results` table -- individual scores, dates, pass/fail for each quiz attempt, grouped by course
-2. **Fetch per-lesson video progress** from `user_progress` table -- watch percentage and watched seconds for each lesson, grouped by course
-3. **Fetch enrollment data** from `enrollments` table -- which courses, enrollment dates, status
-4. **Fetch course titles** from `courses` table -- for readable output
+### Issue 2: "Lighting for Mobile Film" Cannot Be Deleted or Hidden
 
-The prompt will then include structured data like:
+**Root Cause:** HU-102 exists only in static data (`src/data/courses.ts`) but has no row in the `courses` database table. The Course Manager flags it as `isStaticOnly: true`, which disables the Published toggle, Coming Soon toggle, and Delete button. The admin has no way to manage it.
 
-```text
-COURSE-BY-COURSE BREAKDOWN:
+**Fix:** Update `CourseManager.tsx` to auto-initialize a static-only course into the database when an admin tries to toggle its visibility or delete it, rather than blocking the action entirely. Specifically:
 
-Course: "Introduction to Cinematography" (CIN101)
-  Enrolled: Jan 15, 2026
-  Video Progress:
-    - Lesson 1: 100% watched (12 min)
-    - Lesson 2: 85% watched (8 min)
-    - Lesson 3: 22% watched (3 min)  <-- dropped off here
-    - Lesson 4: 0% watched
-  Quiz Results:
-    - Quiz 1: 80% (passed) - Jan 18
-    - Quiz 2: 45% (failed) - Jan 22
-    - Quiz 2 (retake): 55% (failed) - Jan 25  <-- struggling
+- When an admin clicks "Published" or "Coming Soon" on a static-only course, first insert it into the `courses` table (from static data), then apply the toggle
+- When an admin clicks "Delete" on a static-only course, show a message explaining it's a built-in course that can be hidden instead, or allow them to initialize and then delete it
+- Remove the `disabled={course.isStaticOnly}` restrictions on the toggle buttons and delete button
+- Add an `autoInitializeCourse` helper mutation that creates the DB row from static data on demand
 
-Course: "Film Editing Fundamentals" (EDIT201)
-  Enrolled: Feb 1, 2026
-  Video Progress: No lessons started
-  Quiz Results: None
-```
+**File:** `src/pages/admin/CourseManager.tsx`
 
-This gives the AI real patterns to analyze: where students drop off in videos, which specific quizzes they're failing, whether they improve on retakes, and which courses they've abandoned.
+---
 
-**Client: `src/components/admin/AIInsightsPanel.tsx`**
+### Technical Summary
 
-Simplify the payload sent to the edge function -- just send `userId` and `studentName`. The edge function will fetch everything it needs from the database directly, ensuring it always has the most current and complete data.
-
-### Technical Details
-
-**File: `supabase/functions/student-insights/index.ts`**
-- Create a Supabase service-role client (using `SUPABASE_SERVICE_ROLE_KEY`) so the function can read student data regardless of RLS
-- Fetch from `user_progress`, `quiz_results`, `enrollments`, and `courses` tables filtered by the student's user ID
-- Build a detailed per-course breakdown in the prompt text
-- Include a timeline of activity (most recent quiz dates, last video watched)
-- Include per-quiz score history to show retake patterns
-- Keep the existing fallback logic but enhance it with per-course awareness
-- Keep the same response JSON format so the frontend doesn't need major changes
-
-**File: `src/components/admin/AIInsightsPanel.tsx`**
-- Remove the `metrics` prop dependency for the edge function call
-- Send only `{ userId, studentName }` in the request body
-- Keep the `metrics` prop for local display in `StudentAnalyticsCard` (unchanged)
-- Keep all existing UI rendering logic as-is
-
-**No database changes required** -- all the data already exists in the tables.
-
-### Files Affected
-- `supabase/functions/student-insights/index.ts` -- major rewrite of data fetching and prompt building
-- `src/components/admin/AIInsightsPanel.tsx` -- simplify the request payload
+| File | Change |
+|------|--------|
+| `supabase/functions/delete-user/index.ts` | Handle 404 "User not found" gracefully; also delete orphaned profile rows directly |
+| `src/pages/admin/CourseManager.tsx` | Auto-initialize static-only courses into DB when admin interacts with them; remove `isStaticOnly` disabled states |
 
