@@ -12,19 +12,16 @@ interface DeleteUserRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Get auth token from request
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       throw new Error("No authorization header");
     }
 
-    // Create Supabase admin client
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -32,7 +29,6 @@ const handler = async (req: Request): Promise<Response> => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Validate the calling user using getClaims
     const token = authHeader.replace("Bearer ", "");
     console.log("Validating token for delete-user");
 
@@ -45,7 +41,6 @@ const handler = async (req: Request): Promise<Response> => {
     const callerUserId = claimsData.claims.sub as string;
     console.log("Caller validated via claims, userId:", callerUserId);
 
-    // Check if caller has admin role
     const { data: roleData, error: roleError } = await supabaseAdmin
       .from("user_roles")
       .select("role")
@@ -58,29 +53,72 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Admin access required");
     }
 
-    // Get request body
     const { userId: targetUserId }: DeleteUserRequest = await req.json();
     if (!targetUserId) {
       throw new Error("userId is required");
     }
 
-    // Prevent self-deletion
     if (targetUserId === callerUserId) {
       throw new Error("You cannot delete your own account");
     }
 
     console.log(`Admin ${callerUserId} is deleting user ${targetUserId}`);
 
-    // Delete the user from auth.users
-    // This will cascade delete all related data due to ON DELETE CASCADE foreign keys
+    // Try to delete auth record - gracefully handle "User not found"
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(targetUserId);
 
     if (deleteError) {
-      console.error("Delete user error:", deleteError);
-      throw new Error(`Failed to delete user: ${deleteError.message}`);
+      const msg = deleteError.message?.toLowerCase() || "";
+      if (msg.includes("not found") || msg.includes("404")) {
+        console.log(`Auth record for ${targetUserId} already gone, proceeding to clean up data`);
+      } else {
+        console.error("Delete user error:", deleteError);
+        throw new Error(`Failed to delete user: ${deleteError.message}`);
+      }
     }
 
-    console.log(`User ${targetUserId} successfully deleted`);
+    // Explicitly clean up orphaned data that may not cascade without an auth record
+    const cleanupTables = [
+      "user_progress",
+      "quiz_results",
+      "enrollments",
+      "community_posts",
+      "community_comments",
+      "post_likes",
+      "comment_likes",
+      "challenge_submissions",
+      "notifications",
+      "friend_requests",
+      "friendships",
+      "support_tickets",
+      "user_roles",
+      "profiles",
+    ];
+
+    for (const table of cleanupTables) {
+      const col = table === "friendships" ? "user_id" : "user_id";
+      const { error } = await supabaseAdmin.from(table).delete().eq(col, targetUserId);
+      if (error) {
+        console.warn(`Cleanup ${table} warning:`, error.message);
+      }
+    }
+
+    // Also clean friendships where user is the friend
+    await supabaseAdmin.from("friendships").delete().eq("friend_id", targetUserId);
+
+    // Clean conversations where user is a participant
+    const { data: convos } = await supabaseAdmin
+      .from("conversations")
+      .select("id")
+      .or(`participant_1.eq.${targetUserId},participant_2.eq.${targetUserId}`);
+
+    if (convos && convos.length > 0) {
+      const convoIds = convos.map(c => c.id);
+      await supabaseAdmin.from("direct_messages").delete().in("conversation_id", convoIds);
+      await supabaseAdmin.from("conversations").delete().in("id", convoIds);
+    }
+
+    console.log(`User ${targetUserId} successfully deleted and cleaned up`);
 
     return new Response(
       JSON.stringify({

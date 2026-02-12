@@ -147,12 +147,41 @@ export default function CourseManager() {
     return { total, published, comingSoon, hidden };
   }, [courses]);
 
+  // Auto-initialize a static-only course into the DB, returning its new DB id
+  const autoInitializeCourse = async (course: Course): Promise<string> => {
+    const staticCourse = staticCourses.find(c => c.code === course.code);
+    if (!staticCourse) throw new Error("Static course data not found");
+
+    const { data, error } = await supabase
+      .from("courses")
+      .insert({
+        code: staticCourse.code,
+        title: staticCourse.title,
+        department_id: staticCourse.departmentId,
+        credits: staticCourse.credits,
+        level: staticCourse.level,
+        description: staticCourse.description || null,
+        is_published: true,
+        is_locked: false,
+        sort_order: 0,
+      })
+      .select("id")
+      .single();
+
+    if (error) throw error;
+    return data.id;
+  };
+
   const togglePublished = useMutation({
-    mutationFn: async ({ id, is_published }: { id: string; is_published: boolean }) => {
+    mutationFn: async ({ id, is_published, isStaticOnly, course }: { id: string; is_published: boolean; isStaticOnly?: boolean; course?: Course }) => {
+      let dbId = id;
+      if (isStaticOnly && course) {
+        dbId = await autoInitializeCourse(course);
+      }
       const { error } = await supabase
         .from("courses")
         .update({ is_published })
-        .eq("id", id);
+        .eq("id", dbId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -164,18 +193,22 @@ export default function CourseManager() {
       console.error("Toggle published error:", error);
       toast({ 
         title: "Failed to update course", 
-        description: "Courses may need to be initialized first.",
+        description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive" 
       });
     },
   });
 
   const toggleLocked = useMutation({
-    mutationFn: async ({ id, is_locked }: { id: string; is_locked: boolean }) => {
+    mutationFn: async ({ id, is_locked, isStaticOnly, course }: { id: string; is_locked: boolean; isStaticOnly?: boolean; course?: Course }) => {
+      let dbId = id;
+      if (isStaticOnly && course) {
+        dbId = await autoInitializeCourse(course);
+      }
       const { error } = await supabase
         .from("courses")
         .update({ is_locked })
-        .eq("id", id);
+        .eq("id", dbId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -187,18 +220,23 @@ export default function CourseManager() {
       console.error("Toggle locked error:", error);
       toast({ 
         title: "Failed to update course", 
-        description: "Courses may need to be initialized first.",
+        description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive" 
       });
     },
   });
 
   const deleteCourse = useMutation({
-    mutationFn: async (courseId: string) => {
+    mutationFn: async ({ courseId, isStaticOnly, course }: { courseId: string; isStaticOnly?: boolean; course?: Course }) => {
+      let dbId = courseId;
+      if (isStaticOnly && course) {
+        // Initialize into DB first so we can properly delete it
+        dbId = await autoInitializeCourse(course);
+      }
       const { error } = await supabase
         .from("courses")
         .delete()
-        .eq("id", courseId);
+        .eq("id", dbId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -408,10 +446,11 @@ export default function CourseManager() {
                               togglePublished.mutate({
                                 id: course.id,
                                 is_published: !course.is_published,
+                                isStaticOnly: course.isStaticOnly,
+                                course,
                               })
                             }
-                            disabled={course.isStaticOnly}
-                            title={course.isStaticOnly ? "Initialize this course first" : course.is_published ? "Click to hide from Academics page" : "Click to show on Academics page"}
+                            title={course.is_published ? "Click to hide from Academics page" : "Click to show on Academics page"}
                             className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${
                               course.is_published
                                 ? "bg-green-600 text-white hover:bg-green-700"
@@ -432,11 +471,11 @@ export default function CourseManager() {
                               toggleLocked.mutate({
                                 id: course.id,
                                 is_locked: !course.is_locked,
+                                isStaticOnly: course.isStaticOnly,
+                                course,
                               })
                             }
-                            disabled={course.isStaticOnly}
-                            title={course.isStaticOnly ? "Initialize this course first" : undefined}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${
+                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
                               course.is_locked
                                 ? "bg-amber-600 text-white hover:bg-amber-700"
                                 : "border border-dashed border-muted-foreground/30 text-muted-foreground/50 hover:border-muted-foreground/50"
@@ -474,9 +513,8 @@ export default function CourseManager() {
                             variant="ghost" 
                             size="icon"
                             onClick={() => setCourseToDelete(course)}
-                            disabled={course.isStaticOnly}
                             className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            title={course.isStaticOnly ? "Initialize this course first" : "Delete course"}
+                            title="Delete course"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -506,7 +544,11 @@ export default function CourseManager() {
               <AlertDialogAction
                 onClick={() => {
                   if (courseToDelete) {
-                    deleteCourse.mutate(courseToDelete.id);
+                    deleteCourse.mutate({
+                      courseId: courseToDelete.id,
+                      isStaticOnly: courseToDelete.isStaticOnly,
+                      course: courseToDelete,
+                    });
                     setCourseToDelete(null);
                   }
                 }}
