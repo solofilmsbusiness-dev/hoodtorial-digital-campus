@@ -1,65 +1,83 @@
 
 
-## Fix Profile Editor Tour
+## Improve Student Hub Layout and UX
 
-### Problem
-The 5-step tour targets elements spread across multiple tabs:
-- Steps 1-2: Inside "Appearance" tab (cover/avatar, theme picker)
-- Step 3: Inside "About You" tab (bio section) -- **hidden when not active**
-- Steps 4-5: Tab triggers (always visible)
+### Current Issues
+1. **Excessive blank space** at the bottom -- the page ends with a sparse 2-column grid that doesn't fill the viewport
+2. **Redundant content** -- Degree Progress ring in the sidebar duplicates the Credits Earned stat card above
+3. **Missing Journey card** -- The `JourneyProgressCard` component exists but isn't used on this page, despite being designed specifically for the Student Center
+4. **Quick Links section is bloated** -- 7-8 links stacked vertically feel like a settings page, not a hub
+5. **Stats cards feel disconnected** -- floating between sections without visual cohesion
+6. **No visual warmth** -- everything is the same card style with no hierarchy
 
-When the tour reaches step 3, the target element doesn't exist in the visible DOM because the "About You" tab isn't active. The overlay fails to find it and shows a floating tooltip with no spotlight.
+### Solution: Reorganized, Tighter Layout
 
-### Solution
-Make the tour **switch tabs automatically** as it progresses. This requires:
-1. The `StudentProfile` page controls the active tab via state instead of uncontrolled `defaultValue`
-2. The walkthrough hook exposes which tab each step belongs to
-3. On step change, the page sets the active tab accordingly
+**1. Integrate the Journey Progress Card** (replaces the redundant Degree Progress ring)
+- Add the existing `JourneyProgressCard` component to the sidebar, replacing the standalone Degree Progress card
+- This gives the sidebar real purpose: journey tracking + recommendations
 
-### Changes
+**2. Compact Quick Links into a horizontal strip**
+- Convert from a tall stacked list to a compact 2-column grid of smaller link chips
+- Move "Take a Tour" and "Need Help?" into a subtle footer row
+- This dramatically reduces vertical space
 
-**Modified: `src/hooks/useProfileWalkthrough.ts`**
-- Add a `tab` property to each tour step indicating which tab it belongs to:
-  - Steps 1-2: `"appearance"`
-  - Step 3: `"about"`
-  - Steps 4-5: no tab switch needed (tab triggers are always visible)
-- Export the `tab` field so the parent can react to step changes
+**3. Merge Stats into the header area**
+- Move the 3 stat cards (Credits, Courses, Quizzes) into compact inline badges within the header section instead of being a separate row
+- This removes an entire section of vertical space
 
-**Modified: `src/pages/StudentProfile.tsx`**
-- Change `Tabs` from `defaultValue="appearance"` to controlled with `value={activeTab}` + `onValueChange`
-- Add a `useEffect` that watches `profileWalkthrough.currentStep` and switches `activeTab` to the step's associated tab when the tour is active
-- This ensures the target element is rendered before the overlay tries to measure it
+**4. Tighten the bottom grid**
+- Quiz Results stays as the main content area (full width on mobile)
+- Sidebar: Journey Progress Card at top, then compact Quick Links, then Recommended Courses
+- Remove the standalone Degree Progress card (covered by Journey card)
 
-### Updated Tour Steps
+**5. Remove bottom padding / add a motivational footer**
+- Replace the blank space with a small motivational banner or "What's Next" prompt at the bottom
 
-| Step | Target | Tab to activate |
-|------|--------|-----------------|
-| 1. Your Look | `profile-cover-avatar` | `appearance` |
-| 2. Pick Your Vibe | `profile-theme-picker` | `appearance` |
-| 3. Tell Your Story | `profile-bio-section` | `about` |
-| 4. Showcase Your Work | `profile-portfolio-tab` | (none -- always visible) |
-| 5. Arrange Your Page | `profile-layout-tab` | (none -- always visible) |
+### New Layout Structure
 
-### Technical Details
-
-In `useProfileWalkthrough.ts`, each step gets a `tab` field:
+```text
++--------------------------------------------------+
+| [Avatar]  Welcome back, Name                     |
+|           Freshman  |  5cr  |  1 course  |  2 quiz|
+|                              [Edit] [View Profile]|
++--------------------------------------------------+
+| ACTIVE COURSES (full width card with grid)        |
+|  [Course 1] [Course 2] [+ Add Course]            |
++--------------------------------------------------+
+| ACHIEVEMENTS (if any, full width)                 |
++--------------------------------------------------+
+| RECENT QUIZ RESULTS (2/3)  | JOURNEY CARD (1/3)  |
+|  result rows...            | path + progress      |
+|                            | next course           |
+|                            +----------------------+
+|                            | QUICK LINKS (compact) |
+|                            | [Community] [Courses] |
+|                            | [Grades]   [Profile]  |
+|                            | [Assessment] [Help]   |
+|                            +----------------------+
+|                            | RECOMMENDED (if any)  |
++--------------------------------------------------+
 ```
-{ id: "cover-avatar", target: "profile-cover-avatar", tab: "appearance", ... }
-{ id: "theme-picker", target: "profile-theme-picker", tab: "appearance", ... }
-{ id: "bio-section", target: "profile-bio-section", tab: "about", ... }
-{ id: "portfolio-tab", target: "profile-portfolio-tab", tab: null, ... }
-{ id: "layout-tab", target: "profile-layout-tab", tab: null, ... }
-```
 
-In `StudentProfile.tsx`:
-- Replace `defaultValue="appearance"` with `value={activeTab}` state
-- Add effect: when tour is active and step has a `tab`, set `activeTab` to that tab
-- Small delay before measuring ensures the tab content renders first
+### Technical Changes
 
-### Files Summary
+**Modified: `src/pages/StudentCenter.tsx`**
+
+1. **Header stats inline**: Move Credits/Courses/Quizzes into small badge-style counters next to the membership badge in the header, removing the separate 3-card stats row (~30 lines removed)
+
+2. **Import and add JourneyProgressCard**: Place it at the top of the sidebar column, replacing the Degree Progress card at the bottom
+
+3. **Compact Quick Links**: Change from `space-y-2` stacked full-width links to a `grid grid-cols-2 gap-2` with smaller padding (`p-3` instead of `p-4`), smaller text. Move Tour and Help to a separate subtle row below
+
+4. **Remove Degree Progress card**: The ring chart at the bottom of the sidebar is fully replaced by the JourneyProgressCard which shows the same data plus more
+
+5. **Reduce outer padding**: Change `py-12` to `py-8` and `mb-12` gaps to `mb-6` for tighter spacing
+
+6. **Add bottom CTA**: A small "Keep going!" motivational line or a link to the Journey page at the very bottom, replacing dead space
+
+### Files
 
 | File | Action |
 |------|--------|
-| `src/hooks/useProfileWalkthrough.ts` | Add `tab` field to each step |
-| `src/pages/StudentProfile.tsx` | Controlled tabs + auto-switch on tour step change |
+| `src/pages/StudentCenter.tsx` | Reorganize layout, inline stats, add JourneyProgressCard, compact quick links, remove degree progress ring |
 
