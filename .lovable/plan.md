@@ -1,62 +1,68 @@
 
 
-## Make Profiles Inclusive for All Creative Roles
+## Enhance "Looking For" & Restructure Profile Editor
 
-### Problem
-The profile is heavily film-camera-centric. The "Camera Gear" field and "Filmmaking Style" dropdown assume everyone is a cinematographer or director. Writers, editors, producers, sound designers, and other creatives don't have a way to represent their craft.
+### Part 1: Make "Looking For" Interactive for Collaboration
 
-### Solution
-Add a **Creative Role** selector and rename/adapt the existing fields to be role-aware:
+Currently, "Looking For" is just a list of badges on the public profile. We'll make it actionable:
 
-1. **New "Creative Role" field** -- a multi-select or primary-role picker so users can identify as Writer, Editor, Cinematographer, Director, Producer, Sound Designer, etc.
-2. **Rename "Camera Gear" to "Tools & Equipment"** -- with a dynamic placeholder based on role (e.g. "Final Cut Pro, DaVinci Resolve" for editors, "Final Draft, Celtx" for writers)
-3. **Rename "Filmmaking Style" to "Creative Style"** -- expand the dropdown options to include writing/editing/production styles alongside the existing film genres
-4. **Update public profile display** -- show the creative role prominently and adapt the info card labels
+**On the Public Profile (`PublicProfileCard.tsx`):**
+- Turn each "Looking For" badge into a clickable element
+- When a visitor's own creative role matches one of the "Looking For" roles, highlight that badge with a glowing accent (e.g., "You match!") 
+- Add a **"Offer to Collaborate"** button that appears when viewing someone else's profile who is looking for your role -- clicking it opens a pre-filled message like "Hey! I saw you're looking for a [role]. I'd love to collaborate!"
+- Show a small "match" indicator next to the Looking For section title when there's a role match
+
+**On the Profile Editor (`StudentProfile.tsx`):**
+- Add a short optional **"Project Brief"** textarea under the Looking For chips (e.g., "Describe what you're working on and what kind of help you need") -- stored in a new `collaboration_brief` column
+- This brief shows on the public profile alongside the Looking For badges, giving context to potential collaborators
+
+### Part 2: Restructure the Profile Edit Interface
+
+The current form is a long single-column scroll with 8+ cards. We'll reorganize it using **tabs** to group related fields, making it cleaner and faster to navigate:
+
+**Tab Structure:**
+1. **Appearance** -- Cover banner, avatar, theme picker (accent color, border style)
+2. **About You** -- Display name, location, bio, creative role, creative style, tools & equipment
+3. **Portfolio** -- Featured project, portfolio gallery, favorite films, influences, current project, collaboration brief, looking for collaborators
+4. **Links** -- All social/portfolio URLs (portfolio website, IMDb, Vimeo, Instagram, YouTube, Twitter/X, TikTok)
+5. **Layout** -- Profile card section order, profile page section order
+
+The sidebar (profile preview + completeness) stays as-is. The save button and unsaved changes indicator remain sticky at the bottom.
 
 ### Database Changes
-Add a new column `creative_role` (text, nullable) to the `profiles` table. This will also automatically appear in `profiles_public` view.
 
-No changes needed to `camera_gear` or `filmmaking_style` columns -- they stay as-is in the DB; only the UI labels and placeholder text change.
+Add one new column:
+
+```sql
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS collaboration_brief text;
+```
+
+Update `profiles_public` view to include `collaboration_brief`.
 
 ### Technical Details
 
-**Migration:**
-```sql
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS creative_role text;
-```
-
-The `profiles_public` view will need to be updated to include the new column.
+**Migration:** Add `collaboration_brief` column and rebuild `profiles_public` view.
 
 **File: `src/pages/StudentProfile.tsx`**
-- Add `creative_role` to formData state and profile loading
-- Add a Creative Role selector (dropdown or multi-chip picker) with options: Director, Writer, Editor, Cinematographer, Producer, Sound Designer, Production Designer, Animator, Composer, Actor, VFX Artist, Colorist, Other
-- Rename "Camera Gear" label to "Tools & Equipment" with role-aware placeholder text
-- Rename `FILMMAKING_STYLES` to `CREATIVE_STYLES` and expand options to include: Screenwriting, Documentary, Narrative Fiction, Experimental, Music Video, Commercial, Animation, Horror, Comedy, Drama, Sci-Fi, Post-Production, Sound Design, Visual Effects, Other
-- Move the Creative Role selector into the "Creative Identity" card section, above the style picker
+- Import `Tabs, TabsContent, TabsList, TabsTrigger` from UI components
+- Wrap the form cards in a tabbed interface with 5 tabs
+- Add `collaboration_brief` to formData state and profile loading
+- Add a textarea for collaboration brief under the Looking For chips
+- Move "Tools & Equipment" from Basic Info into the "About You" tab alongside creative role/style
+- Move favorite films, influences, current project into "Portfolio" tab
 
 **File: `src/components/profile/PublicProfileCard.tsx`**
-- Display `creative_role` under the user's name (where filmmaking_style currently shows)
-- Show filmmaking_style as a secondary detail
-- Update the Camera Gear info card label to "Tools & Equipment"
-
-**File: `src/components/profile/ProfilePreviewCard.tsx`**
-- Update to show creative role
-- Rename Camera Gear label to "Tools & Equipment"
+- Replace static "Looking For" badges with interactive ones
+- Add role-match detection: compare viewer's `creative_role` against the profile's `looking_for` array
+- When a match is found, highlight the matching badge and show a "You match!" indicator
+- Add a "Offer to Collaborate" button that triggers `onMessage` with a pre-filled collaboration message
+- Display `collaboration_brief` text below the Looking For badges when present
 
 **File: `src/hooks/usePublicProfile.ts`**
-- Add `creative_role` to the `PublicProfile` interface
+- Add `collaboration_brief` to `PublicProfile` interface
 
-**File: `src/components/messaging/ContactCardMessage.tsx`**
-- Show `creative_role` instead of or alongside `filmmaking_style`
+**File: `src/components/profile/ProfilePreviewCard.tsx`**
+- Add `collaboration_brief` display if present
 
-**Files affected:** 1 migration + 5-6 component files modified
+**Files affected:** 1 migration + 4-5 component files
 
-### Role-Aware Placeholder Examples
-| Creative Role | Tools Placeholder |
-|---|---|
-| Writer | "Final Draft, Celtx, Highland..." |
-| Editor | "DaVinci Resolve, Premiere Pro, FCPX..." |
-| Cinematographer | "Sony A7III, Canon R5, Blackmagic..." |
-| Sound Designer | "Pro Tools, Logic Pro, Zoom H6..." |
-| Director | "Shot lister, storyboard tools..." |
-| Default | "Your primary tools and software..." |
