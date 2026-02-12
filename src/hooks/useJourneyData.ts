@@ -1,7 +1,9 @@
- import { useMemo } from "react";
- import { useAssessmentResults } from "@/hooks/useAssessmentResults";
- import { useUserProgress } from "@/hooks/useUserProgress";
- import { courses, departments } from "@/data/courses";
+import { useMemo } from "react";
+import { useAssessmentResults } from "@/hooks/useAssessmentResults";
+import { useUserProgress } from "@/hooks/useUserProgress";
+import { useQuizResults } from "@/hooks/useQuizResults";
+import { useDbCourseCounts } from "@/hooks/useDbCourseCounts";
+import { courses, departments } from "@/data/courses";
 import type { DegreePath } from "@/hooks/useSkillTree";
 import { DEGREE_PATH_COURSES, DEGREE_PATH_NAMES, DEGREE_PATH_CREDITS } from "@/lib/degreePathCourses";
 
@@ -103,10 +105,12 @@ function getRank(percentage: number): string {
     return "FRESHMAN";
   }
  
- export function useJourneyData(path: DegreePath): JourneyData {
-   const { progress, getTotalCredits } = useUserProgress();
-   const { latestResult } = useAssessmentResults();
-   const config = pathConfigs[path];
+export function useJourneyData(path: DegreePath): JourneyData {
+    const { progress, getTotalCredits } = useUserProgress();
+    const { latestResult } = useAssessmentResults();
+    const { results: quizResults } = useQuizResults();
+    const { dbCourseCounts } = useDbCourseCounts();
+    const config = pathConfigs[path];
  
    // Get recommended courses from assessment
    const recommendedCourses = useMemo(() => {
@@ -124,18 +128,45 @@ function getRank(percentage: number): string {
      return completed;
    }, [progress]);
  
-   // Get in-progress course codes (have some progress but not completed)
-   const inProgressCourseCodes = useMemo(() => {
-     const inProgress = new Set<string>();
-     progress.forEach((p) => {
-       if (!p.completed && p.lesson_id !== null) {
-         inProgress.add(p.course_code);
-       }
-     });
-     // Remove completed ones
-     completedCourseCodes.forEach((code) => inProgress.delete(code));
-     return inProgress;
-   }, [progress, completedCourseCodes]);
+    // Get in-progress course codes (have some lesson progress or quiz results but not fully completed)
+    const inProgressCourseCodes = useMemo(() => {
+      const inProgress = new Set<string>();
+      // Courses with any lesson progress
+      progress.forEach((p) => {
+        if (p.lesson_id !== null) {
+          inProgress.add(p.course_code);
+        }
+      });
+      // Courses with any quiz results
+      quizResults.forEach((r) => {
+        inProgress.add(r.course_code);
+      });
+      // Remove completed ones
+      completedCourseCodes.forEach((code) => inProgress.delete(code));
+      return inProgress;
+    }, [progress, completedCourseCodes, quizResults]);
+
+    // Build per-course real progress maps
+    const courseLessonCounts = useMemo(() => {
+      const map: Record<string, number> = {};
+      progress.forEach((p) => {
+        if (p.course_code && p.lesson_id && p.completed) {
+          map[p.course_code] = (map[p.course_code] || 0) + 1;
+        }
+      });
+      return map;
+    }, [progress]);
+
+    const courseQuizPassed = useMemo(() => {
+      const map: Record<string, Set<string>> = {};
+      quizResults.forEach((r) => {
+        if (r.passed) {
+          if (!map[r.course_code]) map[r.course_code] = new Set();
+          map[r.course_code].add(r.quiz_id);
+        }
+      });
+      return map;
+    }, [quizResults]);
  
    // Build journey data
    const journeyData = useMemo(() => {
@@ -190,14 +221,18 @@ function getRank(percentage: number): string {
            status = "available";
          }
  
-         // Calculate lessons/quizzes from modules
-         const totalLessons = course.modules.reduce((sum, m) => sum + m.lessons.length, 0);
-         const totalQuizzes = course.modules.filter((m) => m.quiz).length + (course.finalExam ? 1 : 0);
- 
-         // For now, mock progress (in real app, fetch from progress table)
-         const lessonsCompleted = isCompleted ? totalLessons : isInProgress ? Math.floor(totalLessons * 0.4) : 0;
-         const quizzesPassed = isCompleted ? totalQuizzes : isInProgress ? Math.floor(totalQuizzes * 0.3) : 0;
-         const percentage = isCompleted ? 100 : isInProgress ? 40 : 0;
+          // Calculate totals from DB counts (preferred) or static fallback
+          const dbCounts = dbCourseCounts[code];
+          const staticTotalLessons = course.modules.reduce((sum, m) => sum + m.lessons.length, 0);
+          const staticTotalQuizzes = course.modules.filter((m) => m.quiz).length + (course.finalExam ? 1 : 0);
+          const totalLessons = dbCounts?.totalLessons || staticTotalLessons;
+          const totalQuizzes = dbCounts?.totalQuizzes || staticTotalQuizzes;
+
+          // Real progress from user data
+          const lessonsCompleted = courseLessonCounts[code] || 0;
+          const quizzesPassed = courseQuizPassed[code]?.size || 0;
+          const total = totalLessons + totalQuizzes;
+          const percentage = total > 0 ? Math.round(((lessonsCompleted + quizzesPassed) / total) * 100) : 0;
  
          return {
            code,
@@ -317,7 +352,7 @@ function getRank(percentage: number): string {
      return {
        levels,
      };
-   }, [config, completedCourseCodes, inProgressCourseCodes, getTotalCredits, path, progress, recommendedCourses]);
+   }, [config, completedCourseCodes, inProgressCourseCodes, getTotalCredits, path, progress, recommendedCourses, dbCourseCounts, courseLessonCounts, courseQuizPassed]);
  
    const totalCourses = pathConfigs[path].courseCodes.length;
    const completedCourses = journeyData.levels.reduce((sum, l) => sum + l.completedCount, 0);
