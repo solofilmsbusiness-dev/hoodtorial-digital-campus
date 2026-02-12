@@ -19,6 +19,7 @@ interface DailyChallengeCardProps {
   challenge: DailyChallenge | null;
   hasSubmitted: boolean;
   currentStreak: number;
+  daysRemaining: number;
   onSubmit: () => void;
   isLoading?: boolean;
 }
@@ -41,6 +42,7 @@ export function DailyChallengeCard({
   challenge,
   hasSubmitted,
   currentStreak,
+  daysRemaining,
   onSubmit,
   isLoading,
 }: DailyChallengeCardProps) {
@@ -114,7 +116,7 @@ export function DailyChallengeCard({
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2 mb-1">
                 <span className="text-xs font-bold uppercase tracking-wider text-primary">
-                  Today's Challenge
+                  {daysRemaining <= 1 ? "Last Day!" : `${daysRemaining} Days Left`}
                 </span>
                 <Badge className={cn("text-[10px] border", difficultyColors[challenge.difficulty])}>
                   {challenge.difficulty}

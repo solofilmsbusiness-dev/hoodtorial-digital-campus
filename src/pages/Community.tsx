@@ -61,6 +61,7 @@ export default function Community() {
   const { 
     todaysChallenge, 
     hasSubmittedToday, 
+    daysRemaining,
     submitChallenge,
     isLoading: isChallengeLoading 
   } = useDailyChallenges();
@@ -215,6 +216,7 @@ export default function Community() {
               challenge={todaysChallenge}
               hasSubmitted={hasSubmittedToday}
               currentStreak={streakData.currentStreak}
+              daysRemaining={daysRemaining}
               onSubmit={handleChallengeSubmit}
               isLoading={isChallengeLoading}
             />

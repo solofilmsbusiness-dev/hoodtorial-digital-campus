@@ -38,7 +38,9 @@ import {
   Trash2, 
   Edit,
   Flame,
-  Eye
+  Eye,
+  Loader2,
+  Sparkles
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -54,8 +56,15 @@ interface ChallengeFormData {
   credits_reward: number;
   category: 'lighting' | 'composition' | 'movement' | 'storytelling' | 'general';
   active_date: string;
+  end_date: string;
   is_active: boolean;
 }
+
+const getDefaultEndDate = (activeDate: string) => {
+  const d = new Date(activeDate + 'T00:00:00');
+  d.setDate(d.getDate() + 2);
+  return d.toISOString().split('T')[0];
+};
 
 const defaultFormData: ChallengeFormData = {
   title: '',
@@ -65,6 +74,7 @@ const defaultFormData: ChallengeFormData = {
   credits_reward: 0.5,
   category: 'general',
   active_date: new Date().toISOString().split('T')[0],
+  end_date: getDefaultEndDate(new Date().toISOString().split('T')[0]),
   is_active: true,
 };
 
@@ -124,8 +134,9 @@ export default function ChallengeManager() {
             credits_reward: data.credits_reward,
             category: data.category,
             active_date: data.active_date,
+            end_date: data.end_date,
             is_active: data.is_active,
-          })
+          } as any)
           .eq('id', editingChallenge.id);
 
         if (error) throw error;
@@ -140,8 +151,9 @@ export default function ChallengeManager() {
             credits_reward: data.credits_reward,
             category: data.category,
             active_date: data.active_date,
+            end_date: data.end_date,
             is_active: data.is_active,
-          });
+          } as any);
 
         if (error) throw error;
       }
@@ -155,6 +167,24 @@ export default function ChallengeManager() {
     },
     onError: (error: Error) => {
       toast.error(error.message);
+    },
+  });
+
+  // Seed 100 challenges
+  const seedMutation = useMutation({
+    mutationFn: async () => {
+      const res = await supabase.functions.invoke('seed-challenges', {
+        body: { start_date: '2026-02-13' },
+      });
+      if (res.error) throw res.error;
+      return res.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-challenges'] });
+      toast.success(`Seeded ${data.inserted} challenges (${data.date_range})`);
+    },
+    onError: (error: Error) => {
+      toast.error(`Seed failed: ${error.message}`);
     },
   });
 
@@ -187,6 +217,7 @@ export default function ChallengeManager() {
       credits_reward: challenge.credits_reward,
       category: challenge.category,
       active_date: challenge.active_date,
+      end_date: (challenge as any).end_date || getDefaultEndDate(challenge.active_date),
       is_active: challenge.is_active,
     });
     setIsDialogOpen(true);
@@ -209,7 +240,20 @@ export default function ChallengeManager() {
     <AdminLayout title="Challenge Manager" description="Create and manage daily challenges" pageKey="challenges">
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => {
+              if (confirm('Seed 100 film-school challenges starting Feb 13, 2026?')) {
+                seedMutation.mutate();
+              }
+            }}
+            disabled={seedMutation.isPending}
+          >
+            {seedMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            Seed 100 Challenges
+          </Button>
           <Dialog open={isDialogOpen} onOpenChange={(open) => {
             setIsDialogOpen(open);
             if (!open) {
@@ -318,12 +362,24 @@ export default function ChallengeManager() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="date">Active Date</Label>
+                    <Label htmlFor="date">Start Date</Label>
                     <Input
                       id="date"
                       type="date"
                       value={formData.active_date}
-                      onChange={(e) => setFormData({ ...formData, active_date: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, active_date: e.target.value, end_date: getDefaultEndDate(e.target.value) })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="end_date">End Date</Label>
+                    <Input
+                      id="end_date"
+                      type="date"
+                      value={formData.end_date}
+                      onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                     />
                   </div>
                 </div>
@@ -424,10 +480,10 @@ export default function ChallengeManager() {
                   {challenges.map((challenge) => (
                     <TableRow key={challenge.id}>
                       <TableCell className="font-mono text-sm">
-                        {format(new Date(challenge.active_date), 'MMM d')}
-                        {challenge.active_date === today && (
+                        {format(new Date(challenge.active_date), 'MMM d')} – {format(new Date((challenge as any).end_date || challenge.active_date), 'MMM d')}
+                        {challenge.active_date <= today && ((challenge as any).end_date || challenge.active_date) >= today && (
                           <Badge className="ml-2 bg-primary/20 text-primary border-0 text-[10px]">
-                            TODAY
+                            ACTIVE
                           </Badge>
                         )}
                       </TableCell>
