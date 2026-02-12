@@ -120,11 +120,20 @@ export default function StudentProfile() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState("appearance");
 
   const profileWalkthrough = useProfileWalkthrough({
     profileEditorToured: (profile as any)?.profile_editor_toured ?? null,
     userId: user?.id,
   });
+
+  // Auto-switch tabs when the profile tour advances to a step in a different tab
+  useEffect(() => {
+    if (profileWalkthrough.isActive && profileWalkthrough.currentStep?.tab) {
+      setActiveTab(profileWalkthrough.currentStep.tab);
+    }
+  }, [profileWalkthrough.isActive, profileWalkthrough.currentStep]);
+
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
   const [initialFormData, setInitialFormData] = useState<typeof formData | null>(null);
@@ -444,7 +453,7 @@ export default function StudentProfile() {
             {/* Main Form */}
             <div className="lg:col-span-2 order-1 lg:order-2">
               <form onSubmit={handleSubmit} className="space-y-6 pb-12">
-                <Tabs defaultValue="appearance" className="w-full">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                   <TabsList className="w-full flex flex-wrap h-auto gap-1 bg-charcoal/50 p-1.5 rounded-lg">
                     <TabsTrigger value="appearance" className="flex items-center gap-1.5 text-xs sm:text-sm">
                       <Palette className="h-4 w-4" />

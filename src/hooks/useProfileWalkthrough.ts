@@ -7,12 +7,14 @@ export interface ProfileWalkthroughStep {
   title: string;
   description: string;
   icon?: string;
+  tab?: string | null;
 }
 
 const TOUR_STEPS: ProfileWalkthroughStep[] = [
   {
     id: "cover-avatar",
     target: "profile-cover-avatar",
+    tab: "appearance",
     title: "Your Look",
     description: "Upload a cover banner and avatar photo. This is the first thing people see on your profile — make it count!",
     icon: "📸",
@@ -20,6 +22,7 @@ const TOUR_STEPS: ProfileWalkthroughStep[] = [
   {
     id: "theme-picker",
     target: "profile-theme-picker",
+    tab: "appearance",
     title: "Pick Your Vibe",
     description: "Choose an accent color and avatar border style that matches your creative personality.",
     icon: "🎨",
@@ -27,6 +30,7 @@ const TOUR_STEPS: ProfileWalkthroughStep[] = [
   {
     id: "bio-section",
     target: "profile-bio-section",
+    tab: "about",
     title: "Tell Your Story",
     description: "Add your name, bio, creative role, and style. Let others know who you are and what you create.",
     icon: "✍️",
@@ -34,6 +38,7 @@ const TOUR_STEPS: ProfileWalkthroughStep[] = [
   {
     id: "portfolio-tab",
     target: "profile-portfolio-tab",
+    tab: null,
     title: "Showcase Your Work",
     description: "Switch to the Portfolio tab to add a featured project, upload gallery items, and list your favorite films.",
     icon: "🎬",
@@ -41,6 +46,7 @@ const TOUR_STEPS: ProfileWalkthroughStep[] = [
   {
     id: "layout-tab",
     target: "profile-layout-tab",
+    tab: null,
     title: "Arrange Your Page",
     description: "Use the Layout tab to drag and reorder sections on your public profile. Make the most important things appear first!",
     icon: "📐",
