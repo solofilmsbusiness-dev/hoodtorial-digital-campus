@@ -23,7 +23,7 @@ export function TierCard({
   features,
   highlighted = false,
   ctaText = "Enroll Now",
-  ctaHref = "/enroll",
+  ctaHref = "/enrollment",
   className,
 }: TierCardProps) {
   return (

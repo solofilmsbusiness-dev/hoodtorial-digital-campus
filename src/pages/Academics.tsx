@@ -322,7 +322,7 @@ const Academics = () => {
           <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
             Enroll now to unlock all 16 courses and start earning credits toward your degree.
           </p>
-          <Link to="/enroll" className="btn-brutal inline-flex animate-glow-pulse">
+          <Link to="/enrollment" className="btn-brutal inline-flex animate-glow-pulse">
             Enroll Now
             <ArrowRight className="ml-2 h-5 w-5" />
           </Link>

@@ -166,7 +166,7 @@ const Index = () => {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10 animate-reveal stagger-5">
-              <Link to="/enroll" className="btn-brutal animate-glow-pulse">
+              <Link to="/enrollment" className="btn-brutal animate-glow-pulse">
                 Start Learning
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
