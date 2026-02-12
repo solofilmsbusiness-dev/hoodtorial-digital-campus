@@ -12,6 +12,7 @@ export interface FacultyMember {
   featured: boolean;
   display_order: number;
   image_url: string | null;
+  intro_video_url: string | null;
   created_at: string;
 }
 

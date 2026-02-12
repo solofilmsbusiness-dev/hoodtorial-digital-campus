@@ -530,6 +530,7 @@ export type Database = {
           featured: boolean | null
           id: string
           image_url: string | null
+          intro_video_url: string | null
           name: string
           role: string
         }
@@ -542,6 +543,7 @@ export type Database = {
           featured?: boolean | null
           id?: string
           image_url?: string | null
+          intro_video_url?: string | null
           name: string
           role: string
         }
@@ -554,6 +556,7 @@ export type Database = {
           featured?: boolean | null
           id?: string
           image_url?: string | null
+          intro_video_url?: string | null
           name?: string
           role?: string
         }
@@ -603,6 +606,33 @@ export type Database = {
           created_at?: string
           friend_id?: string
           id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      gallery_comments: {
+        Row: {
+          content: string
+          created_at: string
+          gallery_owner_id: string
+          id: string
+          image_url: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          gallery_owner_id: string
+          id?: string
+          image_url: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          gallery_owner_id?: string
+          id?: string
+          image_url?: string
           user_id?: string
         }
         Relationships: []
