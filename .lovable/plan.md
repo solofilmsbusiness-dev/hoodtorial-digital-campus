@@ -1,54 +1,65 @@
 
 
-## Fix Contact Cards in Messages
+## Fix Profile Editor Tour
 
-### Problems Found
-1. **React ref error**: `ContactCardMessage` is a plain function component but gets a ref passed to it (from the message bubble layout), causing a React warning that can break rendering
-2. **Visually bland**: The card uses a basic `Card` with generic styling that doesn't match the platform's bold dark/gold aesthetic
-3. **No clear purpose**: The card has no "View Profile" button linking to `/profile/:id`, making it a dead-end
-4. **Empty states look awkward**: When a user has no bio, no social links, and no portfolio, the card is just a name and avatar with nothing else
+### Problem
+The 5-step tour targets elements spread across multiple tabs:
+- Steps 1-2: Inside "Appearance" tab (cover/avatar, theme picker)
+- Step 3: Inside "About You" tab (bio section) -- **hidden when not active**
+- Steps 4-5: Tab triggers (always visible)
+
+When the tour reaches step 3, the target element doesn't exist in the visible DOM because the "About You" tab isn't active. The overlay fails to find it and shows a floating tooltip with no spotlight.
 
 ### Solution
+Make the tour **switch tabs automatically** as it progresses. This requires:
+1. The `StudentProfile` page controls the active tab via state instead of uncontrolled `defaultValue`
+2. The walkthrough hook exposes which tab each step belongs to
+3. On step change, the page sets the active tab accordingly
 
-**Modified: `src/components/messaging/ContactCardMessage.tsx`**
-- Wrap with `React.forwardRef` to fix the ref warning
-- Redesign with the platform's brutalist aesthetic:
-  - Dark gradient background with gold accent border on the left edge
-  - Larger avatar with the user's accent color ring
-  - Creative role shown as a gold badge/chip below the name
-  - Bio in a subtle quote-style block
-  - Camera gear with a styled icon chip
-  - Social links as gold-accented icon buttons
-  - "View Profile" as a prominent gold button linking to `/profile/:userId`
-  - "View Portfolio" as a secondary outlined button (only if portfolio exists)
-- Handle empty states gracefully: if nothing but name/avatar, show a clean minimal card with just the View Profile action
+### Changes
 
-**Modified: `src/components/messaging/MessageComposer.tsx`**
-- Improve the "Share Contact Card" preview popover to better match the new card style
-- Show a mini version of what the recipient will see
+**Modified: `src/hooks/useProfileWalkthrough.ts`**
+- Add a `tab` property to each tour step indicating which tab it belongs to:
+  - Steps 1-2: `"appearance"`
+  - Step 3: `"about"`
+  - Steps 4-5: no tab switch needed (tab triggers are always visible)
+- Export the `tab` field so the parent can react to step changes
 
-### Visual Design (New Card Layout)
+**Modified: `src/pages/StudentProfile.tsx`**
+- Change `Tabs` from `defaultValue="appearance"` to controlled with `value={activeTab}` + `onValueChange`
+- Add a `useEffect` that watches `profileWalkthrough.currentStep` and switches `activeTab` to the step's associated tab when the tour is active
+- This ensures the target element is rendered before the overlay tries to measure it
 
-```text
-+----------------------------------------------+
-| [Gold left border]                            |
-|  [Avatar w/ ring]  Name                       |
-|                    "Cinematographer" (badge)   |
-|                                               |
-|  "Bio text here in italic quote style..."     |
-|                                               |
-|  Camera icon  Camera gear details             |
-|                                               |
-|  [IG] [YT] [TW] [Vimeo]  (gold icon row)     |
-|                                               |
-|  [ View Profile ]  [ View Portfolio ]         |
-+----------------------------------------------+
+### Updated Tour Steps
+
+| Step | Target | Tab to activate |
+|------|--------|-----------------|
+| 1. Your Look | `profile-cover-avatar` | `appearance` |
+| 2. Pick Your Vibe | `profile-theme-picker` | `appearance` |
+| 3. Tell Your Story | `profile-bio-section` | `about` |
+| 4. Showcase Your Work | `profile-portfolio-tab` | (none -- always visible) |
+| 5. Arrange Your Page | `profile-layout-tab` | (none -- always visible) |
+
+### Technical Details
+
+In `useProfileWalkthrough.ts`, each step gets a `tab` field:
 ```
+{ id: "cover-avatar", target: "profile-cover-avatar", tab: "appearance", ... }
+{ id: "theme-picker", target: "profile-theme-picker", tab: "appearance", ... }
+{ id: "bio-section", target: "profile-bio-section", tab: "about", ... }
+{ id: "portfolio-tab", target: "profile-portfolio-tab", tab: null, ... }
+{ id: "layout-tab", target: "profile-layout-tab", tab: null, ... }
+```
+
+In `StudentProfile.tsx`:
+- Replace `defaultValue="appearance"` with `value={activeTab}` state
+- Add effect: when tour is active and step has a `tab`, set `activeTab` to that tab
+- Small delay before measuring ensures the tab content renders first
 
 ### Files Summary
 
 | File | Action |
 |------|--------|
-| `src/components/messaging/ContactCardMessage.tsx` | Rewrite with forwardRef + redesign |
-| `src/components/messaging/MessageComposer.tsx` | Update contact preview to match new style |
+| `src/hooks/useProfileWalkthrough.ts` | Add `tab` field to each step |
+| `src/pages/StudentProfile.tsx` | Controlled tabs + auto-switch on tour step change |
 
