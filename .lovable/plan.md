@@ -1,83 +1,51 @@
 
 
-## Improve Student Hub Layout and UX
+## Fix Progress Percentage Sync Between Active Courses and Journey
 
-### Current Issues
-1. **Excessive blank space** at the bottom -- the page ends with a sparse 2-column grid that doesn't fill the viewport
-2. **Redundant content** -- Degree Progress ring in the sidebar duplicates the Credits Earned stat card above
-3. **Missing Journey card** -- The `JourneyProgressCard` component exists but isn't used on this page, despite being designed specifically for the Student Center
-4. **Quick Links section is bloated** -- 7-8 links stacked vertically feel like a settings page, not a hub
-5. **Stats cards feel disconnected** -- floating between sections without visual cohesion
-6. **No visual warmth** -- everything is the same card style with no hierarchy
+### Root Cause
+The `useJourneyData` hook uses **hardcoded mock percentages** for course progress instead of real data:
+- In-progress courses always show 40% in the Journey card
+- Completed courses always show 100%
+- The Student Center calculates real progress from actual lesson completions and quiz results
 
-### Solution: Reorganized, Tighter Layout
+These two systems use completely different logic, so they never agree.
 
-**1. Integrate the Journey Progress Card** (replaces the redundant Degree Progress ring)
-- Add the existing `JourneyProgressCard` component to the sidebar, replacing the standalone Degree Progress card
-- This gives the sidebar real purpose: journey tracking + recommendations
+### Solution
+Update `useJourneyData` to calculate real progress using the same data sources as the Student Center: `user_progress` records for lessons and `quiz_results` for quizzes. Also incorporate `useDbCourseCounts` so database-managed courses get accurate totals.
 
-**2. Compact Quick Links into a horizontal strip**
-- Convert from a tall stacked list to a compact 2-column grid of smaller link chips
-- Move "Take a Tour" and "Need Help?" into a subtle footer row
-- This dramatically reduces vertical space
+### Changes
 
-**3. Merge Stats into the header area**
-- Move the 3 stat cards (Credits, Courses, Quizzes) into compact inline badges within the header section instead of being a separate row
-- This removes an entire section of vertical space
+**Modified: `src/hooks/useJourneyData.ts`**
 
-**4. Tighten the bottom grid**
-- Quiz Results stays as the main content area (full width on mobile)
-- Sidebar: Journey Progress Card at top, then compact Quick Links, then Recommended Courses
-- Remove the standalone Degree Progress card (covered by Journey card)
+1. Import `useQuizResults` and `useDbCourseCounts` hooks (same ones StudentCenter uses)
+2. Replace the mock progress calculation (lines 198-200) with real data:
+   - Count actual completed lessons from the `progress` array (records where `lesson_id` is set and `completed` is true)
+   - Count actual passed quizzes from `quiz_results` (unique passed quiz IDs per course)
+   - Use `dbCourseCounts` for lesson/quiz totals when available, falling back to static course data
+   - Calculate percentage as `(completedLessons + passedQuizzes) / (totalLessons + totalQuizzes) * 100`
+3. Fix the `in_progress` detection: instead of relying on the `inProgressCourseCodes` set (which only checks incomplete progress records), also consider courses with any completed lessons or passed quizzes that aren't fully complete
 
-**5. Remove bottom padding / add a motivational footer**
-- Replace the blank space with a small motivational banner or "What's Next" prompt at the bottom
+This ensures the Journey Progress Card, the Learning Journey page, and the Active Courses section all show identical percentages for the same course.
 
-### New Layout Structure
+### Technical Detail
 
-```text
-+--------------------------------------------------+
-| [Avatar]  Welcome back, Name                     |
-|           Freshman  |  5cr  |  1 course  |  2 quiz|
-|                              [Edit] [View Profile]|
-+--------------------------------------------------+
-| ACTIVE COURSES (full width card with grid)        |
-|  [Course 1] [Course 2] [+ Add Course]            |
-+--------------------------------------------------+
-| ACHIEVEMENTS (if any, full width)                 |
-+--------------------------------------------------+
-| RECENT QUIZ RESULTS (2/3)  | JOURNEY CARD (1/3)  |
-|  result rows...            | path + progress      |
-|                            | next course           |
-|                            +----------------------+
-|                            | QUICK LINKS (compact) |
-|                            | [Community] [Courses] |
-|                            | [Grades]   [Profile]  |
-|                            | [Assessment] [Help]   |
-|                            +----------------------+
-|                            | RECOMMENDED (if any)  |
-+--------------------------------------------------+
+Current mock logic being replaced:
+```
+lessonsCompleted = isInProgress ? Math.floor(totalLessons * 0.4) : 0
+percentage = isInProgress ? 40 : 0
 ```
 
-### Technical Changes
-
-**Modified: `src/pages/StudentCenter.tsx`**
-
-1. **Header stats inline**: Move Credits/Courses/Quizzes into small badge-style counters next to the membership badge in the header, removing the separate 3-card stats row (~30 lines removed)
-
-2. **Import and add JourneyProgressCard**: Place it at the top of the sidebar column, replacing the Degree Progress card at the bottom
-
-3. **Compact Quick Links**: Change from `space-y-2` stacked full-width links to a `grid grid-cols-2 gap-2` with smaller padding (`p-3` instead of `p-4`), smaller text. Move Tour and Help to a separate subtle row below
-
-4. **Remove Degree Progress card**: The ring chart at the bottom of the sidebar is fully replaced by the JourneyProgressCard which shows the same data plus more
-
-5. **Reduce outer padding**: Change `py-12` to `py-8` and `mb-12` gaps to `mb-6` for tighter spacing
-
-6. **Add bottom CTA**: A small "Keep going!" motivational line or a link to the Journey page at the very bottom, replacing dead space
+New real logic (mirrors StudentCenter.getCourseProgress):
+```
+lessonsCompleted = progress.filter(p => p.course_code === code && p.lesson_id && p.completed).length
+quizzesPassed = unique passed quiz IDs from quiz_results for this course
+total = dbCourseCounts[code] or static fallback
+percentage = Math.round((lessonsCompleted + quizzesPassed) / total * 100)
+```
 
 ### Files
 
 | File | Action |
 |------|--------|
-| `src/pages/StudentCenter.tsx` | Reorganize layout, inline stats, add JourneyProgressCard, compact quick links, remove degree progress ring |
+| `src/hooks/useJourneyData.ts` | Add `useQuizResults` and `useDbCourseCounts` imports; replace mock progress with real calculation |
 
