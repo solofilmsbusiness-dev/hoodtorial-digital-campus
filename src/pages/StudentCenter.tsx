@@ -20,6 +20,7 @@ import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ContactAdminSheet } from "@/components/support";
 import { EnrollmentManagementCard } from "@/components/enrollment";
+import { JourneyProgressCard } from "@/components/student";
 import { 
   BookOpen, 
   Trophy, 
@@ -37,7 +38,8 @@ import {
   Users,
   HelpCircle,
   Eye,
-  Map
+  Map,
+  Compass
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -217,10 +219,10 @@ export default function StudentCenter() {
 
   return (
     <PageLayout pageKey="student_center">
-      <div className="py-12 px-4">
+      <div className="py-8 px-4">
         <div className="container-wide">
-          {/* Header Section */}
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-12">
+          {/* Header Section - with inline stats */}
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-8">
             <div className="flex items-center gap-6">
               <Avatar 
                 className="h-20 w-20 border-4"
@@ -235,36 +237,49 @@ export default function StudentCenter() {
                 <h1 className="heading-2 text-foreground mb-1">
                   Welcome back, {profile?.display_name || "Student"}
                 </h1>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${getMembershipBadgeColor(profile?.membership_tier)}`}>
                     {profile?.membership_tier || "Freshman"}
                   </span>
-                  <span className="text-muted-foreground text-sm">
-                    Enrolled {profile?.enrolled_at ? new Date(profile.enrolled_at).toLocaleDateString() : "Today"}
-                  </span>
+                  <span className="text-muted-foreground text-xs hidden sm:inline">•</span>
+                  {/* Inline stat badges */}
+                  <div data-tour="degree-stats" className="flex items-center gap-1.5 flex-wrap">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold">
+                      <GraduationCap className="h-3 w-3" />
+                      {totalCredits}cr
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent/10 text-accent text-xs font-bold">
+                      <BookOpen className="h-3 w-3" />
+                      {completedEnrollments.length} course{completedEnrollments.length !== 1 ? 's' : ''}
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold">
+                      <Trophy className="h-3 w-3" />
+                      {quizzesPassed} quiz{quizzesPassed !== 1 ? 'zes' : ''}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
-          <div className="flex items-center gap-3">
-            <Link 
-              to="/student/profile" 
-              className="btn-brutal text-sm flex items-center gap-2"
-            >
-              <Settings className="h-4 w-4" />
-              Edit Profile
-            </Link>
-            <Link 
-              to={`/profile/${user?.id}`} 
-              className="btn-brutal text-sm flex items-center gap-2 bg-charcoal hover:bg-charcoal-light"
-            >
-              <Eye className="h-4 w-4" />
-              View Profile
-            </Link>
-          </div>
+            <div className="flex items-center gap-3">
+              <Link 
+                to="/student/profile" 
+                className="btn-brutal text-sm flex items-center gap-2"
+              >
+                <Settings className="h-4 w-4" />
+                Edit Profile
+              </Link>
+              <Link 
+                to={`/profile/${user?.id}`} 
+                className="btn-brutal text-sm flex items-center gap-2 bg-charcoal hover:bg-charcoal-light"
+              >
+                <Eye className="h-4 w-4" />
+                View Profile
+              </Link>
+            </div>
           </div>
 
-          {/* Active Courses Section - Now with management */}
-          <Card ref={activeCoursesRef} data-tour="active-courses" className="card-urban mb-8">
+          {/* Active Courses Section */}
+          <Card ref={activeCoursesRef} data-tour="active-courses" className="card-urban mb-6">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
@@ -329,12 +344,12 @@ export default function StudentCenter() {
                   )}
                 </div>
               )}
-          </CardContent>
+            </CardContent>
           </Card>
 
           {/* Achievements Section - Completed Courses */}
           {completedEnrollments.length > 0 && (
-            <Card className="card-urban mb-8">
+            <Card className="card-urban mb-6">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Trophy className="h-5 w-5 text-primary" />
@@ -390,47 +405,11 @@ export default function StudentCenter() {
             </Card>
           )}
 
-          {/* Quick Stats */}
-          <div data-tour="degree-stats" className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-            <Card className="card-urban">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <GraduationCap className="h-8 w-8 text-primary" />
-                  <span className="text-3xl font-black text-foreground">{totalCredits}/{requiredCredits}</span>
-                </div>
-                <p className="text-sm font-bold uppercase tracking-wide text-muted-foreground mb-2">Credits Earned</p>
-                <Progress value={(totalCredits / requiredCredits) * 100} className="h-2" />
-              </CardContent>
-            </Card>
-
-            <Card className="card-urban">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <BookOpen className="h-8 w-8 text-accent" />
-                  <span className="text-3xl font-black text-foreground">{completedEnrollments.length}/{requiredCourses}</span>
-                </div>
-                <p className="text-sm font-bold uppercase tracking-wide text-muted-foreground mb-2">Courses Completed</p>
-                <Progress value={(completedEnrollments.length / requiredCourses) * 100} className="h-2" />
-              </CardContent>
-            </Card>
-
-            <Card className="card-urban">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <Trophy className="h-8 w-8 text-primary" />
-                  <span className="text-3xl font-black text-foreground">{quizzesPassed}/{requiredQuizzes}</span>
-                </div>
-                <p className="text-sm font-bold uppercase tracking-wide text-muted-foreground mb-2">Quizzes Passed</p>
-                <Progress value={(quizzesPassed / requiredQuizzes) * 100} className="h-2" />
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Main Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Recent Activity */}
+          {/* Main Content Grid - Quiz Results + Sidebar */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            {/* Recent Quiz Results */}
             <div className="lg:col-span-2">
-              <Card className="card-urban">
+              <Card className="card-urban h-full">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Clock className="h-5 w-5 text-primary" />
@@ -489,107 +468,89 @@ export default function StudentCenter() {
               </Card>
             </div>
 
-            {/* Quick Links */}
+            {/* Sidebar */}
             <div className="space-y-6">
+              {/* Journey Progress Card */}
+              <div data-tour="degree-progress">
+                <JourneyProgressCard />
+              </div>
+
+              {/* Compact Quick Links */}
               <Card data-tour="quick-links" className="card-urban">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Award className="h-5 w-5 text-primary" />
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Compass className="h-5 w-5 text-primary" />
                     Quick Links
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2">
+                <CardContent className="space-y-3">
+                  {/* Assessment CTA if not done */}
                   {!hasCompletedAssessment && (
                     <Link 
                       to="/assessment" 
-                      className="flex items-center justify-between p-4 bg-primary/10 rounded-lg border-2 border-primary hover:bg-primary/20 transition-colors"
+                      className="flex items-center gap-2 p-2.5 bg-primary/10 rounded-lg border border-primary/30 hover:bg-primary/20 transition-colors"
                     >
-                      <div className="flex items-center gap-3">
-                        <Sparkles className="h-5 w-5 text-primary" />
-                        <span className="font-bold text-primary">Take Entry Assessment</span>
-                      </div>
-                      <ChevronRight className="h-5 w-5 text-primary" />
+                      <Sparkles className="h-4 w-4 text-primary flex-shrink-0" />
+                      <span className="font-bold text-primary text-sm">Take Assessment</span>
                     </Link>
                   )}
 
-                  <Link 
-                    to="/community" 
-                    className="flex items-center justify-between p-4 bg-accent/10 rounded-lg border border-accent/30 hover:border-accent transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Users className="h-5 w-5 text-accent" />
-                      <span className="font-bold">Student Community</span>
-                    </div>
-                    <ChevronRight className="h-5 w-5 text-accent" />
-                  </Link>
-
-                  <Link 
-                    to="/academics"
-                    data-tour="browse-courses"
-                    className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border hover:border-primary transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <BookOpen className="h-5 w-5 text-primary" />
-                      <span className="font-bold">Browse Courses</span>
-                    </div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                  </Link>
-                  
-                  <Link 
-                    to="/student/grades" 
-                    className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border hover:border-primary transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Trophy className="h-5 w-5 text-accent" />
-                      <span className="font-bold">View Grades</span>
-                    </div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                  </Link>
-                  
-                  <Link 
-                    to="/student/profile" 
-                    className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border hover:border-primary transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <User className="h-5 w-5 text-primary" />
-                      <span className="font-bold">Edit Profile</span>
-                    </div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                  </Link>
-
-                  {hasCompletedAssessment && (
+                  {/* 2-column compact grid */}
+                  <div className="grid grid-cols-2 gap-2">
                     <Link 
-                      to="/assessment" 
-                      className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border hover:border-primary transition-colors"
+                      to="/community" 
+                      className="flex items-center gap-2 p-2.5 bg-muted/30 rounded-lg border border-border hover:border-primary/40 transition-colors"
                     >
-                      <div className="flex items-center gap-3">
-                        <RotateCcw className="h-5 w-5 text-muted-foreground" />
-                        <span className="font-bold">Retake Assessment</span>
-                      </div>
-                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                      <Users className="h-4 w-4 text-accent flex-shrink-0" />
+                      <span className="font-medium text-sm truncate">Community</span>
                     </Link>
-                  )}
+                    <Link 
+                      to="/academics"
+                      data-tour="browse-courses"
+                      className="flex items-center gap-2 p-2.5 bg-muted/30 rounded-lg border border-border hover:border-primary/40 transition-colors"
+                    >
+                      <BookOpen className="h-4 w-4 text-primary flex-shrink-0" />
+                      <span className="font-medium text-sm truncate">Courses</span>
+                    </Link>
+                    <Link 
+                      to="/student/grades" 
+                      className="flex items-center gap-2 p-2.5 bg-muted/30 rounded-lg border border-border hover:border-primary/40 transition-colors"
+                    >
+                      <Trophy className="h-4 w-4 text-accent flex-shrink-0" />
+                      <span className="font-medium text-sm truncate">Grades</span>
+                    </Link>
+                    <Link 
+                      to="/student/profile" 
+                      className="flex items-center gap-2 p-2.5 bg-muted/30 rounded-lg border border-border hover:border-primary/40 transition-colors"
+                    >
+                      <User className="h-4 w-4 text-primary flex-shrink-0" />
+                      <span className="font-medium text-sm truncate">Profile</span>
+                    </Link>
+                    {hasCompletedAssessment && (
+                      <Link 
+                        to="/assessment" 
+                        className="flex items-center gap-2 p-2.5 bg-muted/30 rounded-lg border border-border hover:border-primary/40 transition-colors"
+                      >
+                        <RotateCcw className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <span className="font-medium text-sm truncate">Assessment</span>
+                      </Link>
+                    )}
+                    <button 
+                      onClick={() => setSupportSheetOpen(true)}
+                      className="flex items-center gap-2 p-2.5 bg-muted/30 rounded-lg border border-border hover:border-primary/40 transition-colors text-left"
+                    >
+                      <HelpCircle className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <span className="font-medium text-sm truncate">Help</span>
+                    </button>
+                  </div>
 
-                  <button 
-                    onClick={() => setSupportSheetOpen(true)}
-                    className="w-full flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border hover:border-primary transition-colors text-left"
-                  >
-                    <div className="flex items-center gap-3">
-                      <HelpCircle className="h-5 w-5 text-muted-foreground" />
-                      <span className="font-bold">Need Help?</span>
-                    </div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                  </button>
-
+                  {/* Tour button - subtle footer */}
                   <button 
                     onClick={walkthrough.startTour}
-                    className="w-full flex items-center justify-between p-4 bg-primary/10 rounded-lg border border-primary/30 hover:border-primary transition-colors text-left"
+                    className="w-full flex items-center justify-center gap-2 py-2 text-xs font-medium text-primary hover:underline"
                   >
-                    <div className="flex items-center gap-3">
-                      <Map className="h-5 w-5 text-primary" />
-                      <span className="font-bold text-primary">Take a Tour</span>
-                    </div>
-                    <ChevronRight className="h-5 w-5 text-primary" />
+                    <Map className="h-3.5 w-3.5" />
+                    Take a Tour
                   </button>
                 </CardContent>
               </Card>
@@ -597,8 +558,8 @@ export default function StudentCenter() {
               {/* Recommended Courses */}
               {hasCompletedAssessment && recommendedCourseDetails.length > 0 && (
                 <Card className="card-urban">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-base">
                       <Sparkles className="h-5 w-5 text-primary" />
                       Recommended For You
                     </CardTitle>
@@ -625,50 +586,24 @@ export default function StudentCenter() {
                   </CardContent>
                 </Card>
               )}
-
-              {/* Degree Progress */}
-              <Card data-tour="degree-progress" className="card-urban">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <GraduationCap className="h-5 w-5 text-primary" />
-                    Degree Progress
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-4">
-                    <div className="relative w-32 h-32 mx-auto mb-4">
-                      <svg className="w-full h-full transform -rotate-90">
-                        <circle
-                          cx="64"
-                          cy="64"
-                          r="56"
-                          stroke="currentColor"
-                          strokeWidth="12"
-                          fill="none"
-                          className="text-muted"
-                        />
-                        <circle
-                          cx="64"
-                          cy="64"
-                          r="56"
-                          stroke="currentColor"
-                          strokeWidth="12"
-                          fill="none"
-                          strokeDasharray={`${(totalCredits / requiredCredits) * 352} 352`}
-                          className="text-primary"
-                        />
-                      </svg>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-2xl font-black">{Math.round((totalCredits / requiredCredits) * 100)}%</span>
-                      </div>
-                    </div>
-                    <p className="text-muted-foreground text-sm">
-                      {requiredCredits - totalCredits} credits to graduation
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
             </div>
+          </div>
+
+          {/* Motivational Footer CTA */}
+          <div className="text-center py-6 border-t border-border/50">
+            <p className="text-sm text-muted-foreground mb-2">
+              {totalCredits > 0 
+                ? `You're ${Math.round((totalCredits / requiredCredits) * 100)}% of the way to graduation — keep going! 🎬`
+                : "Your filmmaking journey starts here. Enroll in your first course! 🎬"
+              }
+            </p>
+            <Link
+              to="/journey"
+              className="inline-flex items-center gap-2 text-primary font-bold text-sm hover:underline"
+            >
+              View Full Journey
+              <ChevronRight className="h-4 w-4" />
+            </Link>
           </div>
         </div>
       </div>
