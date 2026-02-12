@@ -364,15 +364,41 @@ export function useCommunityPosts(filters?: {
           .from('post_follows')
           .delete()
           .eq('id', existingFollow.id);
-        toast.success('Unfollowed thread');
       } else {
         await supabase
           .from('post_follows')
           .insert({ post_id: postId, user_id: user.id });
-        toast.success('Following thread');
       }
     },
-    onSuccess: () => {
+    onMutate: async (postId: string) => {
+      await queryClient.cancelQueries({ queryKey: ['community-posts'] });
+      const previousPosts = queryClient.getQueryData(['community-posts', filters, showDemoData]);
+      queryClient.setQueryData(['community-posts', filters, showDemoData], (old: CommunityPost[] | undefined) => {
+        if (!old) return old;
+        return old.map(p => p.id === postId ? {
+          ...p,
+          user_is_following: !p.user_is_following,
+        } : p);
+      });
+      return { previousPosts };
+    },
+    onSuccess: (_data, _postId, context) => {
+      // Find the post to determine the right toast
+      const posts_snapshot = queryClient.getQueryData(['community-posts', filters, showDemoData]) as CommunityPost[] | undefined;
+      const post = posts_snapshot?.find(p => p.id === _postId);
+      if (post?.user_is_following) {
+        toast.success('Post saved');
+      } else {
+        toast.success('Post unsaved');
+      }
+    },
+    onError: (_err, _postId, context) => {
+      if (context?.previousPosts) {
+        queryClient.setQueryData(['community-posts', filters, showDemoData], context.previousPosts);
+      }
+      toast.error('Failed to save post');
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['community-posts'] });
     },
   });
