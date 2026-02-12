@@ -44,8 +44,11 @@ import {
   Link2,
   LayoutGrid,
   Briefcase,
-  Handshake
+  Handshake,
+  RotateCcw
 } from "lucide-react";
+import { useProfileWalkthrough } from "@/hooks/useProfileWalkthrough";
+import { WalkthroughOverlay } from "@/components/walkthrough";
 import {
   Select,
   SelectContent,
@@ -117,6 +120,11 @@ export default function StudentProfile() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
+
+  const profileWalkthrough = useProfileWalkthrough({
+    profileEditorToured: (profile as any)?.profile_editor_toured ?? null,
+    userId: user?.id,
+  });
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
   const [initialFormData, setInitialFormData] = useState<typeof formData | null>(null);
@@ -384,6 +392,15 @@ export default function StudentProfile() {
                 </span>
               )}
               <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => profileWalkthrough.startTour()}
+                className="gap-2 text-muted-foreground"
+              >
+                <RotateCcw className="h-4 w-4" />
+                Tour
+              </Button>
+              <Button
                 variant="outline"
                 size="sm"
                 onClick={() => handleNavigateAway(`/profile/${user?.id}`)}
@@ -439,7 +456,7 @@ export default function StudentProfile() {
                       <span className="hidden sm:inline">About You</span>
                       <span className="sm:hidden">About</span>
                     </TabsTrigger>
-                    <TabsTrigger value="portfolio" className="flex items-center gap-1.5 text-xs sm:text-sm">
+                    <TabsTrigger value="portfolio" className="flex items-center gap-1.5 text-xs sm:text-sm" data-tour="profile-portfolio-tab">
                       <Briefcase className="h-4 w-4" />
                       Portfolio
                     </TabsTrigger>
@@ -447,7 +464,7 @@ export default function StudentProfile() {
                       <Link2 className="h-4 w-4" />
                       Links
                     </TabsTrigger>
-                    <TabsTrigger value="layout" className="flex items-center gap-1.5 text-xs sm:text-sm">
+                    <TabsTrigger value="layout" className="flex items-center gap-1.5 text-xs sm:text-sm" data-tour="profile-layout-tab">
                       <LayoutGrid className="h-4 w-4" />
                       Layout
                     </TabsTrigger>
@@ -455,7 +472,7 @@ export default function StudentProfile() {
 
                   {/* Tab 1: Appearance */}
                   <TabsContent value="appearance" className="space-y-6 mt-6">
-                    <Card className="card-urban overflow-visible">
+                    <Card className="card-urban overflow-visible" data-tour="profile-cover-avatar">
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                           <Palette className="h-5 w-5 text-primary" />
@@ -484,6 +501,7 @@ export default function StudentProfile() {
                               onUploadComplete={refetch}
                             />
                           </div>
+                          <div data-tour="profile-theme-picker">
                           <ThemePicker
                             accentColor={formData.profile_accent_color}
                             borderStyle={formData.avatar_border_style}
@@ -494,6 +512,7 @@ export default function StudentProfile() {
                               setFormData((prev) => ({ ...prev, avatar_border_style: style }))
                             }
                           />
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -501,7 +520,7 @@ export default function StudentProfile() {
 
                   {/* Tab 2: About You */}
                   <TabsContent value="about" className="space-y-6 mt-6">
-                    <Card className="card-urban">
+                    <Card className="card-urban" data-tour="profile-bio-section">
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                           <User className="h-5 w-5 text-primary" />
@@ -921,6 +940,15 @@ export default function StudentProfile() {
           </div>
         </div>
       </div>
+      <WalkthroughOverlay
+        isActive={profileWalkthrough.isActive}
+        currentStep={profileWalkthrough.currentStep}
+        currentStepIndex={profileWalkthrough.currentStepIndex}
+        totalSteps={profileWalkthrough.totalSteps}
+        onNext={profileWalkthrough.nextStep}
+        onPrev={profileWalkthrough.prevStep}
+        onSkip={profileWalkthrough.skipTour}
+      />
     </PageLayout>
   );
 }

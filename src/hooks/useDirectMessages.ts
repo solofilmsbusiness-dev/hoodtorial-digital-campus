@@ -3,16 +3,17 @@
  import { useAuth } from "@/contexts/AuthContext";
  import { useToast } from "@/hooks/use-toast";
  
- export interface DirectMessage {
-   id: string;
-   conversation_id: string;
-   sender_id: string;
-   content: string | null;
-   message_type: "text" | "contact_card" | "image";
-   contact_card_data: ContactCardData | null;
-   is_read: boolean;
-   created_at: string;
- }
+  export interface DirectMessage {
+    id: string;
+    conversation_id: string;
+    sender_id: string;
+    content: string | null;
+    message_type: "text" | "contact_card" | "image";
+    contact_card_data: ContactCardData | null;
+    is_read: boolean;
+    is_deleted?: boolean;
+    created_at: string;
+  }
  
  export interface ContactCardData {
    user_id: string;
@@ -207,14 +208,18 @@
     try {
       const { error } = await supabase
         .from("direct_messages")
-        .delete()
+        .update({ is_deleted: true } as any)
         .eq("id", messageId)
         .eq("sender_id", user.id);
 
       if (error) throw error;
 
-      // Remove from local state immediately
-      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+      // Update local state to show deleted placeholder
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === messageId ? { ...m, is_deleted: true, content: null } : m
+        )
+      );
 
       return { error: null };
     } catch (error) {
@@ -226,7 +231,7 @@
       });
       return { error: error as Error };
     }
-     };
+  };
  
    return {
      messages,

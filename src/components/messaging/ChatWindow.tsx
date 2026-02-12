@@ -1,5 +1,5 @@
-  import { useEffect, useRef } from "react";
-  import { MessageCircle } from "lucide-react";
+  import { useState, useEffect, useRef } from "react";
+  import { MessageCircle, ShieldOff, Flag, MoreVertical } from "lucide-react";
   import { useDirectMessages } from "@/hooks/useDirectMessages";
   import { useAuth } from "@/contexts/AuthContext";
   import { MessageBubble } from "./MessageBubble";
@@ -8,9 +8,14 @@
   import { Skeleton } from "@/components/ui/skeleton";
   import { ScrollArea } from "@/components/ui/scroll-area";
   import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+  import { Button } from "@/components/ui/button";
+  import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
   import { useTypingIndicator } from "@/hooks/useTypingIndicator";
   import { useMessageReactions } from "@/hooks/useMessageReactions";
   import { useOnlineUsers } from "@/hooks/useOnlineUsers";
+  import { useUserSafety } from "@/hooks/useUserSafety";
+  import { BlockUserDialog } from "@/components/safety/BlockUserDialog";
+  import { ReportUserDialog } from "@/components/safety/ReportUserDialog";
   import { cn } from "@/lib/utils";
 
   interface ChatWindowProps {
@@ -25,12 +30,16 @@
   export function ChatWindow({ conversationId, otherUser }: ChatWindowProps) {
     const { user } = useAuth();
     const { messages, loading, deleteMessage } = useDirectMessages(conversationId);
-     const bottomRef = useRef<HTMLDivElement>(null);
+    const bottomRef = useRef<HTMLDivElement>(null);
     const { typingUsers, setTyping } = useTypingIndicator(conversationId);
     const { toggleReaction, getReactionSummary } = useMessageReactions(conversationId);
     const { onlineUserIds } = useOnlineUsers();
+    const { blockUser, unblockUser, reportUser, isBlocked } = useUserSafety();
+    const [showBlockDialog, setShowBlockDialog] = useState(false);
+    const [showReportDialog, setShowReportDialog] = useState(false);
 
     const isOnline = otherUser ? onlineUserIds.has(otherUser.user_id) : false;
+    const userIsBlocked = otherUser ? isBlocked(otherUser.user_id) : false;
 
      useEffect(() => {
        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -73,12 +82,29 @@
                 <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-emerald-500 border-2 border-background" />
               )}
             </div>
-            <div>
+            <div className="flex-1">
               <p className="font-semibold">{otherUser.display_name || "Unknown User"}</p>
               <p className={cn("text-xs", isOnline ? "text-emerald-500" : "text-muted-foreground")}>
                 {isOnline ? "Online" : "Offline"}
               </p>
             </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setShowBlockDialog(true)}>
+                  <ShieldOff className="h-4 w-4 mr-2" />
+                  {userIsBlocked ? "Unblock" : "Block"}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowReportDialog(true)} className="text-destructive">
+                  <Flag className="h-4 w-4 mr-2" />
+                  Report
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )}
  
@@ -121,8 +147,39 @@
          <TypingIndicator typingUsers={typingUsers} className="mt-2" />
         </ScrollArea>
  
-       {/* Composer */}
-      <MessageComposer conversationId={conversationId} onTyping={setTyping} />
+       {/* Blocked state or Composer */}
+      {userIsBlocked ? (
+        <div className="p-4 border-t text-center text-sm text-muted-foreground bg-muted/30">
+          You have blocked this user. <button className="text-primary underline" onClick={() => setShowBlockDialog(true)}>Unblock</button>
+        </div>
+      ) : (
+        <MessageComposer conversationId={conversationId} onTyping={setTyping} />
+      )}
+
+      {otherUser && (
+        <>
+          <BlockUserDialog
+            open={showBlockDialog}
+            onOpenChange={setShowBlockDialog}
+            userName={otherUser.display_name || "this user"}
+            isBlocked={userIsBlocked}
+            onConfirm={() => {
+              if (userIsBlocked) {
+                unblockUser(otherUser.user_id);
+              } else {
+                blockUser(otherUser.user_id);
+              }
+              setShowBlockDialog(false);
+            }}
+          />
+          <ReportUserDialog
+            open={showReportDialog}
+            onOpenChange={setShowReportDialog}
+            userName={otherUser.display_name || "this user"}
+            onSubmit={(reason, details) => reportUser(otherUser.user_id, reason, details)}
+          />
+        </>
+      )}
      </div>
    );
  }
