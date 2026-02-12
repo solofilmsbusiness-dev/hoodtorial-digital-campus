@@ -1,81 +1,54 @@
 
-## Add 100 Challenges with 3-Day Duration
+## Three Fixes: Faculty Photos, Intro Videos, and Gallery Comments
 
-### Overview
-Currently challenges last only 1 day (matched by exact `active_date`). We'll add an `end_date` column so each challenge spans 3 days, then seed 100 new challenges covering Feb 13 - Dec 1, 2026 (every 3 days).
+### Issue 1: Faculty Image Shows Blank
 
----
+**Root Cause:** The existing faculty member has a YouTube URL (`https://www.youtube.com/watch?v=ME1_SxxAr4o`) stored in the `image_url` column. The template renders this as an `<img>` tag, which can't display a YouTube link -- resulting in a blank box.
 
-### Database Change
+**Fix (Admin side):** Replace the plain "Image URL" text input in `FacultyManager.tsx` with a proper file upload button that uploads to the existing `site-assets` storage bucket and saves the resulting public URL. Keep the URL input as a fallback for pasting external image links.
 
-**Add `end_date` column to `daily_challenges` table**
-- New column: `end_date` (date, nullable, defaults to `active_date + 2 days`)
-- Update existing 7 challenges to set `end_date = active_date + 2`
+**Fix (Faculty page):** No changes needed -- the `<img>` tag will work once `image_url` contains an actual image URL from the upload.
 
-```sql
-ALTER TABLE daily_challenges ADD COLUMN end_date date;
-UPDATE daily_challenges SET end_date = active_date + interval '2 days';
-ALTER TABLE daily_challenges ALTER COLUMN end_date SET NOT NULL;
-ALTER TABLE daily_challenges ALTER COLUMN end_date SET DEFAULT (CURRENT_DATE + interval '2 days');
-```
+**Files:** `src/pages/admin/FacultyManager.tsx`
 
 ---
 
-### New Edge Function: `supabase/functions/seed-challenges/index.ts`
+### Issue 2: "Watch Intro" Button Does Nothing
 
-Creates 100 challenges with 3-day windows, spaced so each starts the day after the previous one ends. Covers all 5 categories and 3 difficulty levels with film-school-themed prompts.
+**Root Cause:** The "Watch Intro" buttons in `Faculty.tsx` are plain `<Button>` elements with no `onClick` handler and no video URL stored in the database. The `faculty_members` table has no `intro_video_url` column.
 
-- Accepts optional `start_date` (defaults to Feb 13, 2026)
-- Each challenge: `active_date` = start, `end_date` = start + 2 days
-- Next challenge starts on day after previous `end_date`
-- Skips dates that already have challenges
-- Difficulty distribution: ~40 beginner (0.5cr), ~35 intermediate (1cr), ~25 advanced (1.5cr)
-- Categories rotate evenly: lighting, composition, movement, storytelling, general
+**Fix:**
+- Add an `intro_video_url` column to the `faculty_members` table (text, nullable)
+- Add a "Video URL" input field to the admin Faculty Manager form
+- Update `Faculty.tsx` to open a dialog/modal that plays the intro video (supports YouTube, Vimeo, and direct video URLs using the existing `videoUtils.ts` helpers)
+- Hide the "Watch Intro" button when no video URL is set
 
----
-
-### Modified Files
-
-**`src/hooks/useDailyChallenges.ts`**
-- Change "today's challenge" query: instead of `.eq('active_date', today)`, use `.lte('active_date', today).gte('end_date', today)` to find the currently active challenge
-- Add a `timeRemaining` calculation showing how many days are left on the current challenge
-- Increase browse limit from 30 to 100
-
-**`src/components/community/DailyChallengeCard.tsx`**
-- Change "Today's Challenge" label to show remaining time (e.g., "2 days left" or "Last day!")
-- Keep all existing UI otherwise the same
-
-**`src/pages/admin/ChallengeManager.tsx`**
-- Add `end_date` field to the create/edit form (auto-calculated as `active_date + 2` but editable)
-- Show date range in the table instead of just start date (e.g., "Feb 13 - Feb 15")
-- Add a "Seed 100 Challenges" button that calls the new edge function
-
-**`supabase/config.toml`**
-- Register the new `seed-challenges` function with `verify_jwt = false`
+**Files:** Database migration, `src/pages/admin/FacultyManager.tsx`, `src/pages/Faculty.tsx`, `src/hooks/useFacultyMembers.ts`
 
 ---
 
-### Challenge Content (100 challenges, 20 per category)
+### Issue 3: Users Cannot Comment on Portfolio Gallery Images
 
-**Lighting (20):** Golden hour portraits, single-source drama, silhouette storytelling, color gel moods, window light study, backlight halos, candle/practical lighting, hard vs soft light comparison, neon night shoots, chiaroscuro still life, rim light reveals, bounce light techniques, mixed color temperature, flashlight horror, sunrise timelapse, shadow patterns, overhead flat lay lighting, motivated lighting setups, light painting, dappled light through foliage
+**Root Cause:** The `ProfileGallery` component is a standalone lightbox with no commenting system. There's no database table or UI to support per-image comments.
 
-**Composition (20):** Leading lines in architecture, rule of thirds breakout, symmetry hunt, negative space portraits, depth layering (foreground/mid/background), dutch angle tension, bird's eye flat lay, worm's eye perspective, frame within frame, diagonal dominance, centered composition power, pattern and repetition, juxtaposition pairs, texture close-ups, scale contrast (tiny vs huge), golden spiral, converging lines, reflection symmetry, minimalist compositions, crowded frame storytelling
+**Fix:**
+- Create a new `gallery_comments` table with columns: `id`, `gallery_owner_id` (the profile owner), `image_url` (which gallery image), `user_id` (commenter), `content`, `created_at`
+- Add RLS policies allowing authenticated users to read and create comments, and delete their own
+- Create a `useGalleryComments` hook for fetching/creating/deleting comments on a specific gallery image
+- Update the `ProfileGallery` lightbox dialog to show a comment thread below the image, with an input to add a comment (similar to the existing community comment system but simpler)
+- Include commenter avatar, name (linked to their profile), and timestamp
 
-**Movement (20):** Smooth tracking walk-and-talk, whip pan transition, dolly zoom effect, handheld energy shot, reveal push-in, pull-back reveal, orbit around subject, low-angle rolling shot, staircase ascending shot, follow-the-action pan, parallax layering, tilt up reveal, crash zoom, slow creep tension, time-lapse with movement, rack focus pull, 360-degree spin, overhead crane simulation, running alongside subject, stillness-to-motion contrast
-
-**Storytelling (20):** Character intro in one shot, visual metaphor challenge, montage sequence (4 shots), establish-reveal-react, subtext through objects, before-and-after transformation, point-of-view sequence, emotional close-up study, world-building establishing shot, conflict in a single frame, passage of time in 3 shots, unreliable perspective, comedy timing beat, suspense through pacing, found-footage style, documentary interview setup, dream sequence aesthetic, flashback transition, environmental storytelling, silent dialogue scene
-
-**General (20):** Behind-the-scenes of your setup, recreate a famous film frame, sound design focus (foley), color grading before/after, storyboard to screen comparison, location scout documentation, prop styling for camera, continuity challenge (match cuts), aspect ratio experiment, genre swap (same scene, different genre), title card design, end credits sequence, film poster still, production design on a budget, casting and direction exercise, breakout your phone gimbal, weather as character, food cinematography, pet/animal filming, collaborative challenge (tag a friend)
+**Files:** Database migration, new `src/hooks/useGalleryComments.ts`, `src/components/profile/ProfileGallery.tsx`
 
 ---
 
-### Files Summary
+### Technical Summary
 
-| File | Action |
+| File | Change |
 |------|--------|
-| Database migration | Add `end_date` column, backfill existing rows |
-| `supabase/functions/seed-challenges/index.ts` | New -- edge function with 100 challenges |
-| `supabase/config.toml` | Add seed-challenges function config |
-| `src/hooks/useDailyChallenges.ts` | Update query for date ranges, add time remaining |
-| `src/components/community/DailyChallengeCard.tsx` | Show days remaining instead of "Today's Challenge" |
-| `src/pages/admin/ChallengeManager.tsx` | Add end_date to form, date range display, seed button |
+| Database migration | Add `intro_video_url` to `faculty_members`; create `gallery_comments` table with RLS |
+| `src/pages/admin/FacultyManager.tsx` | Add image file upload button + intro video URL field |
+| `src/pages/Faculty.tsx` | Video playback modal for "Watch Intro"; hide button when no video |
+| `src/hooks/useFacultyMembers.ts` | Add `intro_video_url` to types |
+| `src/hooks/useGalleryComments.ts` | New hook: fetch, create, delete gallery comments |
+| `src/components/profile/ProfileGallery.tsx` | Add comment thread to lightbox dialog |
