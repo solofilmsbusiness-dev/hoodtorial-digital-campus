@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 export function useAvatarUpload() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -20,17 +22,17 @@ export function useAvatarUpload() {
         .list(user.id);
 
       if (existingFiles && existingFiles.length > 0) {
-        const filesToDelete = existingFiles.map((f) => `${user.id}/${f.name}`);
-        await supabase.storage.from("avatars").remove(filesToDelete);
+        const filesToDelete = existingFiles.filter((f) => f.name.startsWith("avatar")).map((f) => `${user.id}/${f.name}`);
+        if (filesToDelete.length > 0) {
+          await supabase.storage.from("avatars").remove(filesToDelete);
+        }
       }
 
       setProgress(30);
 
-      // Get file extension
       const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
       const fileName = `${user.id}/avatar.${ext}`;
 
-      // Upload new avatar
       const { error: uploadError } = await supabase.storage
         .from("avatars")
         .upload(fileName, file, {
@@ -42,15 +44,12 @@ export function useAvatarUpload() {
 
       setProgress(70);
 
-      // Get public URL
       const { data: urlData } = supabase.storage
         .from("avatars")
         .getPublicUrl(fileName);
 
-      // Add cache buster to URL
       const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
 
-      // Update profile with new avatar URL
       const { error: updateError } = await supabase
         .from("profiles")
         .update({ avatar_url: publicUrl })
@@ -59,9 +58,16 @@ export function useAvatarUpload() {
       if (updateError) throw updateError;
 
       setProgress(100);
+      toast({ title: "Avatar updated successfully!" });
       return { url: publicUrl, error: null };
     } catch (err) {
-      return { url: null, error: err as Error };
+      const error = err as Error;
+      toast({
+        title: "Upload failed",
+        description: error.message || "Failed to upload avatar. Please try again.",
+        variant: "destructive",
+      });
+      return { url: null, error };
     } finally {
       setUploading(false);
     }
@@ -74,7 +80,6 @@ export function useAvatarUpload() {
     setProgress(0);
 
     try {
-      // Delete old banner first
       const { data: existingFiles } = await supabase.storage
         .from("avatars")
         .list(user.id);
@@ -89,11 +94,9 @@ export function useAvatarUpload() {
 
       setProgress(30);
 
-      // Get file extension
       const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
       const fileName = `${user.id}/banner.${ext}`;
 
-      // Upload new banner
       const { error: uploadError } = await supabase.storage
         .from("avatars")
         .upload(fileName, file, {
@@ -105,14 +108,12 @@ export function useAvatarUpload() {
 
       setProgress(70);
 
-      // Get public URL
       const { data: urlData } = supabase.storage
         .from("avatars")
         .getPublicUrl(fileName);
 
       const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
 
-      // Update profile with new banner URL
       const { error: updateError } = await supabase
         .from("profiles")
         .update({ cover_banner_url: publicUrl })
@@ -121,9 +122,16 @@ export function useAvatarUpload() {
       if (updateError) throw updateError;
 
       setProgress(100);
+      toast({ title: "Cover banner updated!" });
       return { url: publicUrl, error: null };
     } catch (err) {
-      return { url: null, error: err as Error };
+      const error = err as Error;
+      toast({
+        title: "Upload failed",
+        description: error.message || "Failed to upload cover banner. Please try again.",
+        variant: "destructive",
+      });
+      return { url: null, error };
     } finally {
       setUploading(false);
     }

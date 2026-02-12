@@ -8,8 +8,8 @@ import { MessageReactions } from "./MessageReactions";
 import { Check, CheckCheck } from "lucide-react";
 import { ReactionSummary } from "@/hooks/useMessageReactions";
  
- interface MessageBubbleProps {
-   message: DirectMessage;
+  interface MessageBubbleProps {
+    message: DirectMessage;
    isOwn: boolean;
    senderProfile?: {
      display_name: string | null;
@@ -57,23 +57,32 @@ export function MessageBubble({
        )}
  
       <div className={cn("flex flex-col gap-1", isOwn ? "items-end" : "items-start")}>
-        <div className={cn("flex items-center gap-1", isOwn ? "flex-row-reverse" : "")}>
-          {message.message_type === "contact_card" && message.contact_card_data ? (
-            <ContactCardMessage cardData={message.contact_card_data} />
-          ) : (
-            <div
-              className={cn(
-                "px-4 py-2 rounded-2xl",
-                isOwn
-                  ? "bg-primary text-primary-foreground rounded-br-md"
-                  : "bg-muted rounded-bl-md"
-              )}
-            >
-              <p className="text-sm whitespace-pre-wrap break-words">
-                {message.content}
-              </p>
-            </div>
-          )}
+         <div className={cn("flex items-center gap-1", isOwn ? "flex-row-reverse" : "")}>
+           {message.message_type === "contact_card" && message.contact_card_data ? (
+             <ContactCardMessage cardData={message.contact_card_data} />
+           ) : message.message_type === "image" && message.content ? (
+             <div className="rounded-2xl overflow-hidden max-w-xs">
+               <img
+                 src={message.content}
+                 alt="Shared image"
+                 className="w-full h-auto rounded-2xl cursor-pointer hover:opacity-90 transition-opacity"
+                 onClick={() => window.open(message.content!, "_blank")}
+               />
+             </div>
+           ) : (
+             <div
+               className={cn(
+                 "px-4 py-2 rounded-2xl",
+                 isOwn
+                   ? "bg-primary text-primary-foreground rounded-br-md"
+                   : "bg-muted rounded-bl-md"
+               )}
+             >
+               <p className="text-sm whitespace-pre-wrap break-words">
+                 {message.content}
+               </p>
+             </div>
+           )}
 
           {onDelete && onReact && (
             <MessageActions
