@@ -12,8 +12,6 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import type { LearningMetrics } from "@/hooks/useStudentAnalytics";
-
 interface AIInsight {
   category: string;
   observation: string;
@@ -30,8 +28,6 @@ interface AIInsightsResponse {
 interface AIInsightsPanelProps {
   studentName: string;
   studentId: string;
-  metrics: LearningMetrics;
-  enrolledCourses: string[];
 }
 
 function getRiskLevelBadge(level: "low" | "medium" | "high") {
@@ -48,8 +44,6 @@ function getRiskLevelBadge(level: "low" | "medium" | "high") {
 export function AIInsightsPanel({ 
   studentName, 
   studentId, 
-  metrics,
-  enrolledCourses 
 }: AIInsightsPanelProps) {
   const [insights, setInsights] = useState<AIInsightsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -64,17 +58,6 @@ export function AIInsightsPanel({
         body: {
           userId: studentId,
           studentName,
-          metrics: {
-            avgWatchPercentage: metrics.avgWatchPercentage,
-            lessonCompletionRate: metrics.lessonCompletionRate,
-            quizPassRate: metrics.quizPassRate,
-            quizScoreTrend: metrics.quizScoreTrend,
-            lastActivityDaysAgo: metrics.lastActivityDaysAgo,
-            enrolledCourses,
-            coursesWithNoProgress: metrics.coursesWithNoProgress,
-            totalWatchTimeMinutes: metrics.totalWatchTimeMinutes,
-            averageQuizScore: metrics.averageQuizScore,
-          },
         },
       });
 
