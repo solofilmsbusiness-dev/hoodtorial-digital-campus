@@ -1,68 +1,58 @@
 
 
-## Enhance "Looking For" & Restructure Profile Editor
+## Enrich Demo User Profiles with Full Data and Images
 
-### Part 1: Make "Looking For" Interactive for Collaboration
+### Problem
+Demo users currently have minimal profiles: just a name, bio, basic avatar placeholder (from ui-avatars.com), location, and filmmaking style. They lack profile images, cover banners, creative roles, collaboration info, social links, and all other profile fields -- making them look obviously fake and not useful for showcasing the platform.
 
-Currently, "Looking For" is just a list of badges on the public profile. We'll make it actionable:
+### Solution
+Enhance the `generate-demo-data` edge function to populate every profile field with realistic data, including real-looking avatar photos and cinematic cover banner images from free image services.
 
-**On the Public Profile (`PublicProfileCard.tsx`):**
-- Turn each "Looking For" badge into a clickable element
-- When a visitor's own creative role matches one of the "Looking For" roles, highlight that badge with a glowing accent (e.g., "You match!") 
-- Add a **"Offer to Collaborate"** button that appears when viewing someone else's profile who is looking for your role -- clicking it opens a pre-filled message like "Hey! I saw you're looking for a [role]. I'd love to collaborate!"
-- Show a small "match" indicator next to the Looking For section title when there's a role match
+### What Changes
 
-**On the Profile Editor (`StudentProfile.tsx`):**
-- Add a short optional **"Project Brief"** textarea under the Looking For chips (e.g., "Describe what you're working on and what kind of help you need") -- stored in a new `collaboration_brief` column
-- This brief shows on the public profile alongside the Looking For badges, giving context to potential collaborators
+**Edge Function: `supabase/functions/generate-demo-data/index.ts`**
 
-### Part 2: Restructure the Profile Edit Interface
+Replace the basic profile generation with a rich profile builder that populates:
 
-The current form is a long single-column scroll with 8+ cards. We'll reorganize it using **tabs** to group related fields, making it cleaner and faster to navigate:
+1. **Avatar Images** -- Use `randomuser.me` API for realistic headshot photos instead of `ui-avatars.com` letter icons
+2. **Cover Banners** -- Use `picsum.photos` (Lorem Picsum) for cinematic-looking cover images at 1200x400
+3. **Creative Role** -- Randomly assign from the role list (Director, Writer, Editor, Cinematographer, Producer, Sound Designer, etc.)
+4. **Tools & Equipment** (`camera_gear`) -- Role-appropriate gear/software (e.g., "DaVinci Resolve, Premiere Pro" for Editors, "Sony A7III, Blackmagic" for Cinematographers)
+5. **Looking For** (`looking_for`) -- Random subset of 1-3 complementary roles they're seeking
+6. **Collaboration Brief** (`collaboration_brief`) -- AI-generated short project brief describing what help they need
+7. **Favorite Films** (`favorite_films`) -- 2-4 films from a curated list
+8. **Influences** -- AI-generated or picked from a list of famous filmmakers
+9. **Current Project** -- AI-generated brief project description
+10. **Social Links** -- Randomized placeholder URLs for portfolio, Instagram, YouTube, Vimeo (some profiles get some links, not all)
+11. **Profile Accent Color** -- Random selection from a palette of accent colors
+12. **Avatar Border Style** -- Random pick from square, hexagon, glow options
 
-**Tab Structure:**
-1. **Appearance** -- Cover banner, avatar, theme picker (accent color, border style)
-2. **About You** -- Display name, location, bio, creative role, creative style, tools & equipment
-3. **Portfolio** -- Featured project, portfolio gallery, favorite films, influences, current project, collaboration brief, looking for collaborators
-4. **Links** -- All social/portfolio URLs (portfolio website, IMDb, Vimeo, Instagram, YouTube, Twitter/X, TikTok)
-5. **Layout** -- Profile card section order, profile page section order
+**Data Arrays to Add:**
+- `CREATIVE_ROLES` -- matching the roles defined in the profile editor
+- `TOOLS_BY_ROLE` -- role-specific gear/software lists
+- `FAVORITE_FILMS` -- curated list of ~30 well-known films
+- `INFLUENCES` -- list of ~20 famous filmmakers
+- `ACCENT_COLORS` -- palette of hex colors
+- `BORDER_STYLES` -- ["square", "hexagon", "glow"]
+- `SOCIAL_DOMAINS` -- template URLs for social profiles
 
-The sidebar (profile preview + completeness) stays as-is. The save button and unsaved changes indicator remain sticky at the bottom.
+**AI Generation Enhancements:**
+- Update the `generateBioWithAI` prompt to incorporate the user's creative role for more authentic bios
+- Add a new `generateCollaborationBriefWithAI` function for the collaboration brief
+- Add a new `generateCurrentProjectWithAI` function
 
-### Database Changes
+**Profile Object Update (line ~323-334):**
+The profile insert will go from ~10 fields to ~25 fields, covering the full profile schema.
 
-Add one new column:
+### Files Affected
+- `supabase/functions/generate-demo-data/index.ts` -- the only file that needs changes
 
-```sql
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS collaboration_brief text;
-```
+### Clear Function
+No changes needed to the clear function -- it already deletes all `is_demo` profiles which cascades properly.
 
-Update `profiles_public` view to include `collaboration_brief`.
-
-### Technical Details
-
-**Migration:** Add `collaboration_brief` column and rebuild `profiles_public` view.
-
-**File: `src/pages/StudentProfile.tsx`**
-- Import `Tabs, TabsContent, TabsList, TabsTrigger` from UI components
-- Wrap the form cards in a tabbed interface with 5 tabs
-- Add `collaboration_brief` to formData state and profile loading
-- Add a textarea for collaboration brief under the Looking For chips
-- Move "Tools & Equipment" from Basic Info into the "About You" tab alongside creative role/style
-- Move favorite films, influences, current project into "Portfolio" tab
-
-**File: `src/components/profile/PublicProfileCard.tsx`**
-- Replace static "Looking For" badges with interactive ones
-- Add role-match detection: compare viewer's `creative_role` against the profile's `looking_for` array
-- When a match is found, highlight the matching badge and show a "You match!" indicator
-- Add a "Offer to Collaborate" button that triggers `onMessage` with a pre-filled collaboration message
-- Display `collaboration_brief` text below the Looking For badges when present
-
-**File: `src/hooks/usePublicProfile.ts`**
-- Add `collaboration_brief` to `PublicProfile` interface
-
-**File: `src/components/profile/ProfilePreviewCard.tsx`**
-- Add `collaboration_brief` display if present
-
-**Files affected:** 1 migration + 4-5 component files
+### Notes
+- Avatar images come from `randomuser.me/api/portraits/` (free, no API key needed, realistic photos)
+- Cover banners from `picsum.photos/1200/400` with random seed for variety
+- No storage bucket uploads needed -- we use direct URLs from these free services
+- The function will take slightly longer due to additional AI calls for collaboration briefs and current projects, but the delay per user should be minimal since we're using the fast `gemini-2.5-flash-lite` model
 
