@@ -1,26 +1,28 @@
 
 
-## Add "Hoodtorials" Branded Section
+## Fix: Quiz Data Not Showing in Admin Student Detail
 
-### What
-Add a bold, eye-catching "Hoodtorials" section to the homepage with the slogan **"We Look Under the Hood of Filmmaking."** This ties the brand name directly to its meaning and gives visitors a clear, memorable tagline.
+### Problem
+When viewing a student's quiz results in the admin panel, the question breakdown shows **"Question X (data not available)"** for all database-driven quizzes. This happens because the admin quiz management hook (`useAdminQuizManagement.ts`) tries to look up question text from static files using `getQuizQuestions(quiz_id)`, but database quizzes use UUIDs that don't exist in the static data.
 
-### Where
-New section on the **homepage** (`src/pages/Index.tsx`), placed between the "Features" section and the "How Graduation Works" section -- a natural spot to reinforce the brand identity before diving into process details.
+The console logs confirm this with repeated warnings: `"Admin Quiz View: Question not found"`.
 
-### Design
-- Full-width section with the dark noise background for contrast
-- Large, bold "HOODTORIALS" heading in the gold gradient with glow effect
-- Slogan "We Look Under the Hood of Filmmaking" in prominent uppercase tracking text
-- A short supporting paragraph reinforcing the concept (e.g., breaking down the craft, demystifying professional techniques)
-- Framed with the brutalist border style consistent with the rest of the site
-- Uses a wrench/cog or film-related icon from Lucide (e.g., `Clapperboard` or `Wrench`) to visually reinforce "under the hood"
+### Solution
+Update `fetchQuizResultsWithAnswers` in `useAdminQuizManagement.ts` to fetch question details from the `quiz_questions` database table when the static lookup returns no results.
 
 ### Technical Details
 
-**File: `src/pages/Index.tsx`**
-- Add a new `<Section>` block after the Features section
-- Uses existing `Section`, `SectionHeader`, and `ScrollReveal` components
-- No new dependencies or database changes needed
-- Purely a frontend content addition using the existing design system
+**File: `src/hooks/useAdminQuizManagement.ts`**
+
+1. After the static lookup (`getQuizQuestions`) returns empty for a quiz ID, query the `quiz_questions` table for all unique quiz IDs from the results that had no static match
+2. Build a map of `question_id -> { question, options, correct_answer }` from the DB data
+3. Use this DB map as the fallback when mapping answer details, so the admin can see the actual question text, options, and which answer was correct vs. selected
+
+The key change is in the `fetchQuizResultsWithAnswers` function:
+- Collect all unique `quiz_id` values from results
+- For any quiz ID where `getQuizQuestions()` returns empty, batch-fetch from `quiz_questions` table
+- When building `answersWithDetails`, use DB question data as fallback
+- This ensures both legacy static quizzes and new DB quizzes display full detail in the admin view
+
+No database schema changes or new migrations are needed -- the `quiz_questions` table already has all the necessary columns (question, options, correct_answer), and admin users have read access.
 
