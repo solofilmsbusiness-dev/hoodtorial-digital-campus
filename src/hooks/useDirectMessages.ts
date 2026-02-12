@@ -19,8 +19,9 @@
    display_name: string | null;
    avatar_url: string | null;
    bio: string | null;
-   filmmaking_style: string | null;
-   camera_gear: string | null;
+    filmmaking_style: string | null;
+    creative_role: string | null;
+    camera_gear: string | null;
    portfolio_url: string | null;
    instagram_url: string | null;
    youtube_url: string | null;

@@ -59,7 +59,23 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const FILMMAKING_STYLES = [
+const CREATIVE_ROLES = [
+  "Director",
+  "Writer",
+  "Editor",
+  "Cinematographer",
+  "Producer",
+  "Sound Designer",
+  "Production Designer",
+  "Animator",
+  "Composer",
+  "Actor",
+  "VFX Artist",
+  "Colorist",
+  "Other",
+];
+
+const CREATIVE_STYLES = [
   "Documentary",
   "Narrative Fiction",
   "Experimental",
@@ -70,8 +86,25 @@ const FILMMAKING_STYLES = [
   "Comedy",
   "Drama",
   "Sci-Fi",
+  "Screenwriting",
+  "Post-Production",
+  "Sound Design",
+  "Visual Effects",
   "Other",
 ];
+
+const TOOLS_PLACEHOLDERS: Record<string, string> = {
+  Writer: "Final Draft, Celtx, Highland...",
+  Editor: "DaVinci Resolve, Premiere Pro, FCPX...",
+  Cinematographer: "Sony A7III, Canon R5, Blackmagic...",
+  "Sound Designer": "Pro Tools, Logic Pro, Zoom H6...",
+  Director: "Shot lister, storyboard tools...",
+  Animator: "After Effects, Blender, Toon Boom...",
+  Composer: "Logic Pro, Ableton, Pro Tools...",
+  "VFX Artist": "Nuke, After Effects, Houdini...",
+  Colorist: "DaVinci Resolve, Baselight...",
+  Producer: "Movie Magic, StudioBinder...",
+};
 
 export default function StudentProfile() {
   const { profile, loading, updateProfile, refetch } = useProfileContext();
@@ -88,6 +121,7 @@ export default function StudentProfile() {
     bio: "",
     location: "",
     camera_gear: "",
+    creative_role: "",
     instagram_url: "",
     youtube_url: "",
     twitter_url: "",
@@ -142,6 +176,7 @@ export default function StudentProfile() {
         bio: profile.bio || "",
         location: profile.location || "",
         camera_gear: profile.camera_gear || "",
+        creative_role: (profile as any).creative_role || "",
         instagram_url: profile.instagram_url || "",
         youtube_url: profile.youtube_url || "",
         twitter_url: profile.twitter_url || "",
@@ -367,6 +402,7 @@ export default function StudentProfile() {
                 bio={formData.bio}
                 location={formData.location}
                 cameraGear={formData.camera_gear}
+                creativeRole={formData.creative_role}
                 filmmakingStyle={formData.filmmaking_style}
                 currentProject={formData.current_project}
                 favoriteFilms={formData.favorite_films}
@@ -496,14 +532,14 @@ export default function StudentProfile() {
                     <div className="space-y-2">
                       <Label htmlFor="camera_gear" className="text-sm font-bold uppercase tracking-wide">
                         <Camera className="inline h-4 w-4 mr-1" />
-                        Camera Gear
+                        Tools & Equipment
                       </Label>
                       <Input
                         id="camera_gear"
                         name="camera_gear"
                         value={formData.camera_gear}
                         onChange={handleChange}
-                        placeholder="e.g., Sony A7III, Canon R5, Blackmagic Pocket 6K"
+                        placeholder={TOOLS_PLACEHOLDERS[formData.creative_role] || "Your primary tools and software..."}
                         className="bg-background border-2 border-border focus:border-primary"
                       />
                     </div>
@@ -522,7 +558,30 @@ export default function StudentProfile() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <Label className="text-sm font-bold uppercase tracking-wide">
-                          Filmmaking Style
+                          Creative Role
+                        </Label>
+                        <Select
+                          value={formData.creative_role}
+                          onValueChange={(value) => 
+                            setFormData((prev) => ({ ...prev, creative_role: value }))
+                          }
+                        >
+                          <SelectTrigger className="bg-background border-2 border-border focus:border-primary">
+                            <SelectValue placeholder="What do you do?" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {CREATIVE_ROLES.map((role) => (
+                              <SelectItem key={role} value={role}>
+                                {role}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-bold uppercase tracking-wide">
+                          Creative Style
                         </Label>
                         <Select
                           value={formData.filmmaking_style}
@@ -534,7 +593,7 @@ export default function StudentProfile() {
                             <SelectValue placeholder="Select your style" />
                           </SelectTrigger>
                           <SelectContent>
-                            {FILMMAKING_STYLES.map((style) => (
+                            {CREATIVE_STYLES.map((style) => (
                               <SelectItem key={style} value={style}>
                                 {style}
                               </SelectItem>
@@ -542,6 +601,9 @@ export default function StudentProfile() {
                           </SelectContent>
                         </Select>
                       </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                       <div className="space-y-2">
                         <Label htmlFor="current_project" className="text-sm font-bold uppercase tracking-wide">

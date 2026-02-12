@@ -37,9 +37,11 @@
          </Avatar>
          <div>
            <p className="font-bold">{cardData.display_name || "Unknown User"}</p>
-           {cardData.filmmaking_style && (
-             <p className="text-xs text-muted-foreground">{cardData.filmmaking_style}</p>
-           )}
+            {(cardData.creative_role || cardData.filmmaking_style) && (
+              <p className="text-xs text-muted-foreground">
+                {cardData.creative_role || cardData.filmmaking_style}
+              </p>
+            )}
          </div>
        </div>
  
