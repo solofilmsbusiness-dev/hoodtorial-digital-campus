@@ -1,39 +1,47 @@
 
 
-## Fix: User Deletion Error & Static Course Management
+## Fix: Post Save Button Not Giving Feedback
 
-### Issue 1: Admin Cannot Delete Users
+### What's Actually Happening
+The save button DOES work -- posts are being saved to the database successfully (the `post_follows` table has records). But the user experience makes it feel broken because:
 
-**Root Cause:** When a user's auth record has already been removed (e.g., previously deleted or orphaned), the `delete-user` edge function calls `auth.admin.deleteUser()` which throws a 404 "User not found" error. The profile row remains in the database, leaving a ghost entry the admin can never remove.
+1. **No instant visual feedback** -- The bookmark icon doesn't fill immediately when clicked. The mutation waits for a full data refetch before updating, which can take a moment and feels unresponsive
+2. **The "Following" tab is confusing** -- Saved posts appear under a "Following" tab with a people icon, which doesn't connect to the "Save" action. Users don't know where their saved posts went
+3. **Toast notifications may be inconsistent** -- The success message fires inside the mutation function rather than in the `onSuccess` callback
 
-**Fix:** Update the `delete-user` edge function to:
-- Catch the "User not found" error from `auth.admin.deleteUser()` and treat it as a success (the auth record is already gone)
-- After deleting (or confirming absence of) the auth record, explicitly delete the profile row and any other orphaned data using the service-role client
-- This ensures admins can always clean up user entries regardless of auth state
+### The Fix
 
-**File:** `supabase/functions/delete-user/index.ts`
+**File: `src/hooks/useCommunityPosts.ts`**
+- Add **optimistic UI updates** to the `toggleFollow` mutation so the bookmark icon fills/unfills immediately when clicked
+- Move toast calls to `onSuccess`/`onError` callbacks for reliability
+- Use `queryClient.setQueryData` to instantly toggle `user_is_following` on the cached post data before the server responds
+- Add `onError` rollback to revert the optimistic update if the server request fails
 
----
+**File: `src/components/community/ViewToggle.tsx`**
+- Rename "Following" tab to "Saved"
+- Change icon from Users to Bookmark so it matches the save button on posts
+- This makes it clear where saved posts can be found
 
-### Issue 2: "Lighting for Mobile Film" Cannot Be Deleted or Hidden
+### Technical Details
 
-**Root Cause:** HU-102 exists only in static data (`src/data/courses.ts`) but has no row in the `courses` database table. The Course Manager flags it as `isStaticOnly: true`, which disables the Published toggle, Coming Soon toggle, and Delete button. The admin has no way to manage it.
+The optimistic update in `toggleFollow` will:
+1. Cancel any outgoing refetches to avoid overwriting
+2. Snapshot the previous posts data
+3. Optimistically toggle `user_is_following` on the target post
+4. Return the snapshot for rollback on error
 
-**Fix:** Update `CourseManager.tsx` to auto-initialize a static-only course into the database when an admin tries to toggle its visibility or delete it, rather than blocking the action entirely. Specifically:
+```
+onMutate: (postId) => {
+  // Cancel refetches, snapshot current data, toggle user_is_following
+}
+onError: (err, postId, context) => {
+  // Restore snapshot
+}
+onSettled: () => {
+  // Invalidate to sync with server
+}
+```
 
-- When an admin clicks "Published" or "Coming Soon" on a static-only course, first insert it into the `courses` table (from static data), then apply the toggle
-- When an admin clicks "Delete" on a static-only course, show a message explaining it's a built-in course that can be hidden instead, or allow them to initialize and then delete it
-- Remove the `disabled={course.isStaticOnly}` restrictions on the toggle buttons and delete button
-- Add an `autoInitializeCourse` helper mutation that creates the DB row from static data on demand
-
-**File:** `src/pages/admin/CourseManager.tsx`
-
----
-
-### Technical Summary
-
-| File | Change |
-|------|--------|
-| `supabase/functions/delete-user/index.ts` | Handle 404 "User not found" gracefully; also delete orphaned profile rows directly |
-| `src/pages/admin/CourseManager.tsx` | Auto-initialize static-only courses into DB when admin interacts with them; remove `isStaticOnly` disabled states |
-
+### Files Affected
+- `src/hooks/useCommunityPosts.ts` -- optimistic updates for toggleFollow
+- `src/components/community/ViewToggle.tsx` -- rename "Following" to "Saved" with Bookmark icon
