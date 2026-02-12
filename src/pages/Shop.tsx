@@ -6,6 +6,11 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ShoppingBag, Sparkles } from "lucide-react";
+import { useCart } from "@/contexts/CartContext";
+import { CartDrawer } from "@/components/shop/CartDrawer";
+import { CartIcon } from "@/components/shop/CartIcon";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 // Product images
 import varsityJacketCrown from "@/assets/shop/varsity-jacket-crown.png";
@@ -23,6 +28,9 @@ const products: Product[] = [
     image: varsityJacketCrown,
     status: "available",
     sizes: ["S", "M", "L", "XL", "2XL"],
+    description: "Premium heavyweight wool-blend varsity jacket with embroidered crown logo. Leather sleeves, satin lining, and snap-button front.",
+    stock: 12,
+    color: "Black / Gold",
   },
   {
     id: "varsity-2025",
@@ -32,6 +40,9 @@ const products: Product[] = [
     image: varsityJacket2025,
     status: "available",
     sizes: ["S", "M", "L", "XL", "2XL"],
+    description: "Limited-edition Class of 2025 varsity jacket. Chenille patch lettering, ribbed cuffs, and interior pocket.",
+    stock: 5,
+    color: "Black / White",
   },
   {
     id: "tee-bali",
@@ -41,6 +52,8 @@ const products: Product[] = [
     image: teeBali25,
     status: "available",
     sizes: ["S", "M", "L", "XL", "2XL"],
+    description: "Oversized heavyweight cotton tee with Bali 2025 retreat graphic. Screen-printed on 6.5oz combed cotton.",
+    stock: 30,
   },
   {
     id: "tee-classic",
@@ -50,6 +63,8 @@ const products: Product[] = [
     image: teeClassicHT,
     status: "available",
     sizes: ["S", "M", "L", "XL", "2XL"],
+    description: "The everyday essential. Classic Hoodtorial logo on premium ringspun cotton. Pre-shrunk for a true-to-size fit.",
+    stock: 45,
   },
   {
     id: "tee-2025",
@@ -59,6 +74,8 @@ const products: Product[] = [
     image: teeClass2025,
     status: "coming-soon",
     sizes: ["S", "M", "L", "XL", "2XL"],
+    description: "Commemorative Class of 2025 tee. Drop date to be announced — join the waitlist.",
+    stock: 0,
   },
 ];
 
@@ -68,6 +85,8 @@ export default function Shop() {
   const [activeCategory, setActiveCategory] = useState<Category>("all");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedSize, setSelectedSize] = useState<string>("");
+  const [cartOpen, setCartOpen] = useState(false);
+  const { addToCart } = useCart();
 
   const filteredProducts = activeCategory === "all"
     ? products
@@ -76,6 +95,19 @@ export default function Shop() {
   const handleProductClick = (product: Product) => {
     setSelectedProduct(product);
     setSelectedSize(product.sizes?.[1] || "");
+  };
+
+  const handleAddToCart = () => {
+    if (!selectedProduct || !selectedSize) return;
+    addToCart({
+      productId: selectedProduct.id,
+      name: selectedProduct.name,
+      price: selectedProduct.price,
+      size: selectedSize,
+      image: selectedProduct.image,
+    });
+    toast.success(`${selectedProduct.name} (${selectedSize}) added to cart`);
+    setSelectedProduct(null);
   };
 
   return (
@@ -180,13 +212,47 @@ export default function Shop() {
                 </div>
 
                 {/* Details */}
-                <div className="space-y-6">
+                <div className="space-y-4">
                   <div>
                     <span className="tag-sticker text-[10px]">{selectedProduct.category}</span>
                     <p className="text-primary font-black text-3xl mt-4">
                       ${selectedProduct.price}
                     </p>
                   </div>
+
+                  {/* Description */}
+                  {selectedProduct.description && (
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {selectedProduct.description}
+                    </p>
+                  )}
+
+                  {/* Color */}
+                  {selectedProduct.color && (
+                    <p className="text-xs text-muted-foreground">
+                      <span className="font-bold text-foreground">Color:</span> {selectedProduct.color}
+                    </p>
+                  )}
+
+                  {/* Stock Indicator */}
+                  {selectedProduct.status === "available" && selectedProduct.stock != null && (
+                    <div className="flex items-center gap-2">
+                      <span className={cn(
+                        "w-2 h-2 rounded-full",
+                        selectedProduct.stock <= 3 ? "bg-destructive" : selectedProduct.stock <= 10 ? "bg-amber-500" : "bg-emerald-500"
+                      )} />
+                      <span className={cn(
+                        "text-xs font-bold uppercase tracking-wider",
+                        selectedProduct.stock <= 3 ? "text-destructive" : selectedProduct.stock <= 10 ? "text-amber-500" : "text-emerald-500"
+                      )}>
+                        {selectedProduct.stock <= 3
+                          ? `Only ${selectedProduct.stock} left!`
+                          : selectedProduct.stock <= 10
+                            ? `${selectedProduct.stock} in stock`
+                            : "In Stock"}
+                      </span>
+                    </div>
+                  )}
 
                   {/* Size Selector */}
                   {selectedProduct.sizes && (
@@ -217,7 +283,8 @@ export default function Shop() {
                   {/* Add to Cart */}
                   <Button 
                     className="w-full btn-brutal"
-                    disabled={selectedProduct.status !== "available"}
+                    disabled={selectedProduct.status !== "available" || !selectedSize}
+                    onClick={handleAddToCart}
                   >
                     {selectedProduct.status === "available" 
                       ? "Add to Cart" 
@@ -236,6 +303,10 @@ export default function Shop() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Cart */}
+      <CartIcon onClick={() => setCartOpen(true)} />
+      <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
     </PageLayout>
   );
 }

@@ -52,24 +52,17 @@
          return;
        }
  
-       // Get other user IDs
-       const otherUserIds = convos.map((c) =>
-         c.participant_1 === user.id ? c.participant_2 : c.participant_1
-       );
- 
-       // Fetch profiles
-       const { data: profiles } = await supabase
-         .from("profiles_public")
-         .select("user_id, display_name, avatar_url")
-         .in("user_id", otherUserIds);
- 
-       // Fetch last message for each conversation
-       const convoIds = convos.map((c) => c.id);
-       const { data: messages } = await supabase
-         .from("direct_messages")
-         .select("conversation_id, content, message_type, sender_id, created_at, is_read")
-         .in("conversation_id", convoIds)
-         .order("created_at", { ascending: false });
+        // Get other user IDs and conversation IDs
+        const otherUserIds = convos.map((c) =>
+          c.participant_1 === user.id ? c.participant_2 : c.participant_1
+        );
+        const convoIds = convos.map((c) => c.id);
+
+        // Fetch profiles and messages in parallel
+        const [{ data: profiles }, { data: messages }] = await Promise.all([
+          supabase.from("profiles_public").select("user_id, display_name, avatar_url").in("user_id", otherUserIds),
+          supabase.from("direct_messages").select("conversation_id, content, message_type, sender_id, created_at, is_read").in("conversation_id", convoIds).order("created_at", { ascending: false }),
+        ]);
  
        // Group messages by conversation and get last + unread count
        const messagesByConvo: Record<string, { last: typeof messages[0]; unread: number }> = {};

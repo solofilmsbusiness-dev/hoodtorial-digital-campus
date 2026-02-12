@@ -110,60 +110,38 @@ export function useCommunityPosts(filters?: {
 
       if (!postsData || postsData.length === 0) return [];
 
-      // Fetch profiles for authors (using limited public view for privacy)
+      // Fetch all metadata in parallel
       const userIds = [...new Set(postsData.map(p => p.user_id))];
-      const { data: profiles } = await supabase
-        .from('profiles_public')
-        .select('user_id, display_name, avatar_url, profile_accent_color, avatar_border_style')
-        .in('user_id', userIds);
+      const postIds = postsData.map(p => p.id);
 
-      // Fetch user roles for authors
-      const { data: userRolesData } = await supabase
-        .from('user_roles')
-        .select('user_id, role')
-        .in('user_id', userIds);
+      const [
+        { data: profiles },
+        { data: userRolesData },
+        { data: likesData },
+        { data: commentsData },
+        ...userDataResults
+      ] = await Promise.all([
+        supabase.from('profiles_public').select('user_id, display_name, avatar_url, profile_accent_color, avatar_border_style').in('user_id', userIds),
+        supabase.from('user_roles').select('user_id, role').in('user_id', userIds),
+        supabase.from('post_likes').select('post_id').in('post_id', postIds),
+        supabase.from('community_comments').select('post_id').in('post_id', postIds),
+        ...(user ? [
+          supabase.from('post_likes').select('post_id').eq('user_id', user.id).in('post_id', postIds),
+          supabase.from('post_follows').select('post_id').eq('user_id', user.id).in('post_id', postIds),
+        ] : []),
+      ]);
 
-      const userRolesMap = (userRolesData || []).reduce((acc, r) => {
-        // Prioritize admin > professor > moderator > student
-        const priority = { admin: 4, professor: 3, moderator: 2, student: 1 };
+      const userLikes = user ? (userDataResults[0]?.data?.map((l: any) => l.post_id) || []) : [];
+      const userFollows = user ? (userDataResults[1]?.data?.map((f: any) => f.post_id) || []) : [];
+
+      const userRolesMap = (userRolesData || []).reduce((acc: Record<string, string>, r: any) => {
+        const priority: Record<string, number> = { admin: 4, professor: 3, moderator: 2, student: 1 };
         const currentRole = acc[r.user_id];
-        if (!currentRole || priority[r.role as keyof typeof priority] > priority[currentRole as keyof typeof priority]) {
+        if (!currentRole || (priority[r.role] || 0) > (priority[currentRole] || 0)) {
           acc[r.user_id] = r.role;
         }
         return acc;
       }, {} as Record<string, string>);
-
-      // Fetch likes count for each post
-      const postIds = postsData.map(p => p.id);
-      const { data: likesData } = await supabase
-        .from('post_likes')
-        .select('post_id')
-        .in('post_id', postIds);
-
-      // Fetch comments count for each post
-      const { data: commentsData } = await supabase
-        .from('community_comments')
-        .select('post_id')
-        .in('post_id', postIds);
-
-      // Check user's likes
-      let userLikes: string[] = [];
-      let userFollows: string[] = [];
-      if (user) {
-        const { data: userLikesData } = await supabase
-          .from('post_likes')
-          .select('post_id')
-          .eq('user_id', user.id)
-          .in('post_id', postIds);
-        userLikes = userLikesData?.map(l => l.post_id) || [];
-
-        const { data: userFollowsData } = await supabase
-          .from('post_follows')
-          .select('post_id')
-          .eq('user_id', user.id)
-          .in('post_id', postIds);
-        userFollows = userFollowsData?.map(f => f.post_id) || [];
-      }
 
       // Combine data
       const likesCount = (likesData || []).reduce((acc, l) => {

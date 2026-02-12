@@ -60,36 +60,25 @@ export function useCommunityComments(postId: string | null) {
       if (commentsError) throw commentsError;
       if (!commentsData || commentsData.length === 0) return [];
 
-      // Fetch profiles for authors (using limited public view for privacy)
+      // Fetch all metadata in parallel
       const userIds = [...new Set(commentsData.map(c => c.user_id))];
-      const { data: profiles } = await supabase
-        .from('profiles_public')
-        .select('user_id, display_name, avatar_url, profile_accent_color, avatar_border_style')
-        .in('user_id', userIds);
-
-      // Fetch roles
-      const { data: roles } = await supabase
-        .from('user_roles')
-        .select('user_id, role')
-        .in('user_id', userIds);
-
-      // Fetch likes count
       const commentIds = commentsData.map(c => c.id);
-      const { data: likesData } = await supabase
-        .from('comment_likes')
-        .select('comment_id')
-        .in('comment_id', commentIds);
 
-      // Check user's likes
-      let userLikes: string[] = [];
-      if (user) {
-        const { data: userLikesData } = await supabase
-          .from('comment_likes')
-          .select('comment_id')
-          .eq('user_id', user.id)
-          .in('comment_id', commentIds);
-        userLikes = userLikesData?.map(l => l.comment_id) || [];
-      }
+      const [
+        { data: profiles },
+        { data: roles },
+        { data: likesData },
+        ...userDataResults
+      ] = await Promise.all([
+        supabase.from('profiles_public').select('user_id, display_name, avatar_url, profile_accent_color, avatar_border_style').in('user_id', userIds),
+        supabase.from('user_roles').select('user_id, role').in('user_id', userIds),
+        supabase.from('comment_likes').select('comment_id').in('comment_id', commentIds),
+        ...(user ? [
+          supabase.from('comment_likes').select('comment_id').eq('user_id', user.id).in('comment_id', commentIds),
+        ] : []),
+      ]);
+
+      const userLikes = user ? (userDataResults[0]?.data?.map((l: any) => l.comment_id) || []) : [];
 
       // Build maps
       const profilesMap = (profiles || []).reduce((acc, p) => {

@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ProfileProvider } from "@/contexts/ProfileContext";
 import { TestModeProvider } from "@/contexts/TestModeContext";
 import { DemoModeProvider } from "@/contexts/DemoModeContext";
+import { CartProvider } from "@/contexts/CartContext";
 import { DemoModeBanner } from "@/components/admin/DemoModeBanner";
  import { TesterModeBanner } from "@/components/admin/TesterModeBanner";
  import { useTestMode } from "@/hooks/useTestMode";
@@ -205,11 +206,13 @@ function JourneyRedirect() {
         <AuthProvider>
           <ProfileProvider>
             <TestModeProvider>
-              <DemoModeProvider>
-              <Toaster />
-              <Sonner />
-               <AppContent />
-            </DemoModeProvider>
+               <DemoModeProvider>
+                <CartProvider>
+               <Toaster />
+               <Sonner />
+                <AppContent />
+                </CartProvider>
+             </DemoModeProvider>
         </TestModeProvider>
       </ProfileProvider>
     </AuthProvider>

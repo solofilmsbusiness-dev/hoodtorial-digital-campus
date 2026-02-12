@@ -63,36 +63,55 @@
      }
    }, [conversationId, user]);
  
-   const sendMessage = async (content: string) => {
-     if (!conversationId || !user || !content.trim()) return { error: new Error("Invalid input") };
- 
-     try {
-       const { error } = await supabase.from("direct_messages").insert({
-         conversation_id: conversationId,
-         sender_id: user.id,
-         content: content.trim(),
-         message_type: "text",
-       });
- 
-       if (error) throw error;
- 
-       // Update conversation last_message_at
-       await supabase
-         .from("conversations")
-         .update({ last_message_at: new Date().toISOString() })
-         .eq("id", conversationId);
- 
-       return { error: null };
-     } catch (error) {
-       console.error("Error sending message:", error);
-       toast({
-         title: "Error",
-         description: "Failed to send message.",
-         variant: "destructive",
-       });
-       return { error: error as Error };
-     }
-   };
+    const sendMessage = async (content: string) => {
+      if (!conversationId || !user || !content.trim()) return { error: new Error("Invalid input") };
+
+      const trimmed = content.trim();
+      const optimisticId = `optimistic-${Date.now()}`;
+      const now = new Date().toISOString();
+
+      // Optimistic update — show message instantly
+      const optimisticMsg: DirectMessage = {
+        id: optimisticId,
+        conversation_id: conversationId,
+        sender_id: user.id,
+        content: trimmed,
+        message_type: "text",
+        contact_card_data: null,
+        is_read: false,
+        created_at: now,
+      };
+      setMessages((prev) => [...prev, optimisticMsg]);
+
+      try {
+        const { error } = await supabase.from("direct_messages").insert({
+          conversation_id: conversationId,
+          sender_id: user.id,
+          content: trimmed,
+          message_type: "text",
+        });
+
+        if (error) throw error;
+
+        // Update conversation last_message_at
+        await supabase
+          .from("conversations")
+          .update({ last_message_at: now })
+          .eq("id", conversationId);
+
+        return { error: null };
+      } catch (error) {
+        // Remove optimistic message on failure
+        setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
+        console.error("Error sending message:", error);
+        toast({
+          title: "Error",
+          description: "Failed to send message.",
+          variant: "destructive",
+        });
+        return { error: error as Error };
+      }
+    };
  
    const sendContactCard = async (cardData: ContactCardData) => {
      if (!conversationId || !user) return { error: new Error("Invalid input") };
