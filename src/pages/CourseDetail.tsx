@@ -52,7 +52,7 @@ const transformDbCourse = (dbCourse: any): Course => {
         id: m.quizzes[0].id,
         title: m.quizzes[0].title,
         passingScore: m.quizzes[0].passing_score,
-        questions: (m.quizzes[0].quiz_questions || []).length,
+        questions: (m.quizzes[0].quiz_questions_public || []).length,
         timeLimitMinutes: m.quizzes[0].time_limit_minutes ?? undefined,
         perQuestionSeconds: m.quizzes[0].per_question_seconds ?? undefined,
         usePerQuestionTimer: m.quizzes[0].use_per_question_timer ?? true,
@@ -65,7 +65,7 @@ const transformDbCourse = (dbCourse: any): Course => {
     id: finalExamData.id,
     title: finalExamData.title,
     passingScore: finalExamData.passing_score,
-    questions: (finalExamData.quiz_questions || []).length,
+    questions: (finalExamData.quiz_questions_public || []).length,
     timeLimitMinutes: finalExamData.time_limit_minutes ?? undefined,
     perQuestionSeconds: finalExamData.per_question_seconds ?? undefined,
     usePerQuestionTimer: finalExamData.use_per_question_timer ?? true,
@@ -105,12 +105,12 @@ const CourseDetail = () => {
             lessons (*),
             quizzes:quizzes!quizzes_module_id_fkey (
               *,
-              quiz_questions (*)
+              quiz_questions_public (id)
             )
           ),
           quizzes:quizzes!quizzes_course_id_fkey (
             *,
-            quiz_questions (*)
+            quiz_questions_public (id)
           )
         `)
         .eq("code", code || "")
