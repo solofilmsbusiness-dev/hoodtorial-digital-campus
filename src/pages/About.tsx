@@ -1,5 +1,5 @@
 import { PageLayout } from "@/components/layout/PageLayout";
-import { Target, Film, Users, Award, Zap, Heart, Clapperboard } from "lucide-react";
+import { Target, Film, Users, Award, Zap, Heart, Clapperboard, Info } from "lucide-react";
 
 const coreValues = [
   {
@@ -222,6 +222,38 @@ export default function About() {
               >
                 Browse Courses
               </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Disclosure Section */}
+      <section className="py-12 md:py-16 bg-charcoal border-t-2 border-border">
+        <div className="container-wide">
+          <div className="max-w-3xl mx-auto">
+            <div className="bg-card/50 border-2 border-border p-8 md:p-10">
+              <div className="flex items-start gap-4 mb-4">
+                <div className="w-10 h-10 bg-primary/20 border-2 border-primary/50 flex items-center justify-center shrink-0 mt-0.5">
+                  <Info className="h-5 w-5 text-primary" />
+                </div>
+                <h3 className="font-bold text-lg text-foreground">
+                  Important Disclosure — Please Read
+                </h3>
+              </div>
+              <div className="space-y-4 text-sm text-muted-foreground leading-relaxed pl-14">
+                <p>
+                  <strong className="text-foreground">Hoodtorial University is an online educational platform</strong>, not an accredited college or university. 
+                  The terms "university," "degree paths," "courses," and "credits" are used for organizational and motivational purposes only and do not represent formal academic credentials.
+                </p>
+                <p>
+                  Completion of our programs <strong className="text-foreground">does not result in an accredited degree, diploma, or professional certification</strong>. 
+                  Our courses are designed to teach practical filmmaking skills and should be treated as professional development and creative enrichment.
+                </p>
+                <p>
+                  That said — the skills you learn here are <span className="text-primary font-semibold">real</span>, the community is <span className="text-primary font-semibold">real</span>, and the growth you'll experience is <span className="text-primary font-semibold">real</span>. 
+                  We're here to help you become a better filmmaker, one lesson at a time.
+                </p>
+              </div>
             </div>
           </div>
         </div>
