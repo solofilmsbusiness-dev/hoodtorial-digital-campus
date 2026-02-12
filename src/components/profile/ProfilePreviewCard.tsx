@@ -9,7 +9,8 @@ import {
   Clapperboard,
   Globe,
   Instagram,
-  Youtube
+  Youtube,
+  Handshake
 } from "lucide-react";
 
 interface ProfilePreviewCardProps {
@@ -29,6 +30,8 @@ interface ProfilePreviewCardProps {
   instagramUrl: string;
   youtubeUrl: string;
   vimeoUrl: string;
+  lookingFor?: string[];
+  collaborationBrief?: string;
 }
 
 export function ProfilePreviewCard({
@@ -48,6 +51,8 @@ export function ProfilePreviewCard({
   instagramUrl,
   youtubeUrl,
   vimeoUrl,
+  lookingFor,
+  collaborationBrief,
 }: ProfilePreviewCardProps) {
   const getInitials = (name?: string) => {
     if (!name) return "S";
@@ -148,6 +153,32 @@ export function ProfilePreviewCard({
               </p>
             )}
           </div>
+
+          {/* Looking For */}
+          {lookingFor && lookingFor.length > 0 && (
+            <div className="mb-3">
+              <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                <Handshake className="h-3 w-3" /> Looking for:
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {lookingFor.slice(0, 3).map((role, idx) => (
+                  <Badge key={idx} variant="secondary" className="text-xs">
+                    {role}
+                  </Badge>
+                ))}
+                {lookingFor.length > 3 && (
+                  <Badge variant="outline" className="text-xs">
+                    +{lookingFor.length - 3} more
+                  </Badge>
+                )}
+              </div>
+              {collaborationBrief && (
+                <p className="text-xs text-muted-foreground italic mt-1 line-clamp-2">
+                  "{collaborationBrief}"
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Favorite Films */}
           {favoriteFilms.length > 0 && (

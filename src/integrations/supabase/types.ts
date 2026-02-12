@@ -835,6 +835,7 @@ export type Database = {
           camera_gear: string | null
           card_section_order: string[] | null
           certificate_department: string | null
+          collaboration_brief: string | null
           cover_banner_position: number | null
           cover_banner_url: string | null
           creative_role: string | null
@@ -886,6 +887,7 @@ export type Database = {
           camera_gear?: string | null
           card_section_order?: string[] | null
           certificate_department?: string | null
+          collaboration_brief?: string | null
           cover_banner_position?: number | null
           cover_banner_url?: string | null
           creative_role?: string | null
@@ -937,6 +939,7 @@ export type Database = {
           camera_gear?: string | null
           card_section_order?: string[] | null
           certificate_department?: string | null
+          collaboration_brief?: string | null
           cover_banner_position?: number | null
           cover_banner_url?: string | null
           creative_role?: string | null
@@ -1367,6 +1370,7 @@ export type Database = {
           bio: string | null
           camera_gear: string | null
           card_section_order: string[] | null
+          collaboration_brief: string | null
           cover_banner_position: number | null
           cover_banner_url: string | null
           creative_role: string | null
@@ -1398,6 +1402,7 @@ export type Database = {
           bio?: string | null
           camera_gear?: string | null
           card_section_order?: string[] | null
+          collaboration_brief?: string | null
           cover_banner_position?: number | null
           cover_banner_url?: string | null
           creative_role?: string | null
@@ -1429,6 +1434,7 @@ export type Database = {
           bio?: string | null
           camera_gear?: string | null
           card_section_order?: string[] | null
+          collaboration_brief?: string | null
           cover_banner_position?: number | null
           cover_banner_url?: string | null
           creative_role?: string | null
