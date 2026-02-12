@@ -397,8 +397,6 @@ export function StudentDetailSheet({
                     <AIInsightsPanel
                       studentName={student.displayName || "Student"}
                       studentId={student.id}
-                      metrics={metrics}
-                      enrolledCourses={student.enrollments.map((e) => e.courseCode)}
                     />
                     <Separator />
                   </>
