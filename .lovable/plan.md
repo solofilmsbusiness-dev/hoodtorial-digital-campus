@@ -1,91 +1,54 @@
 
 
-## Visual Layout Editor with Live Preview
+## Fix Contact Cards in Messages
 
-### Problem
-The current Layout tab shows two plain drag-and-drop lists with text labels and icons. Users can't see what the sections actually look like, making it hard to understand what they're rearranging.
+### Problems Found
+1. **React ref error**: `ContactCardMessage` is a plain function component but gets a ref passed to it (from the message bubble layout), causing a React warning that can break rendering
+2. **Visually bland**: The card uses a basic `Card` with generic styling that doesn't match the platform's bold dark/gold aesthetic
+3. **No clear purpose**: The card has no "View Profile" button linking to `/profile/:id`, making it a dead-end
+4. **Empty states look awkward**: When a user has no bio, no social links, and no portfolio, the card is just a name and avatar with nothing else
 
 ### Solution
-Replace the abstract list-based editors with a **visual mini-preview layout** that shows a simplified representation of each section (like a wireframe/blueprint). As users drag sections, the preview updates in real-time so they can immediately see the result.
 
----
+**Modified: `src/components/messaging/ContactCardMessage.tsx`**
+- Wrap with `React.forwardRef` to fix the ref warning
+- Redesign with the platform's brutalist aesthetic:
+  - Dark gradient background with gold accent border on the left edge
+  - Larger avatar with the user's accent color ring
+  - Creative role shown as a gold badge/chip below the name
+  - Bio in a subtle quote-style block
+  - Camera gear with a styled icon chip
+  - Social links as gold-accented icon buttons
+  - "View Profile" as a prominent gold button linking to `/profile/:userId`
+  - "View Portfolio" as a secondary outlined button (only if portfolio exists)
+- Handle empty states gracefully: if nothing but name/avatar, show a clean minimal card with just the View Profile action
 
-### Design Approach
+**Modified: `src/components/messaging/MessageComposer.tsx`**
+- Improve the "Share Contact Card" preview popover to better match the new card style
+- Show a mini version of what the recipient will see
 
-Each section gets a small visual "block" preview instead of a plain text row:
+### Visual Design (New Card Layout)
 
-**Profile Card sections** (bio, featured project, info cards, social links):
-- **Bio block**: Shows a quote icon with gray placeholder lines mimicking text
-- **Featured Project block**: Shows a film/play icon with a thumbnail-style rectangle
-- **Info Cards block**: Shows a 2x2 grid of small card outlines
-- **Social Links block**: Shows a row of circular social media icon placeholders
-
-**Page sections** (stats, achievements, gallery, wall):
-- **Academic Stats block**: Shows a mini bar-chart style graphic with numbers
-- **Achievements block**: Shows trophy icons in a row with badge shapes
-- **Gallery block**: Shows a grid of small image placeholder squares
-- **Wall block**: Shows stacked message bubble outlines
-
-Each block is ~80px tall, draggable, and styled with the section's accent color when active. A subtle "numbered position" badge (1, 2, 3, 4) appears in the corner of each block.
-
-### Side-by-Side Layout
-On desktop, the Layout tab will show a **two-column layout**:
-- Left column: The interactive drag-and-drop blocks
-- Right column: A combined "profile page preview" wireframe that reflects the current order in real-time
-
-On mobile, only the drag blocks are shown (the sidebar ProfilePreviewCard already serves as a general preview).
-
----
-
-### Technical Changes
-
-**Modified: `src/components/profile/SectionLayoutEditor.tsx`**
-- Replace `SortableSectionItem` with new `SortableVisualBlock` component
-- Each block renders a small visual representation of its section content
-- Add numbered position badges
-- Add a mini wireframe preview column on the right
-
-**Modified: `src/components/profile/CardSectionLayoutEditor.tsx`**
-- Same treatment: replace text items with visual blocks
-- Each card section gets a miniature visual representation
-
-**New: `src/components/profile/SortableVisualBlock.tsx`**
-- New drag-and-drop item component with:
-  - Section icon and label at top
-  - Visual wireframe preview area (~60px) showing what the section looks like
-  - Position number badge
-  - Drag handle
-  - Highlighted border with accent color on drag
-
-**Modified: `src/components/profile/SortableSectionItem.tsx`**
-- Keep as-is (other parts of the app may use it), but the layout editors will use the new visual block
-
-**Modified: `src/pages/StudentProfile.tsx`** (Layout tab only, lines 902-912)
-- Pass accent color and profile data to layout editors so previews can reflect real content
-- Add descriptive header with explanation
-
----
-
-### Visual Block Previews (what each block renders)
-
-| Section | Visual Representation |
-|---------|----------------------|
-| Bio | Quote mark icon + 3 gray lines (text placeholder) |
-| Featured Project | 16:9 rectangle with play button triangle in center |
-| Info Cards | 2x2 grid of small rounded rectangles with tiny icons |
-| Social Links | Row of 4 small circles (social icon placeholders) |
-| Academic Stats | 3 vertical bars (chart) with numbers below |
-| Achievements | 3 trophy/star shapes in a row |
-| Gallery | 2x3 grid of small square image placeholders |
-| Wall | 3 stacked rounded message bubble outlines |
+```text
++----------------------------------------------+
+| [Gold left border]                            |
+|  [Avatar w/ ring]  Name                       |
+|                    "Cinematographer" (badge)   |
+|                                               |
+|  "Bio text here in italic quote style..."     |
+|                                               |
+|  Camera icon  Camera gear details             |
+|                                               |
+|  [IG] [YT] [TW] [Vimeo]  (gold icon row)     |
+|                                               |
+|  [ View Profile ]  [ View Portfolio ]         |
++----------------------------------------------+
+```
 
 ### Files Summary
 
 | File | Action |
 |------|--------|
-| `src/components/profile/SortableVisualBlock.tsx` | New -- visual drag item with wireframe preview |
-| `src/components/profile/SectionLayoutEditor.tsx` | Update to use visual blocks + add live preview column |
-| `src/components/profile/CardSectionLayoutEditor.tsx` | Update to use visual blocks + add live preview column |
-| `src/pages/StudentProfile.tsx` | Pass accent color to layout editors |
-| `src/components/profile/index.ts` | Export new component if needed |
+| `src/components/messaging/ContactCardMessage.tsx` | Rewrite with forwardRef + redesign |
+| `src/components/messaging/MessageComposer.tsx` | Update contact preview to match new style |
 
