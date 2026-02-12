@@ -242,12 +242,11 @@ export default function About() {
               </div>
               <div className="space-y-4 text-sm text-muted-foreground leading-relaxed pl-14">
                 <p>
-                  <strong className="text-foreground">Hoodtorial University is an online educational platform</strong>, not an accredited college or university. 
-                  The terms "university," "degree paths," "courses," and "credits" are used for organizational and motivational purposes only and do not represent formal academic credentials.
+                  <strong className="text-foreground">Hoodtorial University is a teaching platform, a learning community, and a skill-building environment</strong> — built for creators who want to sharpen their filmmaking craft. 
+                  We are <strong className="text-foreground">not</strong> a traditional or accredited college or university. The terms "university," "degree paths," "courses," and "credits" are used to organize your learning journey and keep you motivated — they don't represent formal academic credentials.
                 </p>
                 <p>
-                  Completion of our programs <strong className="text-foreground">does not result in an accredited degree, diploma, or professional certification</strong>. 
-                  Our courses are designed to teach practical filmmaking skills and should be treated as professional development and creative enrichment.
+                  When you complete a course or learning path, you'll receive a <strong className="text-foreground">certificate of completion</strong> and <strong className="text-foreground">recognition for your progress</strong> — not an academic degree, diploma, or professional certification. Think of it as proof that you put in the work and leveled up your skills.
                 </p>
                 <p>
                   That said — the skills you learn here are <span className="text-primary font-semibold">real</span>, the community is <span className="text-primary font-semibold">real</span>, and the growth you'll experience is <span className="text-primary font-semibold">real</span>. 
