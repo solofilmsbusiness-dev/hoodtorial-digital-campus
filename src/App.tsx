@@ -40,6 +40,7 @@ import SupportManager from "./pages/admin/SupportManager";
 import WaitlistManager from "./pages/admin/WaitlistManager";
 import FacultyManager from "./pages/admin/FacultyManager";
 import Checkout from "./pages/Checkout";
+import Privacy from "./pages/Privacy";
  import Friends from "./pages/Friends";
  import Messages from "./pages/Messages";
  import PublicProfile from "./pages/PublicProfile";
@@ -94,7 +95,8 @@ function JourneyRedirect() {
            <Route path="/enrollment" element={<Enrollment />} />
            <Route path="/faculty" element={<Faculty />} />
            <Route path="/about" element={<About />} />
-           <Route path="/shop" element={<Shop />} />
+            <Route path="/shop" element={<Shop />} />
+            <Route path="/privacy" element={<Privacy />} />
            <Route path="/community" element={
              <AssessmentRequiredRoute>
                <Community />
