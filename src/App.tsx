@@ -95,7 +95,8 @@ function JourneyRedirect() {
            <Route path="/enrollment" element={<Enrollment />} />
            <Route path="/faculty" element={<Faculty />} />
            <Route path="/about" element={<About />} />
-           <Route path="/shop" element={<Shop />} />
+            <Route path="/shop" element={<Shop />} />
+            <Route path="/privacy" element={<Privacy />} />
            <Route path="/community" element={
              <AssessmentRequiredRoute>
                <Community />
