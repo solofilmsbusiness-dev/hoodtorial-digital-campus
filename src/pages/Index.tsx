@@ -209,6 +209,9 @@ const Index = () => {
         </div>
       </section>
 
+      {/* ProjectX Handoff Log */}
+      <ProjectXHandoffLog />
+
       {/* Features Section */}
       <Section className="bg-card/50 bg-noise">
         <SectionHeader
