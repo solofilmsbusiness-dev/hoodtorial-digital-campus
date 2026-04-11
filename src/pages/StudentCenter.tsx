@@ -234,7 +234,7 @@ export default function StudentCenter() {
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h1 className="heading-2 text-foreground mb-1">
+                <h1 className="font-black tracking-tighter uppercase leading-tight text-xl sm:text-3xl md:text-4xl lg:text-5xl text-foreground mb-1">
                   Welcome back, {profile?.display_name || "Student"}
                 </h1>
                 <div className="flex flex-wrap items-center gap-2">
@@ -260,17 +260,17 @@ export default function StudentCenter() {
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <Link 
-                to="/student/profile" 
-                className="btn-brutal text-sm flex items-center gap-2"
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <Link
+                to="/student/profile"
+                className="btn-brutal text-xs sm:text-sm flex items-center gap-1 sm:gap-2 px-4 py-2 sm:px-8 sm:py-4"
               >
                 <Settings className="h-4 w-4" />
                 Edit Profile
               </Link>
-              <Link 
-                to={`/profile/${user?.id}`} 
-                className="btn-brutal text-sm flex items-center gap-2 bg-charcoal hover:bg-charcoal-light"
+              <Link
+                to={`/profile/${user?.id}`}
+                className="btn-brutal text-xs sm:text-sm flex items-center gap-1 sm:gap-2 px-4 py-2 sm:px-8 sm:py-4 bg-charcoal hover:bg-charcoal-light"
               >
                 <Eye className="h-4 w-4" />
                 View Profile
@@ -430,9 +430,9 @@ export default function StudentCenter() {
                       {results.slice(0, 5).map((result) => {
                         const courseTitle = courses.find((c) => c.code === result.course_code)?.title;
                         return (
-                        <div key={result.id} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border">
-                          <div>
-                            <p className="font-bold text-foreground">
+                        <div key={result.id} className="flex items-center justify-between gap-2 p-4 bg-muted/30 rounded-lg border border-border">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-bold text-foreground truncate">
                               {result.course_code}
                               {courseTitle && <span className="text-muted-foreground font-normal"> • {courseTitle}</span>}
                             </p>
@@ -440,16 +440,16 @@ export default function StudentCenter() {
                               {new Date(result.created_at).toLocaleDateString()}
                             </p>
                           </div>
-                          <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2 flex-shrink-0">
                             <span className="text-lg font-bold">
                               {result.score}/{result.total_questions}
                             </span>
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
-                              result.passed 
-                                ? "bg-green-500/20 text-green-400" 
+                            <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase ${
+                              result.passed
+                                ? "bg-green-500/20 text-green-400"
                                 : "bg-destructive/20 text-destructive"
                             }`}>
-                              {result.passed ? "Passed" : "Failed"}
+                              {result.passed ? "Pass" : "Fail"}
                             </span>
                           </div>
                         </div>

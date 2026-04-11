@@ -232,7 +232,7 @@ const Index = () => {
             </h1>
 
             {/* Tagline */}
-            <p className="text-lg md:text-xl lg:text-2xl font-bold uppercase tracking-[0.3em] text-muted-foreground text-center mt-6 animate-reveal stagger-3">
+            <p className="text-lg md:text-xl lg:text-2xl font-bold uppercase tracking-[0.1em] sm:tracking-[0.3em] text-muted-foreground text-center mt-6 animate-reveal stagger-3">
               Where Hustle Meets Hollywood
             </p>
 
@@ -321,7 +321,7 @@ const Index = () => {
       <Section>
         <ScrollReveal direction="up">
           <div className="max-w-4xl mx-auto text-center">
-            <div className="border-4 border-border bg-card/30 backdrop-blur-sm p-12 md:p-20 relative">
+            <div className="border-4 border-border bg-card/30 backdrop-blur-sm p-6 sm:p-10 md:p-20 relative">
               {/* Decorative corners */}
               <div className="absolute -top-2 -left-2 w-4 h-4 bg-primary" />
               <div className="absolute -top-2 -right-2 w-4 h-4 bg-primary" />
@@ -338,7 +338,7 @@ const Index = () => {
                 HOODTORIALS
               </h2>
 
-              <p className="text-lg md:text-2xl font-bold uppercase tracking-[0.25em] text-muted-foreground mt-6">
+              <p className="text-sm sm:text-base md:text-lg lg:text-2xl font-bold uppercase tracking-[0.05em] sm:tracking-[0.1em] md:tracking-[0.25em] text-muted-foreground mt-6">
                 Where We Look Under the Hood of Filmmaking
               </p>
 
@@ -410,7 +410,7 @@ const Index = () => {
 
       {/* Degree Preview */}
       <Section>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           <div className="animate-slide-left">
             <span className="tag-sticker mb-6">Credentials</span>
             <h2 className="heading-2 text-foreground mb-6 mt-4">
@@ -471,10 +471,10 @@ const Index = () => {
               </div>
 
               {/* Floating tags */}
-              <div className="absolute -top-6 -right-6 tag-sticker rotate-6 animate-float">
+              <div className="hidden sm:block absolute -top-6 -right-6 tag-sticker rotate-6 animate-float">
                 Dean's List
               </div>
-              <div className="absolute -bottom-6 -left-6 tag-outline text-neon-purple border-neon-purple -rotate-3 animate-float" style={{ animationDelay: "1s" }}>
+              <div className="hidden sm:block absolute -bottom-6 -left-6 tag-outline text-neon-purple border-neon-purple -rotate-3 animate-float" style={{ animationDelay: "1s" }}>
                 In Progress
               </div>
             </div>
