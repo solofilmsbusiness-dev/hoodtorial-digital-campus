@@ -127,7 +127,11 @@ function EmailCaptureSection() {
 
     if (!error) {
       setStatus("success");
+      const capturedEmail = email.toLowerCase().trim();
       setEmail("");
+      supabase.functions.invoke("send-waitlist-email", {
+        body: { email: capturedEmail },
+      });
     } else if (error.code === "23505") {
       setStatus("duplicate");
     } else {
