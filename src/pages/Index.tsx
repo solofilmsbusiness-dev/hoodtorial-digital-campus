@@ -1,4 +1,6 @@
 import { PageLayout, Section, SectionHeader } from "@/components/layout";
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { CourseCard, TierCard } from "@/components/cards";
 import { ScrollReveal, CountingNumber } from "@/components/animations";
@@ -104,6 +106,80 @@ const membershipTiers = [
     ],
   },
 ];
+
+
+function EmailCaptureSection() {
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<"idle" | "success" | "duplicate" | "error">("idle");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+    setLoading(true);
+    setStatus("idle");
+
+    const { error } = await supabase
+      .from("waitlist")
+      .insert({ email: email.toLowerCase().trim(), status: "pending" });
+
+    setLoading(false);
+
+    if (!error) {
+      setStatus("success");
+      setEmail("");
+    } else if (error.code === "23505") {
+      setStatus("duplicate");
+    } else {
+      setStatus("error");
+    }
+  };
+
+  return (
+    <Section>
+      <div className="max-w-2xl mx-auto text-center animate-reveal">
+        <span className="tag-sticker mb-6">
+          <Trophy className="w-3 h-3 mr-2" />
+          Free Drops
+        </span>
+        <h2 className="heading-3 text-foreground mb-4 mt-4">
+          DROPS FROM THE DEAN'S OFFICE
+        </h2>
+        <p className="text-muted-foreground mb-8">
+          Exclusive tips, free resources, and early access. No spam, just game.
+        </p>
+
+        {status === "success" ? (
+          <div className="max-w-md mx-auto p-6 border-2 border-primary bg-primary/10 text-primary font-bold text-center">
+            ✓ YOU'RE ON THE LIST. WE'LL BE IN TOUCH.
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="your@email.com"
+              required
+              disabled={loading}
+              className="flex-1 h-14 px-4 border-2 border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-all duration-300 font-medium disabled:opacity-50"
+            />
+            <button type="submit" disabled={loading} className="btn-brutal h-14 disabled:opacity-50">
+              {loading ? "..." : "Subscribe"}
+            </button>
+          </form>
+        )}
+
+        {status === "duplicate" && (
+          <p className="mt-3 text-sm text-muted-foreground">You're already on the list. We got you.</p>
+        )}
+        {status === "error" && (
+          <p className="mt-3 text-sm text-destructive">Something went wrong. Try again.</p>
+        )}
+      </div>
+    </Section>
+  );
+}
 
 const Index = () => {
   return (
@@ -421,31 +497,7 @@ const Index = () => {
       </Section>
 
       {/* Email Capture */}
-      <Section>
-        <div className="max-w-2xl mx-auto text-center animate-reveal">
-          <span className="tag-sticker mb-6">
-            <Trophy className="w-3 h-3 mr-2" />
-            Free Drops
-          </span>
-          <h2 className="heading-3 text-foreground mb-4 mt-4">
-            DROPS FROM THE DEAN'S OFFICE
-          </h2>
-          <p className="text-muted-foreground mb-8">
-            Exclusive tips, free resources, and early access. No spam, just game.
-          </p>
-          
-          <form className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
-            <input
-              type="email"
-              placeholder="your@email.com"
-              className="flex-1 h-14 px-4 border-2 border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-all duration-300 font-medium"
-            />
-            <button type="submit" className="btn-brutal h-14">
-              Subscribe
-            </button>
-          </form>
-        </div>
-      </Section>
+      <EmailCaptureSection />
     </PageLayout>
   );
 };

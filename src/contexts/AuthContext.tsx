@@ -51,7 +51,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
       },
     });
-    
+
+    if (!error) {
+      try {
+        await supabase.functions.invoke("send-welcome-email", { body: { email, displayName: displayName || "" } });
+      } catch (e) {
+        console.warn("Welcome email failed:", e);
+      }
+    }
     return { error: error as Error | null };
   };
 
