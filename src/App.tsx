@@ -28,6 +28,7 @@ import Assessment from "./pages/Assessment";
 import Shop from "./pages/Shop";
 import Community from "./pages/Community";
 import NotFound from "./pages/NotFound";
+import Index from "./pages/Index";
 import SkillTree from "./pages/SkillTree";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import CourseManager from "./pages/admin/CourseManager";
@@ -59,7 +60,10 @@ function RootRedirect() {
     );
   }
   
-  return <Navigate to={user ? "/student" : "/auth"} replace />;
+  if (user) {
+    return <Navigate to="/student" replace />;
+  }
+  return <Index />;
 }
 
 // Redirect component for legacy /journey/:path routes

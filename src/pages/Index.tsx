@@ -6,7 +6,6 @@ import { Link } from "react-router-dom";
 import { ArrowRight, Play, Trophy, Target, Sparkles, Film, GraduationCap, Check, Clapperboard } from "lucide-react";
 import heroLogo from "@/assets/hero-logo.png";
 import heroVideo from "@/assets/hero-video.mp4";
-import { ProjectXHandoffLog } from "@/components/ProjectXHandoffLog";
 
 const stats = [
   { value: 12, label: "Courses" },
@@ -209,8 +208,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* ProjectX Handoff Log */}
-      <ProjectXHandoffLog />
 
       {/* Features Section */}
       <Section className="bg-card/50 bg-noise">
