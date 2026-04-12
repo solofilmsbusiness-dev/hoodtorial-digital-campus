@@ -1521,3 +1521,12 @@ export const courses: Course[] = [
 export const getCourseByCode = (code: string): Course | undefined => {
   return courses.find(c => c.code === code);
 };
+
+export const getTotalLessonsCount = (course: Course): number => {
+  return course.modules.reduce((sum, module) => sum + module.lessons.length, 0);
+};
+
+export const getTotalQuizzesCount = (course: Course): number => {
+  const moduleQuizzes = course.modules.filter(m => m.quiz).length;
+  return moduleQuizzes + (course.finalExam ? 1 : 0);
+};
