@@ -16,6 +16,7 @@ export interface Lesson {
   duration: string;
   type: "video" | "reading" | "practice";
   completed?: boolean;
+  resourceUrl?: string;
 }
 
 export interface Module {
@@ -122,7 +123,7 @@ export const courses: Course[] = [
         id: "hu101-m1",
         title: "Getting Started with iPhone Cinema",
         lessons: [
-          { id: "hu101-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false },
+          { id: "hu101-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false, resourceUrl: "https://qdvmekqcouchyhwstnuh.supabase.co/storage/v1/object/public/course-guides/HU_Drone_Cinematography_Guide_v3.pdf" },
           { id: "hu101-l1", title: "Why iPhone for Filmmaking?", duration: "12 min", type: "video" },
           { id: "hu101-l2", title: "Essential Camera Settings", duration: "18 min", type: "video" },
         ],
@@ -172,7 +173,7 @@ export const courses: Course[] = [
         id: "hu102-m1",
         title: "Understanding Light",
         lessons: [
-          { id: "hu102-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false },
+          { id: "hu102-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false, resourceUrl: "https://qdvmekqcouchyhwstnuh.supabase.co/storage/v1/object/public/course-guides/HU_HU-102_Lighting_for_Mobile_Film.pdf" },
           { id: "hu102-l1", title: "The Physics of Light for Film", duration: "15 min", type: "video" },
           { id: "hu102-l2", title: "Color Temperature Explained", duration: "12 min", type: "video" },
         ],
@@ -224,7 +225,7 @@ export const courses: Course[] = [
         id: "hu201-m1",
         title: "Movement Principles",
         lessons: [
-          { id: "hu201-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false },
+          { id: "hu201-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false, resourceUrl: "https://qdvmekqcouchyhwstnuh.supabase.co/storage/v1/object/public/course-guides/HU_HU-201_Advanced_Camera_Movement.pdf" },
           { id: "hu201-l1", title: "Why Camera Movement Matters", duration: "14 min", type: "video" },
           { id: "hu201-l2", title: "Movement & Emotion", duration: "18 min", type: "video" },
         ],
@@ -285,7 +286,7 @@ export const courses: Course[] = [
         id: "hu301-m1",
         title: "Lens Fundamentals",
         lessons: [
-          { id: "hu301-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false },
+          { id: "hu301-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false, resourceUrl: "https://qdvmekqcouchyhwstnuh.supabase.co/storage/v1/object/public/course-guides/HU_HU-301_Cinematic_Lens_Language.pdf" },
           { id: "hu301-l1", title: "Understanding Focal Length", duration: "20 min", type: "video" },
           { id: "hu301-l2", title: "Aperture & Depth of Field", duration: "22 min", type: "video" },
         ],
@@ -346,7 +347,7 @@ export const courses: Course[] = [
         id: "hu103-m1",
         title: "The Art of the Cut",
         lessons: [
-          { id: "hu103-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false },
+          { id: "hu103-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false, resourceUrl: "https://qdvmekqcouchyhwstnuh.supabase.co/storage/v1/object/public/course-guides/HU_HU-103_Editing_Fundamentals.pdf" },
           { id: "hu103-l1", title: "Why Editing Matters", duration: "12 min", type: "video" },
           { id: "hu103-l2", title: "Types of Cuts", duration: "20 min", type: "video" },
         ],
@@ -398,7 +399,7 @@ export const courses: Course[] = [
         id: "hu104-m1",
         title: "Mobile Editing Apps",
         lessons: [
-          { id: "hu104-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false },
+          { id: "hu104-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false, resourceUrl: "https://qdvmekqcouchyhwstnuh.supabase.co/storage/v1/object/public/course-guides/HU_HU-104_Mobile_Editing_Workflow.pdf" },
           { id: "hu104-l1", title: "App Comparison Guide", duration: "18 min", type: "reading" },
           { id: "hu104-l2", title: "CapCut Deep Dive", duration: "25 min", type: "video" },
         ],
@@ -448,7 +449,7 @@ export const courses: Course[] = [
         id: "hu202-m1",
         title: "Color Theory for Film",
         lessons: [
-          { id: "hu202-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false },
+          { id: "hu202-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false, resourceUrl: "https://qdvmekqcouchyhwstnuh.supabase.co/storage/v1/object/public/course-guides/HU_HU-202_Color_Grading_Masterclass.pdf" },
           { id: "hu202-l1", title: "Psychology of Color", duration: "18 min", type: "video" },
           { id: "hu202-l2", title: "Color Wheels & Scopes", duration: "22 min", type: "video" },
         ],
@@ -511,7 +512,7 @@ export const courses: Course[] = [
         id: "hu302-m1",
         title: "Audio Fundamentals",
         lessons: [
-          { id: "hu302-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false },
+          { id: "hu302-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false, resourceUrl: "https://qdvmekqcouchyhwstnuh.supabase.co/storage/v1/object/public/course-guides/HU_HU-302_Sound_Design_&_Audio_Mix.pdf" },
           { id: "hu302-l1", title: "Sound in Cinema", duration: "16 min", type: "video" },
           { id: "hu302-l2", title: "Audio Formats & Quality", duration: "14 min", type: "video" },
         ],
@@ -574,7 +575,7 @@ export const courses: Course[] = [
         id: "hu105-m1",
         title: "Story Foundations",
         lessons: [
-          { id: "hu105-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false },
+          { id: "hu105-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false, resourceUrl: "https://qdvmekqcouchyhwstnuh.supabase.co/storage/v1/object/public/course-guides/HU_HU-105_Visual_Storytelling_Basics.pdf" },
           { id: "hu105-l1", title: "Visual vs Written Story", duration: "15 min", type: "video" },
           { id: "hu105-l2", title: "The Hero's Journey", duration: "20 min", type: "video" },
         ],
@@ -624,7 +625,7 @@ export const courses: Course[] = [
         id: "hu203-m1",
         title: "Documentary Forms",
         lessons: [
-          { id: "hu203-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false },
+          { id: "hu203-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false, resourceUrl: "https://qdvmekqcouchyhwstnuh.supabase.co/storage/v1/object/public/course-guides/HU_HU-203_Documentary_Storytelling.pdf" },
           { id: "hu203-l1", title: "Types of Documentary", duration: "18 min", type: "video" },
           { id: "hu203-l2", title: "Finding Your Subject", duration: "15 min", type: "video" },
         ],
@@ -678,7 +679,7 @@ export const courses: Course[] = [
         id: "hu204-m1",
         title: "Music Video Concepts",
         lessons: [
-          { id: "hu204-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false },
+          { id: "hu204-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false, resourceUrl: "https://qdvmekqcouchyhwstnuh.supabase.co/storage/v1/object/public/course-guides/HU_HU-204_Music_Video_Direction.pdf" },
           { id: "hu204-l1", title: "Analyzing Hit Videos", duration: "20 min", type: "video" },
           { id: "hu204-l2", title: "Concept Development", duration: "18 min", type: "video" },
         ],
@@ -730,7 +731,7 @@ export const courses: Course[] = [
         id: "hu303-m1",
         title: "Director-Actor Relationship",
         lessons: [
-          { id: "hu303-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false },
+          { id: "hu303-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false, resourceUrl: "https://qdvmekqcouchyhwstnuh.supabase.co/storage/v1/object/public/course-guides/HU_HU-303_Directing_Talent_&_Performance.pdf" },
           { id: "hu303-l1", title: "Building Trust", duration: "20 min", type: "video" },
           { id: "hu303-l2", title: "Communication Styles", duration: "18 min", type: "video" },
         ],
@@ -784,7 +785,7 @@ export const courses: Course[] = [
         id: "hu106-m1",
         title: "Script Breakdown",
         lessons: [
-          { id: "hu106-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false },
+          { id: "hu106-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false, resourceUrl: "https://qdvmekqcouchyhwstnuh.supabase.co/storage/v1/object/public/course-guides/HU_HU-106_Pre-Production_Planning.pdf" },
           { id: "hu106-l1", title: "Reading a Script", duration: "15 min", type: "video" },
           { id: "hu106-l2", title: "Breaking Down Scenes", duration: "20 min", type: "video" },
         ],
@@ -834,7 +835,7 @@ export const courses: Course[] = [
         id: "hu205-m1",
         title: "Budget Fundamentals",
         lessons: [
-          { id: "hu205-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false },
+          { id: "hu205-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false, resourceUrl: "https://qdvmekqcouchyhwstnuh.supabase.co/storage/v1/object/public/course-guides/HU_HU-205_Budget_Filmmaking.pdf" },
           { id: "hu205-l1", title: "Understanding Film Budgets", duration: "18 min", type: "video" },
           { id: "hu205-l2", title: "Budget Templates", duration: "15 min", type: "reading" },
         ],
@@ -886,7 +887,7 @@ export const courses: Course[] = [
         id: "hu206-m1",
         title: "Business Foundations",
         lessons: [
-          { id: "hu206-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false },
+          { id: "hu206-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false, resourceUrl: "https://qdvmekqcouchyhwstnuh.supabase.co/storage/v1/object/public/course-guides/HU_HU-206_Client_Management_&_Freelancing.pdf" },
           { id: "hu206-l1", title: "Freelance vs Agency", duration: "15 min", type: "video" },
           { id: "hu206-l2", title: "Setting Your Rates", duration: "20 min", type: "video" },
         ],
@@ -936,7 +937,7 @@ export const courses: Course[] = [
         id: "hu304-m1",
         title: "Project Leadership",
         lessons: [
-          { id: "hu304-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false },
+          { id: "hu304-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false, resourceUrl: "https://qdvmekqcouchyhwstnuh.supabase.co/storage/v1/object/public/course-guides/HU_HU-304_Capstone_Project_Management.pdf" },
           { id: "hu304-l1", title: "Leading a Production", duration: "20 min", type: "video" },
           { id: "hu304-l2", title: "Building Your Team", duration: "18 min", type: "video" },
         ],
@@ -999,7 +1000,7 @@ export const courses: Course[] = [
         id: "hu401-m1",
         title: "Camera Basics",
         lessons: [
-          { id: "hu401-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false },
+          { id: "hu401-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false, resourceUrl: "https://qdvmekqcouchyhwstnuh.supabase.co/storage/v1/object/public/course-guides/HU_HU-401_Photography_Fundamentals.pdf" },
           { id: "hu401-l1", title: "Understanding Your Camera", duration: "18 min", type: "video" },
           { id: "hu401-l2", title: "The Exposure Triangle", duration: "22 min", type: "video" },
         ],
@@ -1051,7 +1052,7 @@ export const courses: Course[] = [
         id: "hu402-m1",
         title: "Portrait Lighting",
         lessons: [
-          { id: "hu402-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false },
+          { id: "hu402-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false, resourceUrl: "https://qdvmekqcouchyhwstnuh.supabase.co/storage/v1/object/public/course-guides/HU_HU-402_Portrait_Photography_Mastery.pdf" },
           { id: "hu402-l1", title: "One-Light Portraits", duration: "25 min", type: "video" },
           { id: "hu402-l2", title: "Two-Light Setups", duration: "22 min", type: "video" },
           { id: "hu402-l3", title: "Natural Light Portraits", duration: "20 min", type: "video" },
@@ -1105,7 +1106,7 @@ export const courses: Course[] = [
         id: "hu403-m1",
         title: "Light Fundamentals",
         lessons: [
-          { id: "hu403-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false },
+          { id: "hu403-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false, resourceUrl: "https://qdvmekqcouchyhwstnuh.supabase.co/storage/v1/object/public/course-guides/HU_HU-403_Photography_Lighting_Mastery.pdf" },
           { id: "hu403-l1", title: "Understanding Light Quality", duration: "22 min", type: "video" },
           { id: "hu403-l2", title: "Color Temperature & White Balance", duration: "20 min", type: "video" },
         ],
@@ -1166,7 +1167,7 @@ export const courses: Course[] = [
         id: "hu404-m1",
         title: "Lightroom Mastery",
         lessons: [
-          { id: "hu404-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false },
+          { id: "hu404-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false, resourceUrl: "https://qdvmekqcouchyhwstnuh.supabase.co/storage/v1/object/public/course-guides/HU_HU-404_Photo_Editing_&_Retouching.pdf" },
           { id: "hu404-l1", title: "Raw Processing Workflow", duration: "25 min", type: "video" },
           { id: "hu404-l2", title: "Local Adjustments", duration: "22 min", type: "video" },
           { id: "hu404-l3", title: "Presets & Batch Editing", duration: "18 min", type: "video" },
@@ -1231,7 +1232,7 @@ export const courses: Course[] = [
         id: "hu501-m1",
         title: "Camera Overview",
         lessons: [
-          { id: "hu501-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false },
+          { id: "hu501-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false, resourceUrl: "https://qdvmekqcouchyhwstnuh.supabase.co/storage/v1/object/public/course-guides/HU_HU-501_Sony_A7S_III_Complete_Guide.pdf" },
           { id: "hu501-l1", title: "A7S III Introduction & Philosophy", duration: "18 min", type: "video" },
           { id: "hu501-l2", title: "Menu System Deep Dive", duration: "30 min", type: "video" },
         ],
@@ -1292,7 +1293,7 @@ export const courses: Course[] = [
         id: "hu502-m1",
         title: "FX Series Overview",
         lessons: [
-          { id: "hu502-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false },
+          { id: "hu502-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false, resourceUrl: "https://qdvmekqcouchyhwstnuh.supabase.co/storage/v1/object/public/course-guides/HU_HU-502_Sony_FX_Series_for_Cinema.pdf" },
           { id: "hu502-l1", title: "Choosing Your FX Camera", duration: "22 min", type: "video" },
           { id: "hu502-l2", title: "Cinema vs Mirrorless Workflow", duration: "20 min", type: "video" },
         ],
@@ -1355,7 +1356,7 @@ export const courses: Course[] = [
         id: "hu503-m1",
         title: "Cinema EOS Overview",
         lessons: [
-          { id: "hu503-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false },
+          { id: "hu503-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false, resourceUrl: "https://qdvmekqcouchyhwstnuh.supabase.co/storage/v1/object/public/course-guides/HU_HU-503_Canon_Cinema_EOS_Fundamentals.pdf" },
           { id: "hu503-l1", title: "Canon Cinema Philosophy", duration: "18 min", type: "video" },
           { id: "hu503-l2", title: "C70 vs C300 vs C500", duration: "25 min", type: "video" },
         ],
@@ -1416,7 +1417,7 @@ export const courses: Course[] = [
         id: "hu504-m1",
         title: "R Series Overview",
         lessons: [
-          { id: "hu504-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false },
+          { id: "hu504-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false, resourceUrl: "https://qdvmekqcouchyhwstnuh.supabase.co/storage/v1/object/public/course-guides/HU_HU-504_Canon_R_Series_for_Hybrid_Shooters.pdf" },
           { id: "hu504-l1", title: "R5 vs R6: Choosing Your Camera", duration: "20 min", type: "video" },
           { id: "hu504-l2", title: "RF Lens Ecosystem", duration: "22 min", type: "video" },
         ],
@@ -1468,7 +1469,7 @@ export const courses: Course[] = [
         id: "hu505-m1",
         title: "Sony Lens System",
         lessons: [
-          { id: "hu505-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false },
+          { id: "hu505-reading-guide", title: "Course Guide & Reference PDF", duration: "15 min", type: "reading", completed: false, resourceUrl: "https://qdvmekqcouchyhwstnuh.supabase.co/storage/v1/object/public/course-guides/HU_HU-505_Advanced_Sony_Ecosystem.pdf" },
           { id: "hu505-l1", title: "G Master vs G vs Zeiss", duration: "25 min", type: "video" },
           { id: "hu505-l2", title: "Adapting Vintage Lenses", duration: "22 min", type: "video" },
         ],
