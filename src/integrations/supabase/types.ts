@@ -1313,6 +1313,30 @@ export type Database = {
         }
         Relationships: []
       }
+      lesson_progress: {
+        Row: {
+          id: string
+          user_id: string
+          course_id: string
+          lesson_id: string
+          completed_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          course_id: string
+          lesson_id: string
+          completed_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          course_id?: string
+          lesson_id?: string
+          completed_at?: string
+        }
+        Relationships: []
+      }
       user_progress: {
         Row: {
           completed: boolean
