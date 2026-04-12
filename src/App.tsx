@@ -42,6 +42,7 @@ import WaitlistManager from "./pages/admin/WaitlistManager";
 import FacultyManager from "./pages/admin/FacultyManager";
 import Checkout from "./pages/Checkout";
 import Privacy from "./pages/Privacy";
+import Dashboard from "./pages/Dashboard";
  import Friends from "./pages/Friends";
  import Messages from "./pages/Messages";
  import PublicProfile from "./pages/PublicProfile";
@@ -61,7 +62,7 @@ function RootRedirect() {
   }
   
   if (user) {
-    return <Navigate to="/student" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
   return <Index />;
 }
@@ -197,6 +198,11 @@ function JourneyRedirect() {
                  <FacultyManager />
                </AdminRoute>
              } />
+           <Route path="/dashboard" element={
+             <AssessmentRequiredRoute>
+               <Dashboard />
+             </AssessmentRequiredRoute>
+           } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
            <Route path="*" element={<NotFound />} />
          </Routes>
