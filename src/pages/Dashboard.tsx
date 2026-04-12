@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { PageLayout } from "@/components/layout";
+import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfileContext } from "@/contexts/ProfileContext";
 import { useEnrollments } from "@/hooks/useEnrollments";
@@ -59,6 +60,19 @@ export default function Dashboard() {
   const { activeEnrollments, completedEnrollments, loading: enrollmentsLoading } = useEnrollments();
   const { progress } = useUserProgress();
   const { courses: publishedCourses, isLoading: coursesLoading } = useCourseStatus();
+
+  // Onboarding — show once for new students
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    if (!user || profileLoading) return;
+    const lsKey = `hu_onboarding_done_${user.id}`;
+    const doneLocally = localStorage.getItem(lsKey) === "true";
+    const doneInProfile = profile?.onboarding_completed === true;
+    if (!doneLocally && !doneInProfile) {
+      setShowOnboarding(true);
+    }
+  }, [user, profile, profileLoading]);
 
   // lesson_progress data — scaffold for a table being built in parallel
   const [lessonProgress, setLessonProgress] = useState<LessonProgressRow[] | null>(null);
@@ -169,6 +183,9 @@ export default function Dashboard() {
 
   return (
     <PageLayout pageKey="dashboard">
+      {showOnboarding && (
+        <OnboardingModal onDone={() => setShowOnboarding(false)} />
+      )}
       <div className="py-8 px-4">
         <div className="container-wide">
 
@@ -204,17 +221,17 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Link
                 to="/student"
-                className="btn-brutal text-xs flex items-center gap-2 px-4 py-2"
+                className="btn-brutal text-xs flex items-center gap-2 px-4 py-2 min-h-[44px]"
               >
                 <GraduationCap className="h-4 w-4" />
                 Student Center
               </Link>
               <Link
                 to="/academics"
-                className="btn-brutal text-xs flex items-center gap-2 px-4 py-2 bg-charcoal hover:bg-charcoal-light text-white"
+                className="btn-brutal text-xs flex items-center gap-2 px-4 py-2 min-h-[44px] bg-charcoal hover:bg-charcoal-light text-white"
               >
                 <BookOpen className="h-4 w-4" />
                 Browse Courses
@@ -271,7 +288,7 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex gap-4 overflow-x-auto pb-2 md:grid md:grid-cols-2 md:overflow-visible md:pb-0 snap-x snap-mandatory">
                 {continueCourses.slice(0, 2).map(({ course, prog }) => {
                   const DeptIcon = DEPT_ICON[course.departmentId] || Film;
                   const colorCls =
@@ -280,7 +297,7 @@ export default function Dashboard() {
                   return (
                     <Card
                       key={course.code}
-                      className="card-urban group hover:border-primary transition-colors"
+                      className="card-urban group hover:border-primary transition-colors snap-start min-w-[280px] md:min-w-0"
                     >
                       <CardContent className="p-5">
                         <div className="flex items-start gap-4">

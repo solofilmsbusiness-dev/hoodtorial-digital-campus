@@ -59,13 +59,13 @@ export function PDFViewerModal({ url, title, onClose }: PDFViewerModalProps) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="relative flex flex-col w-full max-w-4xl h-full bg-zinc-950 border-x border-border">
+      <div className="relative flex flex-col w-full sm:max-w-4xl h-full bg-zinc-950 sm:border-x border-border">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-zinc-900 shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-zinc-900 shrink-0">
           <h2 className="text-sm font-bold text-primary truncate pr-4">{title}</h2>
           <button
             onClick={onClose}
-            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors shrink-0"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors shrink-0"
             aria-label="Close PDF viewer"
           >
             <X className="w-5 h-5" />
@@ -74,7 +74,7 @@ export function PDFViewerModal({ url, title, onClose }: PDFViewerModalProps) {
 
         {/* PDF Content */}
         <div className="flex-1 overflow-y-auto">
-          <div ref={measureContainer} className="w-full px-4 py-4">
+          <div ref={measureContainer} className="w-full px-2 sm:px-4 py-4">
             {loading && !error && (
               <div className="flex flex-col items-center justify-center py-24 text-muted-foreground gap-3">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -111,22 +111,22 @@ export function PDFViewerModal({ url, title, onClose }: PDFViewerModalProps) {
 
         {/* Footer navigation */}
         {!loading && !error && numPages > 0 && (
-          <div className="flex items-center justify-center gap-4 px-5 py-3 border-t border-border bg-zinc-900 shrink-0">
+          <div className="flex items-center justify-between gap-2 px-4 py-3 border-t border-border bg-zinc-900 shrink-0">
             <button
               onClick={previousPage}
               disabled={pageNumber <= 1}
-              className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold border border-border text-muted-foreground hover:border-primary hover:text-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 min-h-[44px] px-5 sm:px-3 py-2 sm:py-1.5 text-sm sm:text-xs font-bold border border-border text-muted-foreground hover:border-primary hover:text-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex-1 sm:flex-none justify-center sm:justify-start"
             >
               <ChevronLeft className="w-4 h-4" />
               Prev
             </button>
-            <span className="text-xs text-muted-foreground font-mono">
-              Page {pageNumber} of {numPages}
+            <span className="text-xs text-muted-foreground font-mono text-center">
+              {pageNumber} / {numPages}
             </span>
             <button
               onClick={nextPage}
               disabled={pageNumber >= numPages}
-              className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold border border-border text-muted-foreground hover:border-primary hover:text-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 min-h-[44px] px-5 sm:px-3 py-2 sm:py-1.5 text-sm sm:text-xs font-bold border border-border text-muted-foreground hover:border-primary hover:text-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex-1 sm:flex-none justify-center sm:justify-end"
             >
               Next
               <ChevronRight className="w-4 h-4" />

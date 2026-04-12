@@ -14,7 +14,8 @@ import {
 } from "@/components/course";
 import { Badge } from "@/components/ui/badge";
 import { getCourseByCode, getTotalLessonsCount, getTotalQuizzesCount, type Lesson, type Quiz, type Course, type Module } from "@/data/courses";
-import { ArrowLeft, Clock, BookOpen, Award, CheckCircle2, X, Lock, Play, Zap, Loader2, Download } from "lucide-react";
+import { ArrowLeft, Clock, BookOpen, Award, CheckCircle2, X, Lock, Play, Zap, Loader2, Download, List } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useEnrollments } from "@/hooks/useEnrollments";
@@ -164,6 +165,7 @@ const CourseDetail = () => {
   const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null);
   const [enrolling, setEnrolling] = useState(false);
   const [showCertificateModal, setShowCertificateModal] = useState(false);
+  const [mobileLessonsOpen, setMobileLessonsOpen] = useState(false);
 
   // Video progress tracking
   const videoProgress = useVideoProgress({
@@ -554,7 +556,7 @@ const CourseDetail = () => {
             </div>
 
             {/* Progress Card */}
-            <div className="w-full lg:w-72 border-2 border-primary bg-card p-6">
+            <div className="w-full lg:w-72 border-2 border-primary bg-card p-4 sm:p-6">
               <div className="text-center mb-4">
                 <div className="text-4xl font-black text-primary">{courseProgress.percent}%</div>
                 <div className="text-sm text-muted-foreground mt-1">Complete</div>
@@ -660,6 +662,7 @@ const CourseDetail = () => {
                 {/* Progression info */}
                 <ProgressionInfo isEnrolled={enrolled} />
 
+
               {activeLesson ? (
                 <>
                   {/* Show DocumentViewer for reading lessons with document_url */}
@@ -730,10 +733,64 @@ const CourseDetail = () => {
                   </div>
                 </>
               ) : null}
+
+                {/* Mobile-only: Lessons sheet trigger */}
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <button className="lg:hidden w-full flex items-center justify-center gap-2 py-3 min-h-[44px] border-2 border-border bg-card hover:border-primary hover:text-primary transition-colors font-bold text-sm">
+                      <List className="h-4 w-4" />
+                      Course Lessons
+                    </button>
+                  </SheetTrigger>
+                  <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto pb-8">
+                    <SheetHeader className="mb-4">
+                      <SheetTitle>Course Content</SheetTitle>
+                    </SheetHeader>
+                    <div className="space-y-3">
+                      {course.modules.map((module, index) => (
+                        <ProgressionModuleAccordion
+                          key={module.id}
+                          module={module}
+                          moduleIndex={index}
+                          activeLesson={activeLesson}
+                          onLessonSelect={(lesson) => { handleLessonSelect(lesson); }}
+                          onQuizClick={handleQuizClick}
+                          isContentUnlocked={(mi, li, type) =>
+                            enrolled ? isContentUnlocked(mi, li, type) : false
+                          }
+                          isLessonCompleted={isLessonCompleted}
+                          isQuizPassed={isQuizPassed}
+                          isQuizActuallyPassed={isQuizActuallyPassed}
+                          getQuizAttempts={getQuizAttempts}
+                          canAttemptQuiz={canAttemptQuiz}
+                          moduleProgress={getModuleProgress(module)}
+                          defaultOpen={index === 0}
+                          getWatchPercentage={getWatchPercentage}
+                        />
+                      ))}
+                      {course.finalExam && (
+                        <div className="pt-4 border-t-2 border-border">
+                          <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">
+                            Final Exam
+                          </h4>
+                          <LockedQuizCard
+                            quiz={course.finalExam}
+                            type="final"
+                            isUnlocked={enrolled && isFinalExamUnlocked}
+                            isPassed={isQuizActuallyPassed(course.finalExam.id)}
+                            attemptCount={getQuizAttempts(course.finalExam.id)}
+                            maxAttempts={3}
+                            onClick={() => handleQuizClick(course.finalExam!)}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </SheetContent>
+                </Sheet>
             </div>
 
-            {/* Course Modules Sidebar */}
-            <div className="space-y-4">
+            {/* Course Modules Sidebar — desktop only */}
+            <div className="hidden lg:block space-y-4">
               <h3 className="heading-4 text-foreground">Course Content</h3>
 
               <div className="space-y-3">
