@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUserProgress } from "@/hooks/useUserProgress";
 import { useQuizResults } from "@/hooks/useQuizResults";
 import { useTestMode } from "@/hooks/useTestMode";
+import { useLessonCompletions } from "@/hooks/useLessonCompletions";
 import type { Course, Lesson, Module } from "@/data/courses";
 
 const WATCH_THRESHOLD = 90; // 90% watched to mark complete
@@ -17,47 +18,45 @@ export interface LessonProgressData {
 
 export function useLessonProgress(course: Course | undefined) {
   const { user } = useAuth();
-  const { progress, markLessonComplete } = useUserProgress();
+  const { progress, markLessonComplete: markProgressComplete } = useUserProgress();
   const { results: quizResults } = useQuizResults();
   const { isTestModeEnabled } = useTestMode();
 
-  // Get completion data for this course
-  const courseProgress = useMemo(() => {
-    if (!course) return { lessonMap: new Map(), quizMap: new Map() };
+  // lesson_progress table: source of truth for explicit "mark complete" actions
+  const lessonCompletions = useLessonCompletions(course?.code);
 
-    const lessonMap = new Map<string, { completed: boolean; watchPercentage: number }>();
-    const quizMap = new Map<string, { passed: boolean; attempts: number }>();
+  // Get quiz completion data from quiz results
+  const quizMap = useMemo(() => {
+    if (!course) return new Map<string, { passed: boolean; attempts: number }>();
 
-    // Build lesson completion map
-    progress
-      .filter((p) => p.course_code === course.code && p.lesson_id)
-      .forEach((p) => {
-        lessonMap.set(p.lesson_id!, {
-          completed: p.completed,
-          watchPercentage: (p as any).watch_percentage || 0,
-        });
-      });
-
-    // Build quiz completion map
+    const map = new Map<string, { passed: boolean; attempts: number }>();
     quizResults
       .filter((r) => r.course_code === course.code)
       .forEach((r) => {
-        const existing = quizMap.get(r.quiz_id);
+        const existing = map.get(r.quiz_id);
         if (!existing || r.passed) {
-          quizMap.set(r.quiz_id, {
+          map.set(r.quiz_id, {
             passed: r.passed,
             attempts: existing ? existing.attempts + 1 : 1,
           });
         } else if (existing) {
-          quizMap.set(r.quiz_id, {
-            ...existing,
-            attempts: existing.attempts + 1,
-          });
+          map.set(r.quiz_id, { ...existing, attempts: existing.attempts + 1 });
         }
       });
+    return map;
+  }, [course, quizResults]);
 
-    return { lessonMap, quizMap };
-  }, [course, progress, quizResults]);
+  // Watch percentage data from user_progress (video tracking)
+  const watchMap = useMemo(() => {
+    if (!course) return new Map<string, number>();
+    const map = new Map<string, number>();
+    progress
+      .filter((p) => p.course_code === course.code && p.lesson_id)
+      .forEach((p) => {
+        map.set(p.lesson_id!, (p as any).watch_percentage || 0);
+      });
+    return map;
+  }, [course, progress]);
 
   // Check if a specific lesson/quiz is unlocked based on sequential progression
   const isContentUnlocked = useCallback(
@@ -75,8 +74,6 @@ export function useLessonProgress(course: Course | undefined) {
         return true;
       }
 
-      const { lessonMap, quizMap } = courseProgress;
-
       // Check all previous content is completed
       for (let mi = 0; mi <= moduleIndex; mi++) {
         const module = course.modules[mi];
@@ -90,10 +87,7 @@ export function useLessonProgress(course: Course | undefined) {
         // Check all lessons before this one
         for (let li = 0; li < lessonLimit; li++) {
           const lesson = module.lessons[li];
-          const lessonData = lessonMap.get(lesson.id);
-
-          // All lessons just need to be marked complete
-          if (!lessonData?.completed) return false;
+          if (!_isLessonCompletedRaw(lesson.id)) return false;
         }
 
         // Check module quiz if exists (except for current module if we're checking a lesson)
@@ -104,17 +98,30 @@ export function useLessonProgress(course: Course | undefined) {
 
         // If checking quiz in current module, all lessons must be complete
         if (isCurrentModule && type === "quiz") {
-          // We already checked all lessons above
           return true;
         }
       }
 
       return true;
     },
-    [course, user, courseProgress, isTestModeEnabled]
+    [course, user, isTestModeEnabled, lessonCompletions.completedLessonIds, quizMap]
   );
 
-  // Update video watch progress
+  // Raw completion check (no test mode bypass) — used internally for progression
+  const _isLessonCompletedRaw = useCallback(
+    (lessonId: string) => {
+      // Primary: lesson_progress table
+      if (lessonCompletions.isCompleted(lessonId)) return true;
+      // Fallback: user_progress.completed (for video lessons completed before lesson_progress existed)
+      const fallback = progress.find(
+        (p) => p.lesson_id === lessonId && p.course_code === course?.code
+      );
+      return fallback?.completed ?? false;
+    },
+    [lessonCompletions, progress, course]
+  );
+
+  // Update video watch progress (saves to user_progress for watch % tracking)
   const updateWatchProgress = useCallback(
     async (lessonId: string, watchedSeconds: number, durationSeconds: number) => {
       if (!user || !course) return;
@@ -136,11 +143,16 @@ export function useLessonProgress(course: Course | undefined) {
           },
           { onConflict: "user_id,course_code,lesson_id" }
         );
+
+        // Also mark in lesson_progress when threshold is reached
+        if (completed) {
+          await lessonCompletions.markComplete(course.code, lessonId);
+        }
       } catch (err) {
         console.error("Failed to update watch progress:", err);
       }
     },
-    [user, course]
+    [user, course, lessonCompletions]
   );
 
   // Get quiz attempt count
@@ -154,46 +166,41 @@ export function useLessonProgress(course: Course | undefined) {
   // For progression/unlocking - respects Test Mode bypass
   const isQuizPassed = useCallback(
     (quizId: string) => {
-      // Test mode: treat all quizzes as passed for progression
       if (isTestModeEnabled) return true;
-      return courseProgress.quizMap.get(quizId)?.passed || false;
+      return quizMap.get(quizId)?.passed || false;
     },
-    [courseProgress, isTestModeEnabled]
+    [quizMap, isTestModeEnabled]
   );
 
   // For display/retake logic - always returns real status
   const isQuizActuallyPassed = useCallback(
     (quizId: string) => {
-      return courseProgress.quizMap.get(quizId)?.passed || false;
+      return quizMap.get(quizId)?.passed || false;
     },
-    [courseProgress]
+    [quizMap]
   );
 
   const canAttemptQuiz = useCallback(
     (quizId: string) => {
-      // In Test Mode: unlimited attempts, only blocked if actually passed
       if (isTestModeEnabled) {
-        const reallyPassed = courseProgress.quizMap.get(quizId)?.passed || false;
-        return !reallyPassed; // Can retry if not actually passed
+        const reallyPassed = quizMap.get(quizId)?.passed || false;
+        return !reallyPassed;
       }
-      // Normal mode
       const attempts = getQuizAttempts(quizId);
       const passed = isQuizPassed(quizId);
       return !passed && attempts < 3;
     },
-    [getQuizAttempts, isQuizPassed, isTestModeEnabled, courseProgress]
+    [getQuizAttempts, isQuizPassed, isTestModeEnabled, quizMap]
   );
 
   // Calculate module completion percentage
   const getModuleProgress = useCallback(
     (module: Module) => {
-      const { lessonMap, quizMap } = courseProgress;
       let completed = 0;
       let total = module.lessons.length;
 
       module.lessons.forEach((lesson) => {
-        const data = lessonMap.get(lesson.id);
-        if (data?.completed) {
+        if (_isLessonCompletedRaw(lesson.id)) {
           completed++;
         }
       });
@@ -207,28 +214,43 @@ export function useLessonProgress(course: Course | undefined) {
 
       return { completed, total, percent: total > 0 ? Math.round((completed / total) * 100) : 0 };
     },
-    [courseProgress]
+    [_isLessonCompletedRaw, quizMap]
   );
 
-  // Check if lesson is completed
+  // Public completion check (with test mode bypass)
   const isLessonCompleted = useCallback(
     (lessonId: string) => {
-      // Test mode: treat all lessons as completed
       if (isTestModeEnabled) return true;
-      const data = courseProgress.lessonMap.get(lessonId);
-      if (!data) return false;
-      return data.completed;
+      return _isLessonCompletedRaw(lessonId);
     },
-    [courseProgress, isTestModeEnabled]
+    [_isLessonCompletedRaw, isTestModeEnabled]
   );
 
   // Get watch percentage for a specific lesson
   const getWatchPercentage = useCallback(
     (lessonId: string) => {
-      const data = courseProgress.lessonMap.get(lessonId);
-      return data?.watchPercentage || 0;
+      return watchMap.get(lessonId) || 0;
     },
-    [courseProgress]
+    [watchMap]
+  );
+
+  /**
+   * Mark a lesson complete. Writes to both lesson_progress (primary) and
+   * user_progress (for backwards compatibility with video tracking).
+   */
+  const markLessonComplete = useCallback(
+    async (courseCode: string, lessonId: string, creditsEarned: number = 0) => {
+      if (!user) return { error: new Error("Not authenticated") };
+
+      // Write to lesson_progress (new table)
+      const { error: lpError } = await lessonCompletions.markComplete(courseCode, lessonId);
+
+      // Also write to user_progress for video watch compatibility
+      const { error: upError } = await markProgressComplete(courseCode, lessonId, creditsEarned);
+
+      return { error: lpError || upError || null };
+    },
+    [user, lessonCompletions, markProgressComplete]
   );
 
   return {
