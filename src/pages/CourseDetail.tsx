@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
+import { Helmet } from "react-helmet-async";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { PageLayout, Section } from "@/components/layout";
@@ -431,8 +432,24 @@ const CourseDetail = () => {
 
   // isFinalExamUnlocked is now calculated before early returns (line ~211)
 
+  const courseTitle = course?.title ?? "Course";
+  const courseDescription = course?.description ?? `Study ${courseTitle} at Hoodtorial University.`;
+  const courseCode = course?.code ?? code ?? "";
+  const canonicalUrl = `https://hoodtorialuniversity.com/course/${courseCode}`;
+
   return (
     <PageLayout>
+      <Helmet>
+        <title>{courseTitle} — Hoodtorial University</title>
+        <meta name="description" content={courseDescription} />
+        <link rel="canonical" href={canonicalUrl} />
+        <meta property="og:title" content={`${courseTitle} — Hoodtorial University`} />
+        <meta property="og:description" content={courseDescription} />
+        <meta property="og:url" content={canonicalUrl} />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:title" content={`${courseTitle} — Hoodtorial University`} />
+        <meta name="twitter:description" content={courseDescription} />
+      </Helmet>
       {/* Test Mode Banner */}
       <TestModeBanner className={isTrialing ? "top-12" : ""} />
       

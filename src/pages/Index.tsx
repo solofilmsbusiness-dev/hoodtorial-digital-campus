@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { PageLayout, Section, SectionHeader } from "@/components/layout";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -187,6 +188,16 @@ function EmailCaptureSection() {
 
 const Index = () => {
   return (
+    <>
+    <Helmet>
+      <title>Hoodtorial University — Learn Filmmaking, Photography &amp; More</title>
+      <meta name="description" content="Master filmmaking, photography, and cinematography with Hoodtorial University. 25 professional courses from mobile film to Sony cinema cameras." />
+      <link rel="canonical" href="https://hoodtorialuniversity.com" />
+      <meta property="og:title" content="Hoodtorial University — Learn Filmmaking &amp; Photography" />
+      <meta property="og:description" content="25 professional courses in filmmaking, photography, and cinematography. Learn from mobile film to Sony cinema systems." />
+      <meta property="og:url" content="https://hoodtorialuniversity.com/" />
+      <meta property="og:type" content="website" />
+    </Helmet>
     <PageLayout pageKey="home">
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-noise">
@@ -503,6 +514,7 @@ const Index = () => {
       {/* Email Capture */}
       <EmailCaptureSection />
     </PageLayout>
+    </>
   );
 };
 

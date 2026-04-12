@@ -5,6 +5,7 @@ import { ChatWidget } from "@/components/chat";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
+import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ProfileProvider } from "@/contexts/ProfileContext";
 import { TestModeProvider } from "@/contexts/TestModeContext";
@@ -212,6 +213,7 @@ function JourneyRedirect() {
  }
  
  const App = () => (
+  <HelmetProvider>
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
       <TooltipProvider>
@@ -231,6 +233,7 @@ function JourneyRedirect() {
   </TooltipProvider>
 </ThemeProvider>
   </QueryClientProvider>
+  </HelmetProvider>
 );
 
 export default App;
