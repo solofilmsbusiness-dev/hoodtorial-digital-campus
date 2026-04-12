@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { Play, FileText, Wrench, CheckCircle2, Lock, Circle, ExternalLink } from "lucide-react";
+import { Play, FileText, Wrench, CheckCircle2, Lock, Circle } from "lucide-react";
 import type { Lesson } from "@/data/courses";
+import { PDFViewerModal } from "./PDFViewerModal";
 
 interface LockedLessonCardProps {
   lesson: Lesson;
@@ -31,9 +33,17 @@ export function LockedLessonCard({
   const showProgress = lesson.type === "video" && watchPercentage > 0 && !isCompleted;
 
   const showPdfLink = isUnlocked && lesson.type === "reading" && !!lesson.resourceUrl;
+  const [showPDF, setShowPDF] = useState(false);
 
   return (
     <div className="flex flex-col">
+    {showPDF && lesson.resourceUrl && (
+      <PDFViewerModal
+        url={lesson.resourceUrl}
+        title={lesson.title}
+        onClose={() => setShowPDF(false)}
+      />
+    )}
     <button
       onClick={isUnlocked ? onClick : undefined}
       disabled={!isUnlocked}
@@ -109,20 +119,18 @@ export function LockedLessonCard({
     </button>
 
     {showPdfLink && (
-      <a
-        href={lesson.resourceUrl}
-        target="_blank"
-        rel="noopener noreferrer"
+      <button
+        onClick={() => setShowPDF(true)}
         className={cn(
-          "flex items-center gap-2 px-4 py-2 text-xs font-bold border-2 transition-colors",
+          "flex items-center gap-2 px-4 py-2 text-xs font-bold border-2 transition-colors w-full text-left",
           isActive
             ? "bg-primary/10 border-primary text-primary hover:bg-primary/20"
             : "bg-card/50 border-border text-muted-foreground hover:border-primary/50 hover:text-primary hover:bg-card"
         )}
       >
-        <ExternalLink className="w-3 h-3" />
+        <FileText className="w-3 h-3" />
         View Reading Guide PDF
-      </a>
+      </button>
     )}
     </div>
   );
