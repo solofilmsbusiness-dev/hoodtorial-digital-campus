@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Play, FileText, Wrench, CheckCircle2, Lock, Circle } from "lucide-react";
+import { Play, FileText, Wrench, CheckCircle2, Lock, Circle, ExternalLink } from "lucide-react";
 import type { Lesson } from "@/data/courses";
 
 interface LockedLessonCardProps {
@@ -30,7 +30,10 @@ export function LockedLessonCard({
   const TypeIcon = typeIcons[lesson.type];
   const showProgress = lesson.type === "video" && watchPercentage > 0 && !isCompleted;
 
+  const showPdfLink = isUnlocked && lesson.type === "reading" && !!lesson.resourceUrl;
+
   return (
+    <div className="flex flex-col">
     <button
       onClick={isUnlocked ? onClick : undefined}
       disabled={!isUnlocked}
@@ -40,7 +43,8 @@ export function LockedLessonCard({
         isUnlocked && isActive && "bg-primary/10 border-primary",
         isUnlocked &&
           !isActive &&
-          "bg-card/50 border-border hover:border-primary/50 hover:bg-card"
+          "bg-card/50 border-border hover:border-primary/50 hover:bg-card",
+        showPdfLink && "border-b-0"
       )}
     >
       {/* Progress bar for video lessons */}
@@ -103,5 +107,23 @@ export function LockedLessonCard({
 
       {isCompleted && isUnlocked && <CheckCircle2 className="w-5 h-5 text-accent shrink-0" />}
     </button>
+
+    {showPdfLink && (
+      <a
+        href={lesson.resourceUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cn(
+          "flex items-center gap-2 px-4 py-2 text-xs font-bold border-2 transition-colors",
+          isActive
+            ? "bg-primary/10 border-primary text-primary hover:bg-primary/20"
+            : "bg-card/50 border-border text-muted-foreground hover:border-primary/50 hover:text-primary hover:bg-card"
+        )}
+      >
+        <ExternalLink className="w-3 h-3" />
+        View Reading Guide PDF
+      </a>
+    )}
+    </div>
   );
 }
