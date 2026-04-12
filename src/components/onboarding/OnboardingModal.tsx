@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfileContext } from "@/contexts/ProfileContext";
@@ -13,26 +14,34 @@ interface OnboardingModalProps {
 export function OnboardingModal({ onDone }: OnboardingModalProps) {
   const { user } = useAuth();
   const { updateProfile } = useProfileContext();
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [goal, setGoal] = useState<Goal | null>(null);
 
-  async function completeOnboarding(selectedGoal?: Goal) {
+  // Skip path — student opts out of the guided flow entirely.
+  // Set onboarding_completed immediately so they reach the dashboard without
+  // being bounced to assessment or degree selection.
+  async function skipOnboarding() {
     if (!user) return;
-
-    // goal is a new column not yet in generated types — cast to any for the update
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updates: any = { onboarding_completed: true };
-    if (selectedGoal) updates.goal = selectedGoal;
-
+    if (goal) updates.goal = goal;
     await supabase.from("profiles").update(updates).eq("user_id", user.id).then(() => null).catch(() => null);
-
-    // Also sync onboarding_completed into local profile state
     await updateProfile({ onboarding_completed: true });
-
-    // localStorage fallback
     localStorage.setItem(`hu_onboarding_done_${user.id}`, "true");
-
     onDone();
+  }
+
+  // Completion path — student finished Step 3. Save their goal selection only;
+  // onboarding_completed is set by the assessment when they finish the quiz.
+  async function finishToAssessment(selectedGoal?: Goal) {
+    if (!user) return;
+    if (selectedGoal) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const updates: any = { goal: selectedGoal };
+      await supabase.from("profiles").update(updates).eq("user_id", user.id).then(() => null).catch(() => null);
+    }
+    navigate("/assessment");
   }
 
   function handleStep2Next(selected: Goal) {
@@ -61,7 +70,7 @@ export function OnboardingModal({ onDone }: OnboardingModalProps) {
         {step === 1 && (
           <OnboardingStep1
             onNext={() => setStep(2)}
-            onSkip={() => completeOnboarding()}
+            onSkip={skipOnboarding}
           />
         )}
 
@@ -69,14 +78,14 @@ export function OnboardingModal({ onDone }: OnboardingModalProps) {
           <OnboardingStep2
             onNext={handleStep2Next}
             onBack={() => setStep(1)}
-            onSkip={() => completeOnboarding()}
+            onSkip={skipOnboarding}
           />
         )}
 
         {step === 3 && (
           <OnboardingStep3
             goal={goal}
-            onComplete={() => completeOnboarding(goal ?? undefined)}
+            onComplete={() => finishToAssessment(goal ?? undefined)}
             onBack={() => setStep(2)}
           />
         )}

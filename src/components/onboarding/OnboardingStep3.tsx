@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import { courses as allCourses } from "@/data/courses";
 import type { Goal } from "./OnboardingStep2";
 
@@ -69,24 +68,22 @@ export function OnboardingStep3({ goal, onComplete, onBack }: OnboardingStep3Pro
                 {course.title}
               </p>
             </div>
-            <Link
-              to={`/course/${course.code}`}
+            <button
               onClick={onComplete}
               className="shrink-0 btn-brutal bg-gold text-black text-xs font-bold px-3 py-1.5 hover:bg-gold-light transition-colors whitespace-nowrap"
             >
               Start →
-            </Link>
+            </button>
           </div>
         ))}
       </div>
 
-      <Link
-        to="/academics"
+      <button
         onClick={onComplete}
         className="btn-brutal w-full bg-zinc-800 text-white font-bold py-3 text-sm flex items-center justify-center gap-2 hover:bg-zinc-700 transition-colors"
       >
-        Browse All Courses
-      </Link>
+        Take the Assessment →
+      </button>
 
       <button
         onClick={onBack}
