@@ -270,7 +270,7 @@ export default function StudentCenter() {
               </Link>
               <Link
                 to={`/profile/${user?.id}`}
-                className="btn-brutal text-xs sm:text-sm flex items-center gap-1 sm:gap-2 px-4 py-2 sm:px-8 sm:py-4 bg-charcoal hover:bg-charcoal-light"
+                className="btn-brutal text-xs sm:text-sm flex items-center gap-1 sm:gap-2 px-4 py-2 sm:px-8 sm:py-4 bg-charcoal hover:bg-charcoal-light text-white"
               >
                 <Eye className="h-4 w-4" />
                 View Profile

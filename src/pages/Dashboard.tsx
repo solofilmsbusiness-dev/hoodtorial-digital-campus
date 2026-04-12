@@ -214,7 +214,7 @@ export default function Dashboard() {
               </Link>
               <Link
                 to="/academics"
-                className="btn-brutal text-xs flex items-center gap-2 px-4 py-2 bg-charcoal hover:bg-charcoal-light"
+                className="btn-brutal text-xs flex items-center gap-2 px-4 py-2 bg-charcoal hover:bg-charcoal-light text-white"
               >
                 <BookOpen className="h-4 w-4" />
                 Browse Courses
@@ -518,7 +518,7 @@ export default function Dashboard() {
                         </div>
                         <Link
                           to={`/course/${course.code}`}
-                          className="btn-brutal text-xs flex items-center justify-center gap-2 py-2 bg-charcoal hover:bg-charcoal-light"
+                          className="btn-brutal text-xs flex items-center justify-center gap-2 py-2 bg-charcoal hover:bg-charcoal-light text-white"
                         >
                           View Course
                           <ArrowRight className="h-3 w-3" />
