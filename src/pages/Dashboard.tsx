@@ -18,6 +18,13 @@ import {
   ArrowRight,
   GraduationCap,
   CheckCircle2,
+  Film,
+  Scissors,
+  Clapperboard,
+  Video,
+  Camera,
+  Aperture,
+  type LucideIcon,
 } from "lucide-react";
 
 // lesson_progress row shape (table may not exist yet)
@@ -28,13 +35,13 @@ interface LessonProgressRow {
   completed_at: string | null;
 }
 
-const DEPT_EMOJI: Record<string, string> = {
-  cinematography: "🎬",
-  "post-production": "🎨",
-  directing: "🎭",
-  production: "💼",
-  photography: "📷",
-  "camera-systems": "📹",
+const DEPT_ICON: Record<string, LucideIcon> = {
+  cinematography: Film,
+  "post-production": Scissors,
+  directing: Clapperboard,
+  production: Video,
+  photography: Camera,
+  "camera-systems": Aperture,
 };
 
 const DEPT_COLOR_CLASSES: Record<string, string> = {
@@ -266,7 +273,7 @@ export default function Dashboard() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {continueCourses.slice(0, 2).map(({ course, prog }) => {
-                  const emoji = DEPT_EMOJI[course.departmentId] || "📚";
+                  const DeptIcon = DEPT_ICON[course.departmentId] || Film;
                   const colorCls =
                     DEPT_COLOR_CLASSES[course.departmentId] ||
                     "text-primary bg-primary/10 border-primary/30";
@@ -278,9 +285,9 @@ export default function Dashboard() {
                       <CardContent className="p-5">
                         <div className="flex items-start gap-4">
                           <div
-                            className={`w-12 h-12 rounded-lg border flex items-center justify-center text-2xl flex-shrink-0 ${colorCls}`}
+                            className={`w-12 h-12 rounded-lg border flex items-center justify-center flex-shrink-0 ${colorCls}`}
                           >
-                            {emoji}
+                            <DeptIcon className="w-6 h-6" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-0.5">
@@ -358,7 +365,7 @@ export default function Dashboard() {
                   const prog = isCompleted
                     ? { percent: 100, completed: 0, total: 0 }
                     : getCourseProgress(enrollment.course_code);
-                  const emoji = DEPT_EMOJI[course.departmentId] || "📚";
+                  const DeptIcon = DEPT_ICON[course.departmentId] || Film;
                   const colorCls =
                     DEPT_COLOR_CLASSES[course.departmentId] ||
                     "text-primary bg-primary/10 border-primary/30";
@@ -374,18 +381,20 @@ export default function Dashboard() {
                         {/* Course icon + level */}
                         <div className="flex items-center justify-between mb-3">
                           <div
-                            className={`w-10 h-10 rounded-lg border flex items-center justify-center text-xl ${colorCls}`}
+                            className={`w-10 h-10 rounded-lg border flex items-center justify-center ${colorCls}`}
                           >
-                            {emoji}
+                            <DeptIcon className="w-5 h-5" />
                           </div>
                           <span
-                            className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                            className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${
                               isCompleted
                                 ? "bg-primary/20 text-primary"
                                 : "bg-muted text-muted-foreground"
                             }`}
                           >
-                            {isCompleted ? "✓ Done" : course.level}
+                            {isCompleted ? (
+                              <><CheckCircle2 className="h-3 w-3" />Done</>
+                            ) : course.level}
                           </span>
                         </div>
 
@@ -479,7 +488,7 @@ export default function Dashboard() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {exploreCourses.map((course) => {
-                  const emoji = DEPT_EMOJI[course.departmentId] || "📚";
+                  const DeptIcon = DEPT_ICON[course.departmentId] || Film;
                   const colorCls =
                     DEPT_COLOR_CLASSES[course.departmentId] ||
                     "text-primary bg-primary/10 border-primary/30";
@@ -491,9 +500,9 @@ export default function Dashboard() {
                     >
                       <CardContent className="p-5 flex flex-col flex-1">
                         <div
-                          className={`w-10 h-10 rounded-lg border flex items-center justify-center text-xl mb-3 ${colorCls}`}
+                          className={`w-10 h-10 rounded-lg border flex items-center justify-center mb-3 ${colorCls}`}
                         >
-                          {emoji}
+                          <DeptIcon className="w-5 h-5" />
                         </div>
                         <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-0.5">
                           {course.department}
@@ -526,8 +535,8 @@ export default function Dashboard() {
           <div className="text-center py-6 border-t border-border/50">
             <p className="text-sm text-muted-foreground mb-2">
               {inProgressCodes.size > 0
-                ? `Keep the momentum going — you're making progress! 🎬`
-                : "Your filmmaking journey starts here. Enroll in your first course! 🎬"}
+                ? "Keep the momentum going — you're making progress!"
+                : "Your filmmaking journey starts here. Enroll in your first course!"}
             </p>
             <Link
               to="/academics"
