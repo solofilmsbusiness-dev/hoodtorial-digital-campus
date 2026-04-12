@@ -322,6 +322,11 @@ export default function Assessment() {
       console.error("Failed to save assessment:", error);
     }
 
+    // Mark onboarding complete now that the full assessment is done.
+    // This unblocks AssessmentRequiredRoute without requiring degree path selection.
+    await updateProfile({ onboarding_completed: true });
+    localStorage.setItem(`hu_onboarding_done_${user?.id}`, "true");
+
     const roadmap = calculateRoadmap(departmentScores, interests, experienceLevel);
     setFinalResults({
       departmentScores,
