@@ -2,23 +2,24 @@ import { useState, useMemo, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { PageLayout, Section } from "@/components/layout";
-import { 
-  ProgressionModuleAccordion, 
-  VideoPlayer, 
+import {
+  ProgressionModuleAccordion,
+  VideoPlayer,
   DocumentViewer,
-  LockedQuizCard, 
+  LockedQuizCard,
   QuizPlayer,
   ProgressionInfo,
-  EnrollmentCard 
+  EnrollmentCard
 } from "@/components/course";
 import { Badge } from "@/components/ui/badge";
 import { getCourseByCode, getTotalLessonsCount, getTotalQuizzesCount, type Lesson, type Quiz, type Course, type Module } from "@/data/courses";
-import { ArrowLeft, Clock, BookOpen, Award, CheckCircle2, X, Lock, Play, Zap, Loader2 } from "lucide-react";
+import { ArrowLeft, Clock, BookOpen, Award, CheckCircle2, X, Lock, Play, Zap, Loader2, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useEnrollments } from "@/hooks/useEnrollments";
 import { useLessonProgress } from "@/hooks/useLessonProgress";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfileContext } from "@/contexts/ProfileContext";
 import { useSubscription } from "@/hooks/useSubscription";
 import { TrialBanner, SubscriptionGate } from "@/components/subscription";
 import { useVideoProgress } from "@/hooks/useVideoProgress";
@@ -28,6 +29,7 @@ import { TestModeBanner } from "@/components/admin";
 import { useQuizResults } from "@/hooks/useQuizResults";
 import { supabase } from "@/integrations/supabase/client";
 import { getVideoType, getYouTubeId, getVimeoId, getYouTubeEmbedUrl, getVimeoEmbedUrl } from "@/lib/videoUtils";
+import CertificateGenerator from "@/components/CertificateGenerator";
 
 // Transform database course to Course interface
 const transformDbCourse = (dbCourse: any): Course => {
@@ -91,7 +93,8 @@ const CourseDetail = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  
+  const { profile } = useProfileContext();
+
   // Fetch course from database first
   const { data: dbCourse, isLoading: isLoadingCourse } = useQuery({
     queryKey: ["course-detail", code],
@@ -159,6 +162,7 @@ const CourseDetail = () => {
   );
   const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null);
   const [enrolling, setEnrolling] = useState(false);
+  const [showCertificateModal, setShowCertificateModal] = useState(false);
 
   // Video progress tracking
   const videoProgress = useVideoProgress({
@@ -249,7 +253,10 @@ const CourseDetail = () => {
     const completed = completedLessons + completedQuizzes;
     
     if (completed >= total && total > 0) {
-      await completeCourse(course.code);
+      const result = await completeCourse(course.code);
+      if (!result?.error) {
+        setShowCertificateModal(true);
+      }
     }
   }, [course, enrolled, isLessonCompleted, isQuizActuallyPassed, completeCourse]);
 
@@ -439,6 +446,27 @@ const CourseDetail = () => {
       {/* Trial Banner */}
       {isTrialing && <TrialBanner />}
 
+      {/* Certificate Modal */}
+      {showCertificateModal && course && (
+        <CertificateGenerator
+          studentName={
+            profile?.display_name ||
+            (user?.user_metadata as { full_name?: string })?.full_name ||
+            user?.email ||
+            "Student"
+          }
+          courseTitle={course.title}
+          department={course.department || course.departmentId || ""}
+          completionDate={new Date().toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}
+          courseCode={course.code}
+          onClose={() => setShowCertificateModal(false)}
+        />
+      )}
+
       {/* Quiz Modal Overlay */}
       {activeQuiz && (
         <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm overflow-y-auto">
@@ -534,6 +562,19 @@ const CourseDetail = () => {
                   </span>
                 </div>
               </div>
+
+              {/* Certificate download for completed courses */}
+              {enrollment?.status === "completed" && (
+                <div className="mt-4 pt-4 border-t border-border">
+                  <button
+                    onClick={() => setShowCertificateModal(true)}
+                    className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-primary/10 border border-primary text-primary text-sm font-bold hover:bg-primary/20 transition-colors"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download Certificate
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
