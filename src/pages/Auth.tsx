@@ -385,6 +385,10 @@ export default function Auth() {
           title: "You're on the list!",
           description: "We'll notify you when registration opens.",
         });
+        // Send waitlist confirmation email
+        supabase.functions.invoke("send-waitlist-email", {
+          body: { email: email.toLowerCase().trim() },
+        });
       }
     } catch (err) {
       console.error("Waitlist error:", err);
