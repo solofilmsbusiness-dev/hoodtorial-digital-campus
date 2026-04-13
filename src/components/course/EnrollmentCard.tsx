@@ -1,4 +1,4 @@
-import { Lock, Unlock, BookOpen, CheckCircle2 } from "lucide-react";
+import { Lock, Unlock, BookOpen, CheckCircle2, ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Course } from "@/data/courses";
 
@@ -7,6 +7,7 @@ interface EnrollmentCardProps {
   isEnrolled: boolean;
   enrollmentStatus?: "active" | "completed" | "dropped";
   canEnroll: boolean;
+  hasSubscription?: boolean;
   slotsRemaining: number;
   maxSlots: number;
   onEnroll: () => void;
@@ -14,11 +15,14 @@ interface EnrollmentCardProps {
   requiresSubscription?: boolean;
 }
 
+const COURSE_PRICE = 29.99;
+
 export function EnrollmentCard({
   course,
   isEnrolled,
   enrollmentStatus,
   canEnroll,
+  hasSubscription,
   slotsRemaining,
   maxSlots,
   onEnroll,
@@ -26,6 +30,8 @@ export function EnrollmentCard({
 }: EnrollmentCardProps) {
   const isCompleted = enrollmentStatus === "completed";
   const isActive = enrollmentStatus === "active";
+  // Subscribed users with open slots can enroll for free; others pay per-course
+  const canEnrollFree = hasSubscription && canEnroll;
 
   return (
     <div className="border-2 border-border bg-card p-6 space-y-4">
@@ -51,8 +57,16 @@ export function EnrollmentCard({
         )}
       </div>
 
-      {/* Slot indicator */}
-      {!isEnrolled && (
+      {/* Price badge for non-subscribers */}
+      {!isEnrolled && !hasSubscription && (
+        <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded">
+          <span className="text-sm text-muted-foreground">One-time purchase</span>
+          <span className="text-2xl font-black text-primary">${COURSE_PRICE.toFixed(2)}</span>
+        </div>
+      )}
+
+      {/* Slot indicator for subscribed users */}
+      {!isEnrolled && hasSubscription && (
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Active Course Slots</span>
@@ -71,7 +85,7 @@ export function EnrollmentCard({
           </div>
           {slotsRemaining === 0 && (
             <p className="text-xs text-destructive">
-              Complete an active course to free up a slot
+              Complete an active course to free up a slot, or purchase this course individually.
             </p>
           )}
         </div>
@@ -81,31 +95,42 @@ export function EnrollmentCard({
       {!isEnrolled && (
         <button
           onClick={onEnroll}
-          disabled={!canEnroll || isLoading}
-          className={cn(
-            "w-full py-3 font-bold transition-all flex items-center justify-center gap-2",
-            canEnroll
-              ? "btn-brutal"
-              : "bg-muted border-2 border-border text-muted-foreground cursor-not-allowed"
-          )}
+          disabled={isLoading}
+          className="w-full py-3 font-bold transition-all flex items-center justify-center gap-2 btn-brutal"
         >
           {isLoading ? (
             <>
               <span className="animate-spin">⏳</span>
-              Enrolling...
+              {canEnrollFree ? "Enrolling..." : "Redirecting..."}
             </>
-          ) : canEnroll ? (
+          ) : canEnrollFree ? (
             <>
               <Unlock className="w-5 h-5" />
               Enroll in Course
             </>
           ) : (
             <>
-              <Lock className="w-5 h-5" />
-              No Slots Available
+              <ShoppingCart className="w-5 h-5" />
+              Enroll — ${COURSE_PRICE.toFixed(2)}
             </>
           )}
         </button>
+      )}
+
+      {/* What's included — shown for non-subscribers considering purchase */}
+      {!isEnrolled && !hasSubscription && (
+        <ul className="space-y-1.5 pt-1">
+          {[
+            "Lifetime access to all lessons",
+            "Module quizzes & final exam",
+            "Certificate of completion",
+          ].map((feat) => (
+            <li key={feat} className="flex items-center gap-2 text-sm text-muted-foreground">
+              <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
+              {feat}
+            </li>
+          ))}
+        </ul>
       )}
 
       {/* Course info for enrolled users */}
@@ -120,9 +145,7 @@ export function EnrollmentCard({
           {isCompleted && (
             <div className="flex items-center gap-3 text-sm">
               <CheckCircle2 className="w-4 h-4 text-accent" />
-              <span className="text-accent font-medium">
-                All content unlocked
-              </span>
+              <span className="text-accent font-medium">All content unlocked</span>
             </div>
           )}
         </div>

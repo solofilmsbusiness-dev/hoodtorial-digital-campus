@@ -23,7 +23,7 @@ import { useLessonProgress } from "@/hooks/useLessonProgress";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfileContext } from "@/contexts/ProfileContext";
 import { useSubscription } from "@/hooks/useSubscription";
-import { TrialBanner, SubscriptionGate } from "@/components/subscription";
+import { TrialBanner } from "@/components/subscription";
 import { useVideoProgress } from "@/hooks/useVideoProgress";
 import { Progress } from "@/components/ui/progress";
 import { useTestMode } from "@/hooks/useTestMode";
@@ -322,14 +322,20 @@ const CourseDetail = () => {
       });
       return;
     }
-    setEnrolling(true);
-    const result = await enroll(course.code);
-    setEnrolling(false);
-    
-    // Redirect to Student Center with highlight on success
-    if (!result.error) {
-      navigate(`/student?enrolled=${course.code}`);
+
+    // Subscribed users with open slots: enroll directly (free)
+    if (hasAccess && canEnroll) {
+      setEnrolling(true);
+      const result = await enroll(course.code);
+      setEnrolling(false);
+      if (!result.error) {
+        navigate(`/student?enrolled=${course.code}`);
+      }
+      return;
     }
+
+    // Everyone else: go to per-course checkout ($29.99)
+    navigate(`/checkout?type=course&course=${course.code}`);
   };
 
   const handleQuizComplete = (score: number, passed: boolean) => {
@@ -654,7 +660,6 @@ const CourseDetail = () => {
 
       {/* Course Content */}
       <Section className="py-8">
-        <SubscriptionGate>
           {enrolled ? (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Video Player Area */}
@@ -846,19 +851,40 @@ const CourseDetail = () => {
               </div>
             </div>
           ) : (
-            /* Non-enrolled teaser view */
+            /* Non-enrolled view — visible to all users, no subscription gate */
             <div className="max-w-2xl mx-auto">
               <EnrollmentCard
                 course={course}
                 isEnrolled={false}
-                canEnroll={canEnroll && hasAccess}
+                canEnroll={canEnroll}
+                hasSubscription={hasAccess}
                 slotsRemaining={slotsRemaining}
                 maxSlots={maxSlots}
                 onEnroll={handleEnroll}
                 isLoading={enrolling}
               />
-              
-              <div className="mt-8 p-8 border-2 border-dashed border-border text-center bg-card/50">
+
+              {/* Preview: first lesson teaser */}
+              {course.modules[0]?.lessons[0] && (
+                <div className="mt-6 p-5 border-2 border-border bg-card/50">
+                  <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-3">
+                    Free Preview
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <Play className="w-5 h-5 text-primary shrink-0" />
+                    <div>
+                      <p className="font-semibold text-foreground text-sm">
+                        {course.modules[0].lessons[0].title}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {course.modules[0].title} · {course.modules[0].lessons[0].duration}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-6 p-8 border-2 border-dashed border-border text-center bg-card/50">
                 <Lock className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="heading-4 text-foreground mb-2">Course Content Locked</h3>
                 <p className="text-muted-foreground mb-6">
@@ -878,7 +904,6 @@ const CourseDetail = () => {
               </div>
             </div>
           )}
-        </SubscriptionGate>
       </Section>
     </PageLayout>
   );

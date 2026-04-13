@@ -505,6 +505,83 @@ export function useEnrollments() {
     [user, toast]
   );
 
+  // Enroll after a completed payment — bypasses subscription gate.
+  // TODO: pass the real Stripe session ID once Stripe keys are configured.
+  const enrollAfterPayment = useCallback(
+    async (courseCode: string, stripeSessionId?: string) => {
+      if (!user) {
+        toast({
+          title: "Sign in required",
+          description: "Please sign in to complete enrollment.",
+          variant: "destructive",
+        });
+        return { error: new Error("Not authenticated"), data: null };
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from("enrollments")
+          .upsert(
+            {
+              user_id: user.id,
+              course_code: courseCode,
+              status: "active",
+              enrolled_at: new Date().toISOString(),
+              swaps_used: 0,
+              dropped_at: null,
+              // @ts-ignore — columns added via migration, not yet in generated types
+              payment_status: "paid",
+              stripe_session_id: stripeSessionId || null,
+              amount_paid: 29.99,
+            },
+            { onConflict: "user_id,course_code" }
+          )
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        setEnrollments((prev) => {
+          const existing = prev.findIndex((e) => e.course_code === courseCode);
+          if (existing >= 0) {
+            const updated = [...prev];
+            updated[existing] = data as Enrollment;
+            return updated;
+          }
+          return [data as Enrollment, ...prev];
+        });
+
+        toast({
+          title: "Enrolled!",
+          description: "Payment confirmed. You're now enrolled — happy learning!",
+        });
+
+        // Send enrollment confirmation email (fire and forget)
+        if (user.email) {
+          const course = getCourseByCode(courseCode);
+          supabase.functions.invoke("send-waitlist-email", {
+            body: {
+              email: user.email,
+              name: user.user_metadata?.display_name || "",
+              type: "enrollment",
+              courseName: course?.title || courseCode,
+            },
+          }).catch((err) => console.error("Enrollment email error:", err));
+        }
+
+        return { error: null, data: data as Enrollment };
+      } catch (err) {
+        toast({
+          title: "Enrollment failed",
+          description: "Payment was received but enrollment failed. Please contact support.",
+          variant: "destructive",
+        });
+        return { error: err as Error, data: null };
+      }
+    },
+    [user, toast]
+  );
+
   return {
     enrollments,
     activeEnrollments,
@@ -522,6 +599,7 @@ export function useEnrollments() {
     getGracePeriodRemaining,
     getRemainingSwaps,
     enroll,
+    enrollAfterPayment,
     dropCourse,
     swapCourse,
     completeCourse,
