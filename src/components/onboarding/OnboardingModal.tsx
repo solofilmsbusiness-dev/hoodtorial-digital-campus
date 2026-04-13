@@ -26,7 +26,7 @@ export function OnboardingModal({ onDone }: OnboardingModalProps) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updates: any = { onboarding_completed: true };
     if (goal) updates.goal = goal;
-    await supabase.from("profiles").update(updates).eq("user_id", user.id).then(() => null).catch(() => null);
+    await supabase.from("profiles").update(updates).eq("user_id", user.id).then(() => null, () => null);
     await updateProfile({ onboarding_completed: true });
     localStorage.setItem(`hu_onboarding_done_${user.id}`, "true");
     onDone();
@@ -39,7 +39,7 @@ export function OnboardingModal({ onDone }: OnboardingModalProps) {
     if (selectedGoal) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const updates: any = { goal: selectedGoal };
-      await supabase.from("profiles").update(updates).eq("user_id", user.id).then(() => null).catch(() => null);
+      await supabase.from("profiles").update(updates).eq("user_id", user.id).then(() => null, () => null);
       localStorage.setItem(`hu_onboarding_goal_${user.id}`, selectedGoal);
     }
     navigate("/assessment");

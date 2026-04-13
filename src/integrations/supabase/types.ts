@@ -884,6 +884,7 @@ export type Database = {
           featured_project_title: string | null
           featured_project_url: string | null
           filmmaking_style: string | null
+          goal: string | null
           id: string
           imdb_url: string | null
           influences: string | null
@@ -937,6 +938,7 @@ export type Database = {
           featured_project_title?: string | null
           featured_project_url?: string | null
           filmmaking_style?: string | null
+          goal?: string | null
           id?: string
           imdb_url?: string | null
           influences?: string | null
@@ -990,6 +992,7 @@ export type Database = {
           featured_project_title?: string | null
           featured_project_url?: string | null
           filmmaking_style?: string | null
+          goal?: string | null
           id?: string
           imdb_url?: string | null
           influences?: string | null
@@ -1310,30 +1313,6 @@ export type Database = {
           blocker_id?: string
           created_at?: string
           id?: string
-        }
-        Relationships: []
-      }
-      lesson_progress: {
-        Row: {
-          id: string
-          user_id: string
-          course_id: string
-          lesson_id: string
-          completed_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          course_id: string
-          lesson_id: string
-          completed_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          course_id?: string
-          lesson_id?: string
-          completed_at?: string
         }
         Relationships: []
       }
