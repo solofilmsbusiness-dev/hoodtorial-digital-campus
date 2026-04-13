@@ -45,7 +45,7 @@ export function OnboardingStep3({ goal, onComplete, onBack }: OnboardingStep3Pro
     <div className="flex flex-col animate-scale-up">
       <h2 className="text-2xl font-bold text-white mb-2">Start here</h2>
       <p className="text-zinc-400 text-sm mb-5">
-        Here are your courses. Pick one to jump in, or browse everything we offer.
+        Based on your goal, here's where we'd start you. Take the quick assessment to get your personalized degree path.
       </p>
 
       {/* Scrollable course list */}
@@ -72,7 +72,7 @@ export function OnboardingStep3({ goal, onComplete, onBack }: OnboardingStep3Pro
               onClick={onComplete}
               className="shrink-0 btn-brutal bg-gold text-black text-xs font-bold px-3 py-1.5 hover:bg-gold-light transition-colors whitespace-nowrap"
             >
-              Start →
+              Find My Courses →
             </button>
           </div>
         ))}

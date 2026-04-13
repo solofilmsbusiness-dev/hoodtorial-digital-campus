@@ -40,6 +40,7 @@ export function OnboardingModal({ onDone }: OnboardingModalProps) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const updates: any = { goal: selectedGoal };
       await supabase.from("profiles").update(updates).eq("user_id", user.id).then(() => null).catch(() => null);
+      localStorage.setItem(`hu_onboarding_goal_${user.id}`, selectedGoal);
     }
     navigate("/assessment");
   }
