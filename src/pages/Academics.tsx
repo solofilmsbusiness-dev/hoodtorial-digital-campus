@@ -26,13 +26,12 @@ const Academics = () => {
 
   const filteredCourses = courses.filter(course => {
     const matchesDepartment = activeFilter === "all" || course.departmentId === activeFilter;
-    const query = searchQuery.trim().toLowerCase();
-    if (!query) return matchesDepartment;
-    const matchesSearch =
-      (course.title || "").toLowerCase().includes(query) ||
-      (course.description || "").toLowerCase().includes(query) ||
-      (course.departmentId || "").toLowerCase().includes(query) ||
-      (course.code || "").toLowerCase().includes(query);
+    const q = searchQuery.toLowerCase();
+    const matchesSearch = !q ||
+      course.title.toLowerCase().includes(q) ||
+      (course.description?.toLowerCase() || '').includes(q) ||
+      course.code.toLowerCase().includes(q) ||
+      course.departmentId.toLowerCase().includes(q);
     return matchesDepartment && matchesSearch;
   });
 
