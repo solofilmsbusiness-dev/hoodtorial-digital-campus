@@ -72,7 +72,7 @@ export function OnboardingStep3({ goal, onComplete, onBack }: OnboardingStep3Pro
               onClick={onComplete}
               className="shrink-0 btn-brutal bg-gold text-black text-xs font-bold px-3 py-1.5 hover:bg-gold-light transition-colors whitespace-nowrap"
             >
-              Find My Courses →
+              Take Assessment →
             </button>
           </div>
         ))}
@@ -82,7 +82,7 @@ export function OnboardingStep3({ goal, onComplete, onBack }: OnboardingStep3Pro
         onClick={onComplete}
         className="btn-brutal w-full bg-zinc-800 text-white font-bold py-3 text-sm flex items-center justify-center gap-2 hover:bg-zinc-700 transition-colors"
       >
-        Take the Assessment →
+        Find My Courses →
       </button>
 
       <button
