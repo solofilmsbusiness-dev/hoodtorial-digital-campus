@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import logo from "@/assets/logo.png";
+import { Youtube, Instagram, Twitter, MessageSquare } from "lucide-react";
 
 const footerLinks = {
   academics: [
@@ -17,6 +18,29 @@ const footerLinks = {
     { name: "Privacy Policy", href: "/privacy" },
   ],
 };
+
+const socialLinks = [
+  {
+    name: "YouTube",
+    href: "https://youtube.com/@hoodtorials",
+    icon: Youtube,
+  },
+  {
+    name: "Instagram",
+    href: "https://instagram.com/hoodtorials",
+    icon: Instagram,
+  },
+  {
+    name: "Twitter / X",
+    href: "https://twitter.com/hoodtorials",
+    icon: Twitter,
+  },
+  {
+    name: "Discord",
+    href: "#",
+    icon: MessageSquare,
+  },
+];
 
 export function Footer() {
   return (
@@ -37,15 +61,34 @@ export function Footer() {
           {/* Brand Column */}
           <div className="md:col-span-1">
             <Link to="/" className="inline-block mb-4">
-              <img 
-                src={logo} 
-                alt="Hoodtorial University" 
+              <img
+                src={logo}
+                alt="Hoodtorial University"
                 className="h-16 w-auto object-contain invert"
               />
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed mt-4">
               Where hustle meets Hollywood. Film school for the culture.
             </p>
+
+            {/* Social Links */}
+            <div className="flex items-center gap-3 mt-6">
+              {socialLinks.map((social) => {
+                const Icon = social.icon;
+                return (
+                  <a
+                    key={social.name}
+                    href={social.href}
+                    target={social.href !== "#" ? "_blank" : undefined}
+                    rel={social.href !== "#" ? "noopener noreferrer" : undefined}
+                    aria-label={social.name}
+                    className="w-9 h-9 flex items-center justify-center border border-border text-muted-foreground hover:border-primary hover:text-primary transition-all duration-300"
+                  >
+                    <Icon className="w-4 h-4" />
+                  </a>
+                );
+              })}
+            </div>
           </div>
 
           {/* Academics Links */}

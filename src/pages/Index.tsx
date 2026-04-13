@@ -1,115 +1,105 @@
 import { Helmet } from "react-helmet-async";
-import { PageLayout, Section, SectionHeader } from "@/components/layout";
+import { PageLayout } from "@/components/layout";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { CourseCard, TierCard } from "@/components/cards";
 import { ScrollReveal, CountingNumber } from "@/components/animations";
 import { Link } from "react-router-dom";
-import { ArrowRight, Play, Trophy, Target, Sparkles, Film, GraduationCap, Check, Clapperboard } from "lucide-react";
+import {
+  ArrowRight,
+  Film,
+  Palette,
+  Clapperboard,
+  Camera,
+  Video,
+  BookOpen,
+  Zap,
+  Clock,
+  Users,
+  Star,
+  CheckCircle2,
+} from "lucide-react";
 import heroLogo from "@/assets/hero-logo.png";
 import heroVideo from "@/assets/hero-video.mp4";
+import { courses, departments } from "@/data/courses";
+
+// ── helpers ────────────────────────────────────────────────────────────────────
+
+function courseCount(deptId: string) {
+  return courses.filter((c) => c.departmentId === deptId).length;
+}
+
+// ── data ───────────────────────────────────────────────────────────────────────
+
+const displayDepartments = [
+  {
+    id: "cinematography",
+    name: "Cinematography",
+    icon: Film,
+    description: "Master lenses, light, and movement for cinematic footage.",
+  },
+  {
+    id: "post-production",
+    name: "Post-Production",
+    icon: Palette,
+    description: "Edit, color grade, and mix audio like a pro.",
+  },
+  {
+    id: "directing",
+    name: "Directing",
+    icon: Clapperboard,
+    description: "Lead creative vision from concept to final cut.",
+  },
+  {
+    id: "photography",
+    name: "Photography",
+    icon: Camera,
+    description: "Still imagery, composition, and storytelling through stills.",
+  },
+  {
+    id: "camera-systems",
+    name: "Camera Systems",
+    icon: Video,
+    description: "Sony, Blackmagic, DJI — know every tool of the trade.",
+  },
+  {
+    id: "production",
+    name: "Production",
+    icon: BookOpen,
+    description: "Pre-production, logistics, and on-set execution.",
+  },
+];
+
+const pillars = [
+  {
+    icon: Star,
+    title: "Real creators. Real techniques.",
+    description:
+      "Every lesson comes from working professionals who've shot campaigns, features, and viral content — not academics reading from slides.",
+  },
+  {
+    icon: Clock,
+    title: "Learn at your own pace.",
+    description:
+      "Async, mobile-friendly, lifetime access. Watch on the train, in the edit suite, or at 2 AM when the idea hits you.",
+  },
+  {
+    icon: Zap,
+    title: "Built for the streets.",
+    description:
+      "No fluff, no gatekeeping. Practical urban filmmaking skills you can use on your next shoot — whether that's tomorrow or tonight.",
+  },
+];
 
 const stats = [
-  { value: 12, label: "Courses" },
-  { value: 60, label: "Credits" },
-  { value: 4, label: "Departments" },
-  { value: "∞", label: "Potential" },
-];
-const features = [
-  {
-    icon: Film,
-    title: "Real Film Training",
-    description: "No fluff. Every lesson teaches you something you can use on your next shoot.",
-  },
-  {
-    icon: Target,
-    title: "Scenario Exams",
-    description: "Prove your skills through real-world film scenarios, not boring multiple choice.",
-  },
-  {
-    icon: GraduationCap,
-    title: "Actual Credentials",
-    description: "Graduate with a certificate, transcript, and portfolio that proves you put in the work.",
-  },
+  { value: "50K+", label: "YouTube Subscribers" },
+  { value: "25K+", label: "Instagram Followers" },
+  { value: "500+", label: "Students Enrolled" },
+  { value: "25", label: "Courses" },
 ];
 
-const graduationSteps = [
-  { number: "01", title: "ENROLL", description: "Pick your tier" },
-  { number: "02", title: "STUDY", description: "Complete courses" },
-  { number: "03", title: "CREATE", description: "Build your capstone" },
-  { number: "04", title: "GRADUATE", description: "Earn your degree" },
-];
+// ── Waitlist form ──────────────────────────────────────────────────────────────
 
-const featuredCourses = [
-  {
-    code: "HU-101",
-    title: "iPhone Cinematography",
-    department: "Cinematography",
-    credits: 3,
-    level: "Beginner" as const,
-    description: "Master cinematic techniques using just your phone.",
-  },
-  {
-    code: "HU-201",
-    title: "Color Grading Masterclass",
-    department: "Post-Production",
-    credits: 4,
-    level: "Intermediate" as const,
-    description: "Learn professional color grading that makes footage pop.",
-  },
-  {
-    code: "HU-301",
-    title: "Documentary Storytelling",
-    department: "Directing",
-    credits: 5,
-    level: "Advanced" as const,
-    description: "Craft compelling stories that move audiences.",
-  },
-];
-
-const membershipTiers = [
-  {
-    name: "Freshman",
-    price: 29,
-    description: "Start your journey",
-    features: [
-      "4 foundation courses",
-      "Basic assessments",
-      "Community access",
-      "Monthly live Q&A",
-    ],
-  },
-  {
-    name: "Sophomore",
-    price: 79,
-    description: "Full curriculum access",
-    features: [
-      "All 12 courses",
-      "All exams & quizzes",
-      "Project submissions",
-      "1-on-1 feedback",
-      "Private Discord",
-    ],
-    highlighted: true,
-  },
-  {
-    name: "Graduate",
-    price: 149,
-    description: "Complete degree program",
-    features: [
-      "Everything in Sophomore",
-      "Capstone submission",
-      "Official certificate",
-      "Digital transcript",
-      "Alumni network",
-      "Priority support",
-    ],
-  },
-];
-
-
-function EmailCaptureSection() {
+function WaitlistForm() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<"idle" | "success" | "duplicate" | "error">("idle");
@@ -140,150 +130,164 @@ function EmailCaptureSection() {
     }
   };
 
-  return (
-    <Section>
-      <div className="max-w-2xl mx-auto text-center animate-reveal">
-        <span className="tag-sticker mb-6">
-          <Trophy className="w-3 h-3 mr-2" />
-          Free Drops
+  if (status === "success") {
+    return (
+      <div className="flex items-center gap-3 justify-center p-5 border-2 border-primary bg-primary/10 max-w-md mx-auto">
+        <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
+        <span className="font-bold text-primary uppercase tracking-wide text-sm">
+          You're on the list. We'll be in touch.
         </span>
-        <h2 className="heading-3 text-foreground mb-4 mt-4">
-          DROPS FROM THE DEAN'S OFFICE
-        </h2>
-        <p className="text-muted-foreground mb-8">
-          Exclusive tips, free resources, and early access. No spam, just game.
-        </p>
-
-        {status === "success" ? (
-          <div className="max-w-md mx-auto p-6 border-2 border-primary bg-primary/10 text-primary font-bold text-center">
-            ✓ YOU'RE ON THE LIST. WE'LL BE IN TOUCH.
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="your@email.com"
-              required
-              disabled={loading}
-              className="flex-1 h-14 px-4 border-2 border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-all duration-300 font-medium disabled:opacity-50"
-            />
-            <button type="submit" disabled={loading} className="btn-brutal h-14 disabled:opacity-50">
-              {loading ? "..." : "Subscribe"}
-            </button>
-          </form>
-        )}
-
-        {status === "duplicate" && (
-          <p className="mt-3 text-sm text-muted-foreground">You're already on the list. We got you.</p>
-        )}
-        {status === "error" && (
-          <p className="mt-3 text-sm text-destructive">Something went wrong. Try again.</p>
-        )}
       </div>
-    </Section>
+    );
+  }
+
+  return (
+    <div>
+      <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="your@email.com"
+          required
+          disabled={loading}
+          className="flex-1 h-14 px-4 border-2 border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-all duration-300 font-medium disabled:opacity-50"
+        />
+        <button
+          type="submit"
+          disabled={loading}
+          className="btn-brutal h-14 whitespace-nowrap disabled:opacity-50"
+        >
+          {loading ? "..." : "Join Waitlist"}
+        </button>
+      </form>
+      {status === "duplicate" && (
+        <p className="mt-3 text-center text-sm text-muted-foreground">
+          You're already on the list. We got you.
+        </p>
+      )}
+      {status === "error" && (
+        <p className="mt-3 text-center text-sm text-destructive">
+          Something went wrong. Try again.
+        </p>
+      )}
+    </div>
   );
 }
 
+// ── Page ───────────────────────────────────────────────────────────────────────
+
 const Index = () => {
+  // Featured course data
+  const featuredCourse = courses.find((c) => c.code === "HU-101");
+  const featuredLessons = featuredCourse
+    ? featuredCourse.modules.flatMap((m) => m.lessons).slice(0, 4)
+    : [];
+
   return (
     <>
-    <Helmet>
-      <title>Hoodtorial University — Learn Filmmaking, Photography &amp; More</title>
-      <meta name="description" content="Master filmmaking, photography, and cinematography with Hoodtorial University. 25 professional courses from mobile film to Sony cinema cameras." />
-      <link rel="canonical" href="https://hoodtorialuniversity.com" />
-      <meta property="og:title" content="Hoodtorial University — Learn Filmmaking &amp; Photography" />
-      <meta property="og:description" content="25 professional courses in filmmaking, photography, and cinematography. Learn from mobile film to Sony cinema systems." />
-      <meta property="og:url" content="https://hoodtorialuniversity.com/" />
-      <meta property="og:type" content="website" />
-    </Helmet>
-    <PageLayout pageKey="home">
-      {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-noise">
-        {/* Background Video Layer */}
-        <video
-          autoPlay
-          muted
-          loop
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover opacity-[0.15]"
-          poster="/placeholder.svg"
-        >
-          <source src={heroVideo} type="video/mp4" />
-        </video>
+      <Helmet>
+        <title>Hoodtorial University — Where Hustle Meets Hollywood</title>
+        <meta
+          name="description"
+          content="Master cinematography, editing, photography and directing from creators who've actually done it. Hoodtorial University — film school for the culture."
+        />
+        <link rel="canonical" href="https://hoodtorialuniversity.com" />
+        <meta property="og:title" content="Hoodtorial University — Where Hustle Meets Hollywood" />
+        <meta
+          property="og:description"
+          content="Master cinematography, editing, photography and directing from creators who've actually done it."
+        />
+        <meta property="og:url" content="https://hoodtorialuniversity.com/" />
+        <meta property="og:type" content="website" />
+      </Helmet>
 
-        {/* Dark overlay for contrast */}
-        <div className="absolute inset-0 bg-background/80" />
+      <PageLayout pageKey="home">
+        {/* ── 1. HERO ──────────────────────────────────────────────────────── */}
+        <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-noise">
+          {/* Background Video */}
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover opacity-[0.12]"
+          >
+            <source src={heroVideo} type="video/mp4" />
+          </video>
 
-        {/* Background effects */}
-        <div className="absolute inset-0 bg-grid" />
-        <div className="absolute inset-0 video-overlay" />
-        
-        {/* Animated orbs - increased opacity for more depth */}
-        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[150px] animate-pulse" />
-        <div className="absolute bottom-1/3 right-1/4 w-[400px] h-[400px] bg-neon-purple/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: "1s" }} />
-        <div className="absolute top-1/2 right-1/3 w-[300px] h-[300px] bg-neon-pink/8 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: "2s" }} />
+          {/* Overlays */}
+          <div className="absolute inset-0 bg-background/85" />
+          <div className="absolute inset-0 bg-grid" />
+          <div className="absolute inset-0 video-overlay" />
 
-        <div className="container-wide relative z-10 py-20">
-          <div className="max-w-5xl mx-auto flex flex-col items-center">
-            {/* University Logo */}
-            <div className="animate-reveal">
-              <img 
-                src={heroLogo} 
-                alt="Hoodtorial University - Class of 2025" 
-                className="h-[200px] sm:h-[280px] lg:h-[380px] w-auto animate-logo-pulse"
-              />
-            </div>
+          {/* Ambient glow orbs */}
+          <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-primary/8 rounded-full blur-[150px] animate-pulse" />
+          <div
+            className="absolute bottom-1/3 right-1/4 w-[400px] h-[400px] bg-neon-purple/8 rounded-full blur-[120px] animate-pulse"
+            style={{ animationDelay: "1s" }}
+          />
 
-            {/* University Name */}
-            <h1 className="heading-1 text-center mt-8">
-              <span className="block animate-reveal stagger-1">HOODTORIAL</span>
-              <span className="block text-gold-gradient text-glow animate-reveal stagger-2">UNIVERSITY</span>
-            </h1>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 py-20">
+            <div className="flex flex-col items-center text-center">
+              {/* Logo */}
+              <div className="animate-reveal">
+                <img
+                  src={heroLogo}
+                  alt="Hoodtorial University"
+                  className="h-[180px] sm:h-[260px] lg:h-[340px] w-auto animate-logo-pulse"
+                />
+              </div>
 
-            {/* Tagline */}
-            <p className="text-lg md:text-xl lg:text-2xl font-bold uppercase tracking-[0.1em] sm:tracking-[0.3em] text-muted-foreground text-center mt-6 animate-reveal stagger-3">
-              Where Hustle Meets Hollywood
-            </p>
+              {/* Headline */}
+              <h1 className="mt-8 text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black uppercase tracking-tight leading-none animate-reveal stagger-1">
+                <span className="block text-foreground">Where Hustle</span>
+                <span className="block text-gold-gradient text-glow">Meets Hollywood</span>
+              </h1>
 
-            {/* Now Enrolling Badge */}
-            <div className="flex justify-center mt-8 animate-reveal stagger-4">
-              <span className="tag-sticker">
-                <Sparkles className="w-3 h-3 mr-2" />
-                Now Enrolling
-              </span>
-            </div>
+              {/* Subtext */}
+              <p className="mt-6 max-w-2xl text-base sm:text-lg md:text-xl text-muted-foreground font-medium leading-relaxed animate-reveal stagger-2">
+                Master cinematography, editing, photography and directing from creators who've
+                actually done it.
+              </p>
 
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10 animate-reveal stagger-5">
-              <Link to="/enrollment" className="btn-brutal animate-glow-pulse">
-                Start Learning
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Link>
-              <Button asChild variant="outline" size="lg" className="border-2 border-border hover:border-primary hover:bg-primary/10 font-bold uppercase tracking-wide transition-all duration-300">
-                <Link to="/academics">
-                  <Play className="mr-2 h-4 w-4" />
-                  View Curriculum
+              {/* CTA Buttons */}
+              <div className="mt-10 flex flex-col sm:flex-row items-center gap-4 animate-reveal stagger-3">
+                <Link to="/auth" className="btn-brutal animate-glow-pulse">
+                  Start Learning
+                  <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
-              </Button>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-20 w-full">
-              {stats.map((stat, index) => (
-                <ScrollReveal
-                  key={index}
-                  delay={0.1 * index}
-                  direction="up"
+                <a
+                  href="#waitlist"
+                  className="inline-flex items-center gap-2 h-14 px-8 border-2 border-border text-foreground font-bold uppercase tracking-wide hover:border-primary hover:bg-primary/10 transition-all duration-300"
                 >
-                  <div 
-                    className="text-center p-6 border-2 border-border bg-card/30 backdrop-blur-sm hover:border-primary transition-all duration-300"
-                  >
-                    <div className="text-4xl md:text-5xl font-black text-primary mb-1">
-                      <CountingNumber value={stat.value} duration={2} />
+                  Join Waitlist
+                </a>
+              </div>
+
+              {/* Scroll indicator */}
+              <div className="mt-16 animate-reveal stagger-4">
+                <div className="w-6 h-10 border-2 border-primary/50 rounded-full flex justify-center pt-2 mx-auto animate-glow-pulse">
+                  <div className="w-1 h-2 bg-primary rounded-full animate-bounce" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── 2. STATS BAR ─────────────────────────────────────────────────── */}
+        <div className="bg-zinc-950 border-y-2 border-border py-10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+              {stats.map((stat, i) => (
+                <ScrollReveal key={i} delay={0.1 * i} direction="up">
+                  <div>
+                    <div className="text-3xl md:text-4xl font-black text-primary text-glow">
+                      {stat.value}
                     </div>
-                    <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{stat.label}</div>
+                    <div className="mt-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                      {stat.label}
+                    </div>
                   </div>
                 </ScrollReveal>
               ))}
@@ -291,229 +295,228 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Scroll indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
-          <div className="w-6 h-10 border-2 border-primary/50 rounded-full flex justify-center pt-2 animate-glow-pulse">
-            <div className="w-1 h-2 bg-primary rounded-full animate-bounce" />
-          </div>
-        </div>
-      </section>
-
-
-      {/* Features Section */}
-      <Section className="bg-card/50 bg-noise">
-        <SectionHeader
-          eyebrow="Why HU"
-          title="NOT YOUR AVERAGE FILM SCHOOL"
-          description="We built the curriculum we wish existed. No filler. All killer."
-          centered
-        />
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {features.map((feature, index) => (
-            <ScrollReveal
-              key={index}
-              delay={0.15 * index}
-              direction="up"
-            >
-              <div className="card-urban group h-full">
-                <div className="w-16 h-16 mb-6 bg-primary/10 border-2 border-primary/50 flex items-center justify-center group-hover:bg-primary group-hover:border-primary transition-all duration-500">
-                  <feature.icon className="h-8 w-8 text-primary group-hover:text-primary-foreground transition-colors duration-500" />
-                </div>
-                <h3 className="heading-4 text-foreground mb-3 group-hover:text-primary transition-colors duration-300">{feature.title}</h3>
-                <p className="text-muted-foreground">{feature.description}</p>
+        {/* ── 3. WHAT YOU'LL MASTER ────────────────────────────────────────── */}
+        <section className="py-20 md:py-32 bg-card/30 bg-noise">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <ScrollReveal direction="up">
+              <div className="text-center mb-16">
+                <span className="tag-sticker mb-6">Curriculum</span>
+                <h2 className="heading-2 text-foreground mt-4">
+                  WHAT YOU'LL{" "}
+                  <span className="text-gold-gradient text-glow">MASTER</span>
+                </h2>
+                <p className="mt-4 text-muted-foreground text-lg max-w-2xl mx-auto">
+                  Six departments. Every skill you need to go from phone footage to cinematic film.
+                </p>
               </div>
             </ScrollReveal>
-          ))}
-        </div>
-      </Section>
 
-      {/* Hoodtorials Brand Section */}
-      <Section>
-        <ScrollReveal direction="up">
-          <div className="max-w-4xl mx-auto text-center">
-            <div className="border-4 border-border bg-card/30 backdrop-blur-sm p-6 sm:p-10 md:p-20 relative">
-              {/* Decorative corners */}
-              <div className="absolute -top-2 -left-2 w-4 h-4 bg-primary" />
-              <div className="absolute -top-2 -right-2 w-4 h-4 bg-primary" />
-              <div className="absolute -bottom-2 -left-2 w-4 h-4 bg-primary" />
-              <div className="absolute -bottom-2 -right-2 w-4 h-4 bg-primary" />
-
-              <div className="flex justify-center mb-6">
-                <div className="w-16 h-16 bg-primary/10 border-2 border-primary/50 flex items-center justify-center">
-                  <Clapperboard className="h-8 w-8 text-primary" />
-                </div>
-              </div>
-
-              <h2 className="text-4xl md:text-6xl lg:text-7xl font-black text-gold-gradient text-glow tracking-tight">
-                HOODTORIALS
-              </h2>
-
-              <p className="text-sm sm:text-base md:text-lg lg:text-2xl font-bold uppercase tracking-[0.05em] sm:tracking-[0.1em] md:tracking-[0.25em] text-muted-foreground mt-6">
-                Where We Look Under the Hood of Filmmaking
-              </p>
-
-              <p className="body-large text-muted-foreground mt-6 max-w-2xl mx-auto">
-                We break down every technique, every tool, every decision that separates amateur footage from professional cinema. No gatekeeping — just the real craft, decoded.
-              </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {displayDepartments.map((dept, i) => {
+                const count = courseCount(dept.id);
+                const Icon = dept.icon;
+                return (
+                  <ScrollReveal key={dept.id} delay={0.1 * i} direction="up">
+                    <Link to="/academics" className="block h-full">
+                      <div className="card-urban group h-full cursor-pointer">
+                        <div className="flex items-start gap-4">
+                          <div className="w-12 h-12 shrink-0 bg-primary/10 border-2 border-primary/40 flex items-center justify-center group-hover:bg-primary group-hover:border-primary transition-all duration-500">
+                            <Icon className="w-6 h-6 text-primary group-hover:text-primary-foreground transition-colors duration-500" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-black text-lg text-foreground group-hover:text-primary transition-colors duration-300 uppercase tracking-wide">
+                              {dept.name}
+                            </h3>
+                            <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
+                              {dept.description}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
+                          <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                            {count} {count === 1 ? "course" : "courses"}
+                          </span>
+                          <ArrowRight className="w-4 h-4 text-primary opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-0 group-hover:translate-x-1" />
+                        </div>
+                      </div>
+                    </Link>
+                  </ScrollReveal>
+                );
+              })}
             </div>
           </div>
-        </ScrollReveal>
-      </Section>
+        </section>
 
-      {/* How It Works */}
-      <Section>
-        <SectionHeader
-          eyebrow="The Process"
-          title="HOW GRADUATION WORKS"
-          centered
-        />
-
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {graduationSteps.map((step, index) => (
-            <ScrollReveal
-              key={index}
-              delay={0.1 * index}
-              direction="up"
-            >
-              <div className="relative text-center group">
-                {/* Connector line */}
-                {index < graduationSteps.length - 1 && (
-                  <div className="hidden md:block absolute top-8 left-1/2 w-full h-0.5 bg-gradient-to-r from-primary/50 to-transparent" />
-                )}
-                
-                {/* Number */}
-                <div className="relative z-10 w-16 h-16 mx-auto mb-4 bg-primary text-primary-foreground flex items-center justify-center font-black text-xl border-2 border-primary group-hover:bg-transparent group-hover:text-primary transition-all duration-500 group-hover:animate-glow-pulse">
-                  {step.number}
+        {/* ── 4. FEATURED COURSE ───────────────────────────────────────────── */}
+        {featuredCourse && (
+          <section className="py-20 md:py-32">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <ScrollReveal direction="up">
+                <div className="text-center mb-12">
+                  <span className="tag-sticker mb-6">Featured Course</span>
+                  <h2 className="heading-2 text-foreground mt-4">
+                    START{" "}
+                    <span className="text-gold-gradient text-glow">HERE</span>
+                  </h2>
                 </div>
-                
-                <h3 className="heading-4 text-foreground mb-2">{step.title}</h3>
-                <p className="text-sm text-muted-foreground">{step.description}</p>
-              </div>
-            </ScrollReveal>
-          ))}
-        </div>
-      </Section>
+              </ScrollReveal>
 
-      {/* Featured Courses */}
-      <Section className="bg-card/50 bg-noise">
-        <SectionHeader
-          eyebrow="Curriculum"
-          title="FEATURED CLASSES"
-          description="Sample what's inside. Each course earns credits toward your degree."
-        />
+              <ScrollReveal direction="up" delay={0.1}>
+                <div className="relative border-2 border-primary bg-card/50 backdrop-blur-sm p-8 md:p-12 max-w-4xl mx-auto">
+                  {/* Decorative corners */}
+                  <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-primary" />
+                  <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-primary" />
+                  <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-primary" />
+                  <div className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-primary" />
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {featuredCourses.map((course, index) => (
-            <ScrollReveal key={index} delay={0.15 * index} direction="up">
-              <CourseCard {...course} />
-            </ScrollReveal>
-          ))}
-        </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                    {/* Course info */}
+                    <div>
+                      <div className="flex items-center gap-3 mb-4">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-primary text-primary-foreground text-xs font-black uppercase tracking-widest">
+                          <Star className="w-3 h-3" /> Start Here
+                        </span>
+                        <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                          {featuredCourse.code}
+                        </span>
+                      </div>
 
-        <div className="text-center mt-12">
-          <Link to="/academics" className="btn-brutal inline-flex">
-            View All Courses
-            <ArrowRight className="ml-2 h-5 w-5" />
-          </Link>
-        </div>
-      </Section>
+                      <h3 className="text-2xl md:text-3xl font-black text-foreground uppercase tracking-tight leading-tight">
+                        {featuredCourse.title}
+                      </h3>
 
-      {/* Degree Preview */}
-      <Section>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
-          <div className="animate-slide-left">
-            <span className="tag-sticker mb-6">Credentials</span>
-            <h2 className="heading-2 text-foreground mb-6 mt-4">
-              EARN YOUR
-              <span className="text-gold-gradient text-glow"> DEGREE</span>
-            </h2>
-            <p className="body-large text-muted-foreground mb-8">
-              Complete 60 credits, pass all exams, submit your capstone film. 
-              Graduate with an official certificate and transcript.
-            </p>
+                      <p className="mt-1 text-sm font-bold uppercase tracking-widest text-primary">
+                        {featuredCourse.department}
+                      </p>
 
-            <div className="grid grid-cols-2 gap-4">
-              {[
-                "12 courses",
-                "12 quizzes",
-                "3 scenario exams",
-                "6 projects",
-                "1 capstone film",
-                "Official degree",
-              ].map((item, index) => (
-                <div 
-                  key={index} 
-                  className="flex items-center gap-3 p-3 border-2 border-border bg-card/50 hover:border-primary transition-all duration-300 animate-reveal"
-                  style={{ animationDelay: `${0.3 + index * 0.1}s` }}
-                >
-                  <Check className="w-4 h-4 text-primary shrink-0" />
-                  <span className="text-sm font-medium text-foreground">{item}</span>
-                </div>
-              ))}
-            </div>
+                      <p className="mt-4 text-muted-foreground leading-relaxed">
+                        {featuredCourse.description}
+                      </p>
 
-            <div className="mt-8">
-              <Link to="/degrees" className="btn-brutal inline-flex">
-                View Degree Paths
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Link>
-            </div>
-          </div>
+                      <div className="mt-6 flex flex-wrap gap-4 text-sm">
+                        <span className="flex items-center gap-1.5 text-muted-foreground">
+                          <BookOpen className="w-4 h-4 text-primary" />
+                          <span className="font-bold">{featuredCourse.lessons} lessons</span>
+                        </span>
+                        <span className="flex items-center gap-1.5 text-muted-foreground">
+                          <Clock className="w-4 h-4 text-primary" />
+                          <span className="font-bold">{featuredCourse.duration}</span>
+                        </span>
+                        <span className="flex items-center gap-1.5 text-muted-foreground">
+                          <Star className="w-4 h-4 text-primary" />
+                          <span className="font-bold">{featuredCourse.level}</span>
+                        </span>
+                      </div>
 
-          {/* Visual */}
-          <div className="relative flex justify-center items-center animate-scale-in" style={{ animationDelay: "0.4s" }}>
-            <div className="relative">
-              {/* Progress visualization */}
-              <div className="w-72 h-72 md:w-80 md:h-80 border-4 border-primary relative animate-border-flow">
-                <div className="absolute inset-4 border-2 border-border bg-card/80 backdrop-blur-sm flex flex-col items-center justify-center">
-                  <div className="text-7xl md:text-8xl font-black text-primary text-glow">75%</div>
-                  <div className="text-sm font-bold uppercase tracking-widest text-muted-foreground mt-2">Complete</div>
-                  <div className="mt-4 px-4 py-2 bg-muted/50 text-muted-foreground text-xs font-bold uppercase tracking-wide border border-border">
-                    45 / 60 Credits
+                      <div className="mt-8">
+                        <Link to="/auth" className="btn-brutal inline-flex">
+                          Enroll Now
+                          <ArrowRight className="ml-2 h-5 w-5" />
+                        </Link>
+                      </div>
+                    </div>
+
+                    {/* Lesson preview */}
+                    <div>
+                      <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-4">
+                        What's Inside
+                      </h4>
+                      <ul className="space-y-3">
+                        {featuredLessons.map((lesson, i) => (
+                          <li
+                            key={lesson.id}
+                            className="flex items-center gap-3 p-3 border border-border bg-background/50 hover:border-primary/50 transition-colors duration-200"
+                          >
+                            <span className="text-xs font-black text-primary w-5 shrink-0">
+                              {String(i + 1).padStart(2, "0")}
+                            </span>
+                            <span className="text-sm font-medium text-foreground truncate">
+                              {lesson.title}
+                            </span>
+                            <span className="ml-auto text-xs text-muted-foreground shrink-0">
+                              {lesson.duration}
+                            </span>
+                          </li>
+                        ))}
+                        <li className="flex items-center gap-3 p-3 border border-dashed border-border/50">
+                          <span className="text-xs text-muted-foreground italic">
+                            + {featuredCourse.lessons - featuredLessons.length} more lessons inside...
+                          </span>
+                        </li>
+                      </ul>
+                    </div>
                   </div>
                 </div>
-                
-                {/* Decorative corners */}
-                <div className="absolute -top-2 -left-2 w-4 h-4 bg-primary animate-pulse" />
-                <div className="absolute -top-2 -right-2 w-4 h-4 bg-neon-purple animate-pulse" style={{ animationDelay: "0.5s" }} />
-                <div className="absolute -bottom-2 -left-2 w-4 h-4 bg-neon-pink animate-pulse" style={{ animationDelay: "1s" }} />
-                <div className="absolute -bottom-2 -right-2 w-4 h-4 bg-accent animate-pulse" style={{ animationDelay: "1.5s" }} />
-              </div>
+              </ScrollReveal>
+            </div>
+          </section>
+        )}
 
-              {/* Floating tags */}
-              <div className="hidden sm:block absolute -top-6 -right-6 tag-sticker rotate-6 animate-float">
-                Dean's List
+        {/* ── 5. WHY HOODTORIAL UNIVERSITY ─────────────────────────────────── */}
+        <section className="py-20 md:py-32 bg-card/30 bg-noise">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <ScrollReveal direction="up">
+              <div className="text-center mb-16">
+                <span className="tag-sticker mb-6">Why HU</span>
+                <h2 className="heading-2 text-foreground mt-4">
+                  NOT YOUR AVERAGE{" "}
+                  <span className="text-gold-gradient text-glow">FILM SCHOOL</span>
+                </h2>
               </div>
-              <div className="hidden sm:block absolute -bottom-6 -left-6 tag-outline text-neon-purple border-neon-purple -rotate-3 animate-float" style={{ animationDelay: "1s" }}>
-                In Progress
-              </div>
+            </ScrollReveal>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {pillars.map((pillar, i) => {
+                const Icon = pillar.icon;
+                return (
+                  <ScrollReveal key={i} delay={0.15 * i} direction="up">
+                    <div className="card-urban group h-full text-center">
+                      <div className="w-16 h-16 mx-auto mb-6 bg-primary/10 border-2 border-primary/50 flex items-center justify-center group-hover:bg-primary group-hover:border-primary transition-all duration-500">
+                        <Icon className="w-8 h-8 text-primary group-hover:text-primary-foreground transition-colors duration-500" />
+                      </div>
+                      <h3 className="text-lg font-black text-foreground group-hover:text-primary transition-colors duration-300 uppercase tracking-wide leading-tight mb-3">
+                        {pillar.title}
+                      </h3>
+                      <p className="text-muted-foreground text-sm leading-relaxed">
+                        {pillar.description}
+                      </p>
+                    </div>
+                  </ScrollReveal>
+                );
+              })}
             </div>
           </div>
-        </div>
-      </Section>
+        </section>
 
-      {/* Membership Tiers */}
-      <Section className="bg-card/50 bg-noise">
-        <SectionHeader
-          eyebrow="Enrollment"
-          title="CHOOSE YOUR PATH"
-          description="Pick the tier that fits your goals. Upgrade anytime."
-          centered
-        />
+        {/* ── 6. WAITLIST CTA ──────────────────────────────────────────────── */}
+        <section id="waitlist" className="py-20 md:py-32">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <ScrollReveal direction="up">
+              <div className="relative border-4 border-primary bg-card/50 backdrop-blur-sm p-10 md:p-20 text-center max-w-3xl mx-auto">
+                {/* Decorative corners */}
+                <div className="absolute -top-2 -left-2 w-4 h-4 bg-primary" />
+                <div className="absolute -top-2 -right-2 w-4 h-4 bg-primary" />
+                <div className="absolute -bottom-2 -left-2 w-4 h-4 bg-primary" />
+                <div className="absolute -bottom-2 -right-2 w-4 h-4 bg-primary" />
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {membershipTiers.map((tier, index) => (
-            <ScrollReveal key={index} delay={0.15 * index} direction="up">
-              <TierCard {...tier} />
+                <div className="flex justify-center mb-6">
+                  <Users className="w-10 h-10 text-primary animate-pulse" />
+                </div>
+
+                <h2 className="heading-2 text-foreground">
+                  BE FIRST{" "}
+                  <span className="text-gold-gradient text-glow">IN LINE</span>
+                </h2>
+                <p className="mt-4 mb-8 text-muted-foreground text-lg max-w-xl mx-auto">
+                  Get early access and exclusive launch pricing. No spam — just game.
+                </p>
+
+                <WaitlistForm />
+              </div>
             </ScrollReveal>
-          ))}
-        </div>
-      </Section>
-
-      {/* Email Capture */}
-      <EmailCaptureSection />
-    </PageLayout>
+          </div>
+        </section>
+      </PageLayout>
     </>
   );
 };
