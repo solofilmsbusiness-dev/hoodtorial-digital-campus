@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { useState } from "react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
@@ -116,6 +117,14 @@ export default function Faculty() {
 
   return (
     <PageLayout pageKey="faculty">
+      <Helmet>
+        <title>Faculty | Hoodtorial University</title>
+        <meta name="description" content="Meet our world-class instructors and faculty members at Hoodtorial University." />
+        <meta property="og:title" content="Faculty | Hoodtorial University" />
+        <meta property="og:description" content="Meet our world-class instructors and faculty members at Hoodtorial University." />
+        <meta property="og:image" content="https://hoodtorialuniversity.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Helmet>
       {/* Hero Section */}
       <section className="relative py-20 md:py-32 bg-background overflow-hidden">
         <div className="absolute inset-0 bg-grid opacity-50" />

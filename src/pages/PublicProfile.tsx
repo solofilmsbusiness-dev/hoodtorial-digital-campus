@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
@@ -211,6 +212,14 @@ import { toast } from "sonner";
  
    return (
      <PageLayout>
+      <Helmet>
+        <title>Student Profile | Hoodtorial University</title>
+        <meta name="description" content="View student academic profiles, achievements, and progress at Hoodtorial University." />
+        <meta property="og:title" content="Student Profile | Hoodtorial University" />
+        <meta property="og:description" content="View student academic profiles, achievements, and progress at Hoodtorial University." />
+        <meta property="og:image" content="https://hoodtorialuniversity.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Helmet>
        {/* Background effects */}
        <div className="fixed inset-0 pointer-events-none overflow-hidden">
          {/* Animated orbs */}

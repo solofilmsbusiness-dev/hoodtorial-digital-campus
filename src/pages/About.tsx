@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Target, Film, Users, Award, Zap, Heart, Clapperboard, Info } from "lucide-react";
 
@@ -44,6 +45,14 @@ const stats = [
 export default function About() {
   return (
     <PageLayout>
+      <Helmet>
+        <title>About Us | Hoodtorial University</title>
+        <meta name="description" content="Learn about Hoodtorial University, our mission, values, and commitment to excellence in education." />
+        <meta property="og:title" content="About Us | Hoodtorial University" />
+        <meta property="og:description" content="Learn about Hoodtorial University, our mission, values, and commitment to excellence in education." />
+        <meta property="og:image" content="https://hoodtorialuniversity.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Helmet>
       {/* Hero Section */}
       <section className="relative py-20 md:py-32 bg-background overflow-hidden">
         <div className="absolute inset-0 bg-grid opacity-50" />

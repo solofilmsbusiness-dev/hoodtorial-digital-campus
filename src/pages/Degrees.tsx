@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
  import { useState } from "react";
  import { Link } from "react-router-dom";
  import { AnimatePresence } from "framer-motion";
@@ -90,6 +91,14 @@
  
    return (
      <PageLayout pageKey="degrees">
+       <Helmet>
+         <title>Degrees & Programs | Hoodtorial University</title>
+         <meta name="description" content="Browse degree programs and academic pathways designed to advance your career at Hoodtorial University." />
+         <meta property="og:title" content="Degrees & Programs | Hoodtorial University" />
+         <meta property="og:description" content="Browse degree programs and academic pathways designed to advance your career at Hoodtorial University." />
+         <meta property="og:image" content="https://hoodtorialuniversity.com/og-image.png" />
+         <meta name="twitter:card" content="summary_large_image" />
+       </Helmet>
        {/* Hero */}
        <section className="relative pt-32 pb-20 overflow-hidden bg-noise">
          <div className="absolute inset-0 bg-grid" />

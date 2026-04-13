@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +22,14 @@ export default function Friends() {
 
   return (
     <PageLayout pageKey="friends">
+      <Helmet>
+        <title>Friends | Hoodtorial University</title>
+        <meta name="description" content="Connect with friends and build your academic network at Hoodtorial University." />
+        <meta property="og:title" content="Friends | Hoodtorial University" />
+        <meta property="og:description" content="Connect with friends and build your academic network at Hoodtorial University." />
+        <meta property="og:image" content="https://hoodtorialuniversity.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Helmet>
       <div className="py-12 px-4">
         <div className="container max-w-4xl mx-auto">
           <Breadcrumb className="mb-4">

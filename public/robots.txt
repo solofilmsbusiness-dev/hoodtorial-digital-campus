@@ -1,9 +1,5 @@
 User-agent: *
 Allow: /
 Disallow: /dashboard
-Disallow: /checkout
 Disallow: /admin
-Disallow: /student
-Disallow: /assessment
-
 Sitemap: https://hoodtorialuniversity.com/sitemap.xml

@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { PageLayout } from "@/components/layout";
@@ -183,6 +184,14 @@ export default function Dashboard() {
 
   return (
     <PageLayout pageKey="dashboard">
+      <Helmet>
+        <title>Dashboard | Hoodtorial University</title>
+        <meta name="description" content="Manage your courses, track your progress, and continue your learning journey at Hoodtorial University." />
+        <meta property="og:title" content="Dashboard | Hoodtorial University" />
+        <meta property="og:description" content="Manage your courses, track your progress, and continue your learning journey at Hoodtorial University." />
+        <meta property="og:image" content="https://hoodtorialuniversity.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Helmet>
       {showOnboarding && (
         <OnboardingModal onDone={() => setShowOnboarding(false)} />
       )}

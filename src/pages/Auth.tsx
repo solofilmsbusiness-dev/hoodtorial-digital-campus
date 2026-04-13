@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { useState, useEffect, useRef } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -404,6 +405,14 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
+      <Helmet>
+        <title>Sign In | Hoodtorial University</title>
+        <meta name="description" content="Sign in or create an account to start learning at Hoodtorial University." />
+        <meta property="og:title" content="Sign In | Hoodtorial University" />
+        <meta property="og:description" content="Sign in or create an account to start learning at Hoodtorial University." />
+        <meta property="og:image" content="https://hoodtorialuniversity.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Helmet>
       {/* Terms Acceptance Modal */}
       <TermsAcceptanceModal
         isOpen={showTermsModal}

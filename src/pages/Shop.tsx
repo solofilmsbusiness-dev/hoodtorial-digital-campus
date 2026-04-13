@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { useState } from "react";
 import { PageLayout } from "@/components/layout";
 import { Section, SectionHeader } from "@/components/layout/Section";
@@ -112,6 +113,14 @@ export default function Shop() {
 
   return (
     <PageLayout pageKey="shop">
+      <Helmet>
+        <title>Shop | Hoodtorial University</title>
+        <meta name="description" content="Browse Hoodtorial University merchandise and educational materials." />
+        <meta property="og:title" content="Shop | Hoodtorial University" />
+        <meta property="og:description" content="Browse Hoodtorial University merchandise and educational materials." />
+        <meta property="og:image" content="https://hoodtorialuniversity.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Helmet>
       {/* Hero Section */}
       <section className="relative min-h-[50vh] flex items-center justify-center overflow-hidden bg-grid">
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/50 to-background" />
