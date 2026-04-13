@@ -23,9 +23,9 @@ export function useLessonCompletions(courseId: string | undefined) {
 
     const fetchCompletions = async () => {
       try {
-        const { data, error } = await supabase
-          .from("lesson_progress")
-          .select("lesson_id")
+        const { data, error } = await (supabase
+          .from("lesson_progress" as any)
+          .select("lesson_id") as any)
           .eq("user_id", user.id)
           .eq("course_id", courseId);
 
@@ -98,7 +98,7 @@ export function useLessonCompletions(courseId: string | undefined) {
       if (!user) return { error: new Error("Not authenticated") };
 
       try {
-        const { error } = await supabase.from("lesson_progress").upsert(
+        const { error } = await (supabase.from("lesson_progress" as any) as any).upsert(
           {
             user_id: user.id,
             course_id: cId,
