@@ -483,6 +483,7 @@ export type Database = {
       }
       enrollments: {
         Row: {
+          amount_paid: number | null
           completed_at: string | null
           course_code: string
           created_at: string
@@ -490,12 +491,15 @@ export type Database = {
           enrolled_at: string
           id: string
           is_demo: boolean
+          payment_status: string | null
           status: string
+          stripe_session_id: string | null
           swaps_used: number
           updated_at: string
           user_id: string
         }
         Insert: {
+          amount_paid?: number | null
           completed_at?: string | null
           course_code: string
           created_at?: string
@@ -503,12 +507,15 @@ export type Database = {
           enrolled_at?: string
           id?: string
           is_demo?: boolean
+          payment_status?: string | null
           status?: string
+          stripe_session_id?: string | null
           swaps_used?: number
           updated_at?: string
           user_id: string
         }
         Update: {
+          amount_paid?: number | null
           completed_at?: string | null
           course_code?: string
           created_at?: string
@@ -516,7 +523,9 @@ export type Database = {
           enrolled_at?: string
           id?: string
           is_demo?: boolean
+          payment_status?: string | null
           status?: string
+          stripe_session_id?: string | null
           swaps_used?: number
           updated_at?: string
           user_id?: string
