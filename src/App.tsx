@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,38 +16,38 @@ import { DemoModeBanner } from "@/components/admin/DemoModeBanner";
  import { TesterModeBanner } from "@/components/admin/TesterModeBanner";
  import { useTestMode } from "@/hooks/useTestMode";
 import { ProtectedRoute, AdminRoute, PaidRoute, AssessmentRequiredRoute } from "@/components/auth";
-import Degrees from "./pages/Degrees";
-import Academics from "./pages/Academics";
-import CourseDetail from "./pages/CourseDetail";
-import Enrollment from "./pages/Enrollment";
-import Faculty from "./pages/Faculty";
-import About from "./pages/About";
-import Auth from "./pages/Auth";
-import StudentCenter from "./pages/StudentCenter";
-import StudentProfile from "./pages/StudentProfile";
-import StudentGrades from "./pages/StudentGrades";
-import Assessment from "./pages/Assessment";
-import Shop from "./pages/Shop";
-import Community from "./pages/Community";
-import NotFound from "./pages/NotFound";
-import Index from "./pages/Index";
-import SkillTree from "./pages/SkillTree";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import CourseManager from "./pages/admin/CourseManager";
-import CourseEditor from "./pages/admin/CourseEditor";
-import UserManager from "./pages/admin/UserManager";
-import CommunityManager from "./pages/admin/CommunityManager";
-import ChallengeManager from "./pages/admin/ChallengeManager";
-import AdminSettings from "./pages/admin/AdminSettings";
-import SupportManager from "./pages/admin/SupportManager";
-import WaitlistManager from "./pages/admin/WaitlistManager";
-import FacultyManager from "./pages/admin/FacultyManager";
-import Checkout from "./pages/Checkout";
-import Privacy from "./pages/Privacy";
-import Dashboard from "./pages/Dashboard";
- import Friends from "./pages/Friends";
- import Messages from "./pages/Messages";
- import PublicProfile from "./pages/PublicProfile";
+const Degrees = lazy(() => import("./pages/Degrees"));
+const Academics = lazy(() => import("./pages/Academics"));
+const CourseDetail = lazy(() => import("./pages/CourseDetail"));
+const Enrollment = lazy(() => import("./pages/Enrollment"));
+const Faculty = lazy(() => import("./pages/Faculty"));
+const About = lazy(() => import("./pages/About"));
+const Auth = lazy(() => import("./pages/Auth"));
+const StudentCenter = lazy(() => import("./pages/StudentCenter"));
+const StudentProfile = lazy(() => import("./pages/StudentProfile"));
+const StudentGrades = lazy(() => import("./pages/StudentGrades"));
+const Assessment = lazy(() => import("./pages/Assessment"));
+const Shop = lazy(() => import("./pages/Shop"));
+const Community = lazy(() => import("./pages/Community"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Index = lazy(() => import("./pages/Index"));
+const SkillTree = lazy(() => import("./pages/SkillTree"));
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const CourseManager = lazy(() => import("./pages/admin/CourseManager"));
+const CourseEditor = lazy(() => import("./pages/admin/CourseEditor"));
+const UserManager = lazy(() => import("./pages/admin/UserManager"));
+const CommunityManager = lazy(() => import("./pages/admin/CommunityManager"));
+const ChallengeManager = lazy(() => import("./pages/admin/ChallengeManager"));
+const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
+const SupportManager = lazy(() => import("./pages/admin/SupportManager"));
+const WaitlistManager = lazy(() => import("./pages/admin/WaitlistManager"));
+const FacultyManager = lazy(() => import("./pages/admin/FacultyManager"));
+const Checkout = lazy(() => import("./pages/Checkout"));
+const Privacy = lazy(() => import("./pages/Privacy"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Friends = lazy(() => import("./pages/Friends"));
+const Messages = lazy(() => import("./pages/Messages"));
+const PublicProfile = lazy(() => import("./pages/PublicProfile"));
 
 const queryClient = new QueryClient();
 
@@ -87,6 +88,7 @@ function JourneyRedirect() {
        <BrowserRouter>
          <DemoModeBanner />
          <ChatWidget />
+         <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center"><div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" /></div>}>
           <Routes>
             <Route path="/" element={<RootRedirect />} />
             <Route path="/degrees" element={<Degrees />} />
@@ -207,6 +209,7 @@ function JourneyRedirect() {
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
            <Route path="*" element={<NotFound />} />
          </Routes>
+         </Suspense>
        </BrowserRouter>
      </>
    );
