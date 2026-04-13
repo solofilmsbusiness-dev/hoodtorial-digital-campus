@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useTestModeContext } from "@/contexts/TestModeContext";
 import { getPathCourses } from "@/lib/degreePathCourses";
+import { getCourseByCode } from "@/data/courses";
 import type { DegreePath, CertificateDepartment } from "@/hooks/useDegreeSelection";
 
 export interface Enrollment {
@@ -195,6 +196,19 @@ export function useEnrollments() {
           title: "Enrolled!",
           description: "You've successfully enrolled in this course.",
         });
+
+        // Send enrollment confirmation email (fire and forget)
+        if (user.email) {
+          const course = getCourseByCode(courseCode);
+          supabase.functions.invoke("send-waitlist-email", {
+            body: {
+              email: user.email,
+              name: user.user_metadata?.display_name || "",
+              type: "enrollment",
+              courseName: course?.title || courseCode,
+            },
+          }).catch((err) => console.error("Enrollment email error:", err));
+        }
 
         return { error: null, data: data as Enrollment };
       } catch (err) {
@@ -466,6 +480,19 @@ export function useEnrollments() {
           title: "Course Completed! 🎉",
           description: "Congratulations on completing this course!",
         });
+
+        // Send certificate email (fire and forget)
+        if (user.email) {
+          const course = getCourseByCode(courseCode);
+          supabase.functions.invoke("send-waitlist-email", {
+            body: {
+              email: user.email,
+              name: user.user_metadata?.display_name || "",
+              type: "certificate",
+              courseName: course?.title || courseCode,
+            },
+          }).catch((err) => console.error("Certificate email error:", err));
+        }
 
         // Auto-enroll next course in the degree path
         await autoEnrollNextCourse(user.id);
