@@ -1,8 +1,17 @@
+import { Helmet } from "react-helmet-async";
 import { PageLayout } from "@/components/layout/PageLayout";
 
 export default function Privacy() {
   return (
     <PageLayout>
+      <Helmet>
+        <title>Privacy Policy | Hoodtorial University</title>
+        <meta name="description" content="Read the Hoodtorial University privacy policy and learn how we protect your data." />
+        <meta property="og:title" content="Privacy Policy | Hoodtorial University" />
+        <meta property="og:description" content="Read the Hoodtorial University privacy policy and learn how we protect your data." />
+        <meta property="og:image" content="https://hoodtorialuniversity.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Helmet>
       <div className="container-wide max-w-3xl py-16 md:py-24">
         <h1 className="heading-1 text-foreground mb-4">Hoodtorial University Privacy Policy</h1>
         <div className="prose prose-invert max-w-none space-y-6 text-muted-foreground">

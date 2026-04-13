@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
@@ -184,6 +185,14 @@ export default function Checkout() {
 
   return (
     <PageLayout>
+      <Helmet>
+        <title>Checkout | Hoodtorial University</title>
+        <meta name="description" content="Complete your course enrollment and start your learning journey at Hoodtorial University." />
+        <meta property="og:title" content="Checkout | Hoodtorial University" />
+        <meta property="og:description" content="Complete your course enrollment and start your learning journey at Hoodtorial University." />
+        <meta property="og:image" content="https://hoodtorialuniversity.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Helmet>
       <PaymentSuccessModal
         isOpen={showSuccess}
         tierName={

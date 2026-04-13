@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useWalkthrough } from "@/hooks/useWalkthrough";
@@ -219,6 +220,14 @@ export default function StudentCenter() {
 
   return (
     <PageLayout pageKey="student_center">
+      <Helmet>
+        <title>Student Center | Hoodtorial University</title>
+        <meta name="description" content="Access student services, resources, academic support, and tools at Hoodtorial University." />
+        <meta property="og:title" content="Student Center | Hoodtorial University" />
+        <meta property="og:description" content="Access student services, resources, academic support, and tools at Hoodtorial University." />
+        <meta property="og:image" content="https://hoodtorialuniversity.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Helmet>
       <div className="py-8 px-4">
         <div className="container-wide">
           {/* Header Section - with inline stats */}

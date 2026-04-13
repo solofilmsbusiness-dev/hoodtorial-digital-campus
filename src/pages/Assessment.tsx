@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { useState, useEffect, useMemo, useCallback } from "react";
  import { useNavigate, useSearchParams } from "react-router-dom";
  import { ArrowLeft, ArrowRight, Clock, Trophy, AlertTriangle, Shuffle, BookOpen } from "lucide-react";
@@ -421,6 +422,14 @@ export default function Assessment() {
   if (resultsLoading && stepParam === "degree-recommendation") {
     return (
       <PageLayout>
+      <Helmet>
+        <title>Assessment | Hoodtorial University</title>
+        <meta name="description" content="Complete your course assessments and track your academic progress at Hoodtorial University." />
+        <meta property="og:title" content="Assessment | Hoodtorial University" />
+        <meta property="og:description" content="Complete your course assessments and track your academic progress at Hoodtorial University." />
+        <meta property="og:image" content="https://hoodtorialuniversity.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Helmet>
         <div className="container max-w-4xl py-16 text-center">
           <div className="animate-pulse text-primary font-bold text-xl">
             Loading your assessment data...

@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { PageLayout, Section } from "@/components/layout";
 import { CourseCard, CourseListItem } from "@/components/cards";
 import { Link } from "react-router-dom";
@@ -48,6 +49,14 @@ const Academics = () => {
 
   return (
     <PageLayout pageKey="academics">
+      <Helmet>
+        <title>Academics | Hoodtorial University</title>
+        <meta name="description" content="Explore academic programs, courses, and curriculum at Hoodtorial University." />
+        <meta property="og:title" content="Academics | Hoodtorial University" />
+        <meta property="og:description" content="Explore academic programs, courses, and curriculum at Hoodtorial University." />
+        <meta property="og:image" content="https://hoodtorialuniversity.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Helmet>
       {/* Trial Banner */}
       {isTrialing && <TrialBanner />}
 

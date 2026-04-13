@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { PageLayout } from "@/components/layout";
@@ -53,6 +54,14 @@ export default function StudentGrades() {
 
   return (
     <PageLayout>
+      <Helmet>
+        <title>Grades | Hoodtorial University</title>
+        <meta name="description" content="View your course grades and academic performance at Hoodtorial University." />
+        <meta property="og:title" content="Grades | Hoodtorial University" />
+        <meta property="og:description" content="View your course grades and academic performance at Hoodtorial University." />
+        <meta property="og:image" content="https://hoodtorialuniversity.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Helmet>
       <div className="py-12 px-4">
         <div className="container-wide">
           {/* Breadcrumb */}

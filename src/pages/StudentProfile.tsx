@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { useState, useEffect, useMemo } from "react";
  import { useNavigate, Link } from "react-router-dom";
 import { PageLayout } from "@/components/layout";
@@ -341,6 +342,14 @@ export default function StudentProfile() {
 
   return (
     <PageLayout>
+      <Helmet>
+        <title>My Profile | Hoodtorial University</title>
+        <meta name="description" content="Manage your student profile, personal information, and account settings at Hoodtorial University." />
+        <meta property="og:title" content="My Profile | Hoodtorial University" />
+        <meta property="og:description" content="Manage your student profile, personal information, and account settings at Hoodtorial University." />
+        <meta property="og:image" content="https://hoodtorialuniversity.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Helmet>
       <div className="min-h-screen">
         {/* Unsaved Changes Dialog */}
         <AlertDialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>

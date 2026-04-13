@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { useParams, Navigate } from "react-router-dom";
 import { JourneyView } from "@/components/journey";
 import type { DegreePath } from "@/hooks/useSkillTree";
@@ -14,5 +15,17 @@ export default function SkillTree() {
 
   const degreePath = path as DegreePath;
 
-  return <JourneyView path={degreePath} />;
+  return (
+    <>
+      <Helmet>
+        <title>Skill Tree | Hoodtorial University</title>
+        <meta name="description" content="Track your academic skills and progression pathways at Hoodtorial University." />
+        <meta property="og:title" content="Skill Tree | Hoodtorial University" />
+        <meta property="og:description" content="Track your academic skills and progression pathways at Hoodtorial University." />
+        <meta property="og:image" content="https://hoodtorialuniversity.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Helmet>
+      <JourneyView path={degreePath} />
+    </>
+  );
 }

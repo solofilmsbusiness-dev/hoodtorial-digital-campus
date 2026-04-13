@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { PageLayout } from "@/components/layout";
@@ -193,6 +194,14 @@ export default function Community() {
 
   return (
     <PageLayout pageKey="community">
+      <Helmet>
+        <title>Community | Hoodtorial University</title>
+        <meta name="description" content="Connect with fellow students, join discussions, and build your academic network at Hoodtorial University." />
+        <meta property="og:title" content="Community | Hoodtorial University" />
+        <meta property="og:description" content="Connect with fellow students, join discussions, and build your academic network at Hoodtorial University." />
+        <meta property="og:image" content="https://hoodtorialuniversity.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Helmet>
       <div className="py-6 px-4">
         <div className="container-wide">
           {/* Breadcrumb */}

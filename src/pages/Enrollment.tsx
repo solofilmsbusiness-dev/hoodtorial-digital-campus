@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { TierCard } from "@/components/cards/TierCard";
 import { Check, X, Clock, AlertCircle, Info } from "lucide-react";
@@ -77,6 +78,14 @@ export default function Enrollment() {
   
   return (
     <PageLayout>
+      <Helmet>
+        <title>Enrollment | Hoodtorial University</title>
+        <meta name="description" content="Enroll in courses and begin your academic journey at Hoodtorial University." />
+        <meta property="og:title" content="Enrollment | Hoodtorial University" />
+        <meta property="og:description" content="Enroll in courses and begin your academic journey at Hoodtorial University." />
+        <meta property="og:image" content="https://hoodtorialuniversity.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Helmet>
       {/* Trial Banner */}
       {isTrialing && (
         <div className="bg-primary/10 border-b border-primary/30">

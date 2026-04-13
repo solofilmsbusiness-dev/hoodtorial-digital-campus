@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { PageLayout } from "@/components/layout";
@@ -35,6 +36,14 @@ export default function Messages() {
 
   return (
     <PageLayout pageKey="messages">
+      <Helmet>
+        <title>Messages | Hoodtorial University</title>
+        <meta name="description" content="View and send messages to classmates and instructors at Hoodtorial University." />
+        <meta property="og:title" content="Messages | Hoodtorial University" />
+        <meta property="og:description" content="View and send messages to classmates and instructors at Hoodtorial University." />
+        <meta property="og:image" content="https://hoodtorialuniversity.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Helmet>
       <div className="py-6 px-4 h-[calc(100vh-12rem)]">
         <div className="container max-w-6xl mx-auto h-full">
           <Breadcrumb className="mb-4">
