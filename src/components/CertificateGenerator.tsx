@@ -226,8 +226,8 @@ const CertificateGenerator = ({
 
       // Record certificate issuance (best-effort, graceful failure)
       if (user) {
-        await supabase
-          .from("certificates" as never)
+        await (supabase
+          .from("certificates" as any) as any)
           .upsert(
             { user_id: user.id, course_id: courseCode },
             { onConflict: "user_id,course_id" }
