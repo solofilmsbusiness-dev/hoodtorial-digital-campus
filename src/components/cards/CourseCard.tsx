@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { Clock, BookOpen, ArrowRight, Lock, CheckCircle2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
-import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
+import { motion, useMotionValue, useSpring } from "framer-motion";
 import { useRef } from "react";
 import { useEnrollments } from "@/hooks/useEnrollments";
 
@@ -39,25 +39,24 @@ export function CourseCard({
   const enrollment = getEnrollment(code);
   
   // 3D tilt effect
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const mouseXSpring = useSpring(x, { stiffness: 300, damping: 30 });
-  const mouseYSpring = useSpring(y, { stiffness: 300, damping: 30 });
-  const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], [8, -8]);
-  const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], [-8, 8]);
+  const rotateX = useMotionValue(0);
+  const rotateY = useMotionValue(0);
+  const springConfig = { stiffness: 300, damping: 30 };
+  const rotateXSpring = useSpring(rotateX, springConfig);
+  const rotateYSpring = useSpring(rotateY, springConfig);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (!ref.current) return;
     const rect = ref.current.getBoundingClientRect();
     const xPct = (e.clientX - rect.left) / rect.width - 0.5;
     const yPct = (e.clientY - rect.top) / rect.height - 0.5;
-    x.set(xPct);
-    y.set(yPct);
+    rotateX.set(-yPct * 16);
+    rotateY.set(xPct * 16);
   };
 
   const handleMouseLeave = () => {
-    x.set(0);
-    y.set(0);
+    rotateX.set(0);
+    rotateY.set(0);
   };
 
   const levelColors = {
@@ -79,8 +78,8 @@ export function CourseCard({
   return (
     <motion.div
       style={{
-        rotateX,
-        rotateY,
+        rotateX: rotateXSpring,
+        rotateY: rotateYSpring,
         transformStyle: "preserve-3d",
         perspective: "1000px",
       }}
