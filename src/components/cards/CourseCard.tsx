@@ -50,13 +50,13 @@ export function CourseCard({
     const rect = ref.current.getBoundingClientRect();
     const xPct = (e.clientX - rect.left) / rect.width - 0.5;
     const yPct = (e.clientY - rect.top) / rect.height - 0.5;
-    x.set(xPct);
-    y.set(yPct);
+    rotateX.set(-yPct * 16);
+    rotateY.set(xPct * 16);
   };
 
   const handleMouseLeave = () => {
-    x.set(0);
-    y.set(0);
+    rotateX.set(0);
+    rotateY.set(0);
   };
 
   const levelColors = {
