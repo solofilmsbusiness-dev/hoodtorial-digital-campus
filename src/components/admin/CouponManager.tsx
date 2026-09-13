@@ -22,7 +22,7 @@ export function CouponManager() {
   const [createError, setCreateError] = useState("");
 
   async function fetchCoupons() {
-    const { data, error: err } = await supabase
+    const { data, error: err } = await (supabase as any)
       .from("coupons")
       .select("*")
       .order("created_at", { ascending: false });
@@ -30,7 +30,7 @@ export function CouponManager() {
     if (err) {
       setError(err.message);
     } else {
-      setCoupons(data ?? []);
+      setCoupons((data as Coupon[]) ?? []);
     }
     setLoading(false);
   }
@@ -42,7 +42,7 @@ export function CouponManager() {
     setCreating(true);
     setCreateError("");
 
-    const { error: err } = await supabase.from("coupons").insert({
+    const { error: err } = await (supabase as any).from("coupons").insert({
       code: code.toUpperCase().trim(),
       percent_off: parseInt(percentOff, 10),
       expires_at: expiresAt || null,
@@ -60,7 +60,7 @@ export function CouponManager() {
   }
 
   async function toggleActive(id: string, current: boolean) {
-    await supabase.from("coupons").update({ active: !current }).eq("id", id);
+    await (supabase as any).from("coupons").update({ active: !current }).eq("id", id);
     setCoupons((prev) =>
       prev.map((c) => (c.id === id ? { ...c, active: !current } : c))
     );

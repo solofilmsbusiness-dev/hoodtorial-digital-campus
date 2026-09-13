@@ -15,7 +15,7 @@ export function EnrollmentAnalytics() {
     async function fetchEnrollments() {
       const { data: rows, error: err } = await supabase
         .from("enrollments")
-        .select("course_id");
+        .select("course_code");
 
       if (err) {
         setError(err.message);
@@ -25,7 +25,7 @@ export function EnrollmentAnalytics() {
 
       const counts: Record<string, number> = {};
       for (const row of rows ?? []) {
-        counts[row.course_id] = (counts[row.course_id] ?? 0) + 1;
+        counts[row.course_code] = (counts[row.course_code] ?? 0) + 1;
       }
 
       const sorted = Object.entries(counts)
