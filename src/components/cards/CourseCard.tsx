@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { Clock, BookOpen, ArrowRight, Lock, CheckCircle2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
-import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
+import { motion, useMotionValue, useSpring } from "framer-motion";
 import { useRef } from "react";
 import { useEnrollments } from "@/hooks/useEnrollments";
 
@@ -78,8 +78,8 @@ export function CourseCard({
   return (
     <motion.div
       style={{
-        rotateX,
-        rotateY,
+        rotateX: rotateXSpring,
+        rotateY: rotateYSpring,
         transformStyle: "preserve-3d",
         perspective: "1000px",
       }}
