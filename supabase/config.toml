@@ -29,6 +29,3 @@ verify_jwt = false
 
 [functions.send-waitlist-email]
 verify_jwt = false
-
-[functions.temp-admin-fix]
-verify_jwt = false
