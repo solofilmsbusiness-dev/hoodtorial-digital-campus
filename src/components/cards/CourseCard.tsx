@@ -39,12 +39,11 @@ export function CourseCard({
   const enrollment = getEnrollment(code);
   
   // 3D tilt effect
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const mouseXSpring = useSpring(x, { stiffness: 300, damping: 30 });
-  const mouseYSpring = useSpring(y, { stiffness: 300, damping: 30 });
-  const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], [8, -8]);
-  const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], [-8, 8]);
+  const rotateX = useMotionValue(0);
+  const rotateY = useMotionValue(0);
+  const springConfig = { stiffness: 300, damping: 30 };
+  const rotateXSpring = useSpring(rotateX, springConfig);
+  const rotateYSpring = useSpring(rotateY, springConfig);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (!ref.current) return;
