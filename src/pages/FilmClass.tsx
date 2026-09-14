@@ -63,7 +63,7 @@ const lessons: Lesson[] = [
 const shots = [
   { id: "wide", label: "WIDE", image: sequenceWide, detail: "Establishes the studio and left-to-right arrival.", alt: "Cinematic wide view of a filmmaker in a charcoal jacket walking left to right toward a warmly lit urban studio entrance." },
   { id: "medium", label: "MEDIUM", image: sequenceMedium, detail: "Reveals the person reaching for the entrance.", alt: "Cinematic medium view of the same filmmaker in profile, extending a hand right toward the black steel studio door." },
-  { id: "close", label: "CLOSE-UP", image: sequenceClose, detail: "Cinematic close-up of the same gold-trimmed jacket cuff and hand guiding a brass key into the studio door lock." },
+  { id: "close", label: "CLOSE-UP", image: sequenceClose, detail: "Shows the useful detail: key entering lock.", alt: "Cinematic close-up of the same gold-trimmed jacket cuff and hand guiding a brass key into the studio door lock." },
 ] as const;
 
 type ShotId = (typeof shots)[number]["id"];
