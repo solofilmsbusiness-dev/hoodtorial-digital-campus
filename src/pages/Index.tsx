@@ -10,6 +10,8 @@ import {
   Clock,
   Star,
   CheckCircle2,
+  BookOpen,
+  Users,
 } from "lucide-react";
 import heroLogo from "@/assets/hero-logo.png";
 import heroVideo from "@/assets/hero-video.mp4";
