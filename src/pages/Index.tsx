@@ -6,17 +6,12 @@ import { ScrollReveal, CountingNumber } from "@/components/animations";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
-  Film,
-  Palette,
-  Clapperboard,
-  Camera,
-  Video,
-  BookOpen,
   Zap,
   Clock,
-  Users,
   Star,
   CheckCircle2,
+  BookOpen,
+  Users,
 } from "lucide-react";
 import heroLogo from "@/assets/hero-logo.png";
 import heroVideo from "@/assets/hero-video.mp4";
@@ -30,44 +25,7 @@ function courseCount(deptId: string) {
 
 // ── data ───────────────────────────────────────────────────────────────────────
 
-const displayDepartments = [
-  {
-    id: "cinematography",
-    name: "Cinematography",
-    icon: Film,
-    description: "Master lenses, light, and movement for cinematic footage.",
-  },
-  {
-    id: "post-production",
-    name: "Post-Production",
-    icon: Palette,
-    description: "Edit, color grade, and mix audio like a pro.",
-  },
-  {
-    id: "directing",
-    name: "Directing",
-    icon: Clapperboard,
-    description: "Lead creative vision from concept to final cut.",
-  },
-  {
-    id: "photography",
-    name: "Photography",
-    icon: Camera,
-    description: "Still imagery, composition, and storytelling through stills.",
-  },
-  {
-    id: "camera-systems",
-    name: "Camera Systems",
-    icon: Video,
-    description: "Sony, Blackmagic, DJI — know every tool of the trade.",
-  },
-  {
-    id: "production",
-    name: "Production",
-    icon: BookOpen,
-    description: "Pre-production, logistics, and on-set execution.",
-  },
-];
+const displayDepartments = departments.filter((department) => department.id !== "all");
 
 const pillars = [
   {
@@ -91,10 +49,10 @@ const pillars = [
 ];
 
 const stats = [
-  { value: "50K+", label: "YouTube Subscribers" },
-  { value: "25K+", label: "Instagram Followers" },
-  { value: "500+", label: "Students Enrolled" },
-  { value: "25", label: "Courses" },
+  { value: String(courses.length), label: "Catalog Courses" },
+  { value: String(displayDepartments.length), label: "Departments" },
+  { value: "3", label: "Free Sample Lessons" },
+  { value: "1", label: "Interactive Mini-Class" },
 ];
 
 // ── Waitlist form ──────────────────────────────────────────────────────────────
@@ -257,12 +215,13 @@ const Index = () => {
                   Start Learning
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
-                <a
-                  href="#waitlist"
+                <Link
+                  to="/film-class"
                   className="inline-flex items-center gap-2 h-14 px-8 border-2 border-border text-foreground font-bold uppercase tracking-wide hover:border-primary hover:bg-primary/10 transition-all duration-300"
                 >
-                  Join Waitlist
-                </a>
+                  Try a Free Lesson
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
               </div>
 
               {/* Scroll indicator */}
@@ -306,7 +265,7 @@ const Index = () => {
                   <span className="text-gold-gradient text-glow">MASTER</span>
                 </h2>
                 <p className="mt-4 text-muted-foreground text-lg max-w-2xl mx-auto">
-                  Six departments. Every skill you need to go from phone footage to cinematic film.
+                  {displayDepartments.length} departments in the current catalog. Course listings include available and planned curriculum.
                 </p>
               </div>
             </ScrollReveal>

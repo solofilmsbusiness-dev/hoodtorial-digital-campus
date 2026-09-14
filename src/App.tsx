@@ -48,6 +48,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Friends = lazy(() => import("./pages/Friends"));
 const Messages = lazy(() => import("./pages/Messages"));
 const PublicProfile = lazy(() => import("./pages/PublicProfile"));
+const FilmClass = lazy(() => import("./pages/FilmClass"));
 
 const queryClient = new QueryClient();
 
@@ -105,6 +106,7 @@ function JourneyRedirect() {
            <Route path="/about" element={<About />} />
             <Route path="/shop" element={<Shop />} />
             <Route path="/privacy" element={<Privacy />} />
+            <Route path="/film-class" element={<FilmClass />} />
            <Route path="/community" element={
              <AssessmentRequiredRoute>
                <Community />

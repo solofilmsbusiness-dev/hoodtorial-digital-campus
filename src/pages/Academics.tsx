@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet-async";
 import { PageLayout, Section } from "@/components/layout";
 import { CourseCard, CourseListItem } from "@/components/cards";
 import { Link } from "react-router-dom";
-import { ArrowRight, BookOpen, Clock, Award, Users, LayoutGrid, List, Search, X } from "lucide-react";
+import { ArrowRight, BookOpen, Film, Layers3, LayoutGrid, List, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { departments } from "@/data/courses";
@@ -10,13 +10,6 @@ import { TrialBanner } from "@/components/subscription";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useCourseStatus } from "@/hooks/useCourseStatus";
 import { Skeleton } from "@/components/ui/skeleton";
-
-const stats = [
-  { icon: BookOpen, value: "16", label: "Total Courses" },
-  { icon: Clock, value: "85+", label: "Hours of Content" },
-  { icon: Award, value: "64", label: "Total Credits" },
-  { icon: Users, value: "4", label: "Departments" },
-];
 
 const Academics = () => {
   const { isTrialing } = useSubscription();
@@ -43,9 +36,15 @@ const Academics = () => {
   });
 
   const activeDepartment = departments.find(d => d.id === activeFilter);
-
-  const totalCredits = filteredCourses.reduce((acc, c) => acc + c.credits, 0);
-  const totalLessons = filteredCourses.reduce((acc, c) => acc + c.lessons, 0);
+  const departmentCount = departments.filter((department) => department.id !== "all").length;
+  const availableCount = courses.filter((course) => !course.isComingSoon).length;
+  const plannedCount = courses.length - availableCount;
+  const stats = [
+    { icon: BookOpen, value: String(courses.length), label: "Catalog Courses" },
+    { icon: Film, value: String(availableCount), label: "Available Now" },
+    { icon: Layers3, value: String(plannedCount), label: "Planned" },
+    { icon: BookOpen, value: String(departmentCount), label: "Departments" },
+  ];
 
   return (
     <PageLayout pageKey="academics">
@@ -70,16 +69,19 @@ const Academics = () => {
           <div className="max-w-4xl">
             <span className="tag-sticker mb-6 animate-reveal">
               <BookOpen className="w-3 h-3 mr-2" />
-              Full Curriculum
+              Course Catalog
             </span>
             <h1 className="heading-1 mt-4 mb-6 animate-reveal stagger-1">
               MASTER THE
               <span className="text-neon-gradient text-glow"> CRAFT</span>
             </h1>
             <p className="body-large text-muted-foreground max-w-2xl animate-reveal stagger-2">
-              16 courses across 4 departments. 85+ hours of content. Each class earns credits toward your degree. 
-              No filler—every lesson teaches you something real.
+              Explore {courses.length} catalog courses across {departmentCount} departments. Available courses appear first; planned curriculum is clearly marked Coming Soon.
             </p>
+            <Link to="/film-class" className="btn-brutal mt-8 inline-flex animate-reveal stagger-3">
+              Try a Free Lesson
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Link>
           </div>
 
           {/* Stats */}
@@ -152,16 +154,7 @@ const Academics = () => {
               Showing <span className="text-foreground font-bold">{filteredCourses.length}</span> courses
             </div>
             
-            <div className="flex items-center gap-6">
-              <div className="flex gap-4 text-sm">
-                <div className="text-muted-foreground">
-                  Credits: <span className="text-primary font-bold">{totalCredits}</span>
-                </div>
-                <div className="text-muted-foreground">
-                  Lessons: <span className="text-foreground font-bold">{totalLessons}</span>
-                </div>
-              </div>
-
+              <div className="flex items-center gap-6">
               {/* View Toggle */}
               <div className="flex border-2 border-border">
                 <button
@@ -266,14 +259,13 @@ const Academics = () => {
       <Section className="bg-card/50 bg-noise">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div className="animate-slide-left">
-            <span className="tag-sticker mb-6">Earn Your Degree</span>
+            <span className="tag-sticker mb-6">Learning Paths</span>
             <h2 className="heading-2 text-foreground mb-6 mt-4">
-              THESE COURSES
-              <span className="text-gold-gradient text-glow"> COUNT</span>
+              BUILD YOUR
+              <span className="text-gold-gradient text-glow"> PATH</span>
             </h2>
             <p className="body-large text-muted-foreground mb-8">
-              Every course you complete earns credits toward your official Hoodtorial University degree. 
-              Complete the full curriculum and graduate with real credentials.
+              Organize your skill-building through Hoodtorial learning paths and completion milestones. Hoodtorial University is an independent educational platform and is not an accredited institution.
             </p>
 
             <div className="grid grid-cols-2 gap-4 mb-8">
@@ -309,7 +301,7 @@ const Academics = () => {
                   <div key={index} className="flex items-center gap-3 p-3 border border-border bg-muted/30">
                     <dept.icon className="w-5 h-5 text-muted-foreground" />
                     <span className="text-sm font-medium text-foreground flex-1">{dept.name}</span>
-                    <span className="text-xs text-muted-foreground">0/4</span>
+                   <span className="text-xs text-muted-foreground">Catalog</span>
                   </div>
                 ))}
               </div>
@@ -329,7 +321,7 @@ const Academics = () => {
         <div className="text-center p-12 border-2 border-border bg-card/50 animate-reveal">
           <h3 className="heading-3 text-foreground mb-4">READY TO START?</h3>
           <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
-            Enroll now to unlock all 16 courses and start earning credits toward your degree.
+             Review the available catalog, choose a learning path, and enroll when you are ready.
           </p>
           <Link to="/enrollment" className="btn-brutal inline-flex animate-glow-pulse">
             Enroll Now
