@@ -4,7 +4,7 @@
 
 This is an editable production plan for no-on-camera course media. The `/film-class` page currently implements three **interactive animated lessons** tied to HU-101. They are not videos, do not include a fake player, and do not award enrollment progress or degree credit.
 
-The narrated-video outlines below are **future production specifications**. Use the creator's own audio-only voice. Do not use an AI narrator, synthetic replacement, or voice cloning. Record short natural takes first; animation timing should follow the approved recordings rather than forcing speech into a predetermined pace.
+The narrated-video outlines below are **future production specifications**. Narration will use the creator's existing professional ElevenLabs voice clone. Do not generate unrelated narration or substitute a different voice. Produce short, natural audio-only takes first; animation timing should follow the approved audio rather than forcing speech into a predetermined pace.
 
 ## First production batch: real catalog IDs
 
@@ -38,13 +38,13 @@ Do not describe these planned assets as available until each has been produced, 
 9. **Navigation:** previous, next, reset/replay.
 10. **Accessibility review:** keyboard operation, visible focus, semantic labels, contrast, captions/transcript, and reduced motion.
 
-## Voice recording workflow
+## Narration production workflow
 
-- Record the creator's own voice as audio only in a quiet, soft-furnished space.
-- Record each numbered take separately. Aim for conversational delivery, not announcer delivery.
+- Generate only the approved script through the creator's own professional ElevenLabs voice clone; never substitute an AI narrator or another person's voice.
+- Produce each numbered take separately. Aim for conversational delivery, not announcer delivery.
 - Leave a clean second before and after each take. If a sentence feels crowded, split it rather than speeding up.
 - Name files by lesson and take, for example `hu101-l5-take-01.wav`.
-- Keep the strongest natural performance; do not clone, synthesize, or replace the creator's voice with AI.
+- Keep the strongest natural take from the creator's authorized clone and do not generate unrelated speech.
 - After the final audio is approved, mark its actual duration and retime animation beats to the waveform. The timings below are editorial targets, not demands on delivery.
 
 ## Future narrated video 1 — `hu101-l5` Rule of Thirds Mastery
@@ -94,7 +94,7 @@ Do not describe these planned assets as available until each has been produced, 
 
 1. Lock the teaching objective and claims against the current catalog entry.
 2. Draft and read the audio takes aloud; shorten anything that sounds written rather than spoken.
-3. Record the creator’s voice in separate takes and approve the performance.
+3. Generate separate takes with the creator’s authorized ElevenLabs voice clone and approve the performance.
 4. Build a timing sheet from the actual waveform and transcript.
 5. Create the storyboard and animatic using that timing sheet.
 6. Produce reusable visual assets, then animate comparisons and callouts.
