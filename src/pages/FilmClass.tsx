@@ -4,7 +4,7 @@ import { ArrowRight, Download, RotateCcw, Sparkles } from "lucide-react";
 import { PageLayout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import rooftopKeyframe from "@/assets/storytelling-rooftop-keyframe.png.asset.json";
+import rooftopKeyframe from "@/assets/storytelling-rooftop-keyframe.png";
 
 const KEYFRAME_ALT =
   "Hand-drawn 2D animation keyframe: a young Black filmmaker in a rust jacket stands on a Brooklyn rooftop behind a cinema camera on a tripod, looking toward a painted golden sunset over the city skyline, bridge, and river.";
@@ -63,7 +63,7 @@ const question = {
   correct: 1,
   explanations: [
     "A reaction is not filler. If it were only spacing, you could cut it and lose nothing — but cutting it here makes the phone appear out of nowhere.",
-    "Correct. The reaction is where the audience watches the problem land and a decision form. Remove it and the phone feels sudden; hide the dead camera and the choice feels random.",
+    "The reaction is where the audience watches the problem land and a decision form. Remove it and the phone feels sudden; hide the dead camera and the choice feels random.",
     "Nothing is required. This reaction earns its place because it carries the story beat — the choice — that no other shot in the scene shows.",
   ],
 };
@@ -144,7 +144,7 @@ export default function FilmClass() {
       <main className="container-wide py-10 md:py-14">
         <figure className="overflow-hidden border-2 border-border shadow-2xl">
           <img
-            src={rooftopKeyframe.url}
+            src={rooftopKeyframe}
             alt={KEYFRAME_ALT}
             width={1664}
             height={960}
@@ -163,7 +163,7 @@ export default function FilmClass() {
         <section className="mt-14">
           <h2 className="heading-3">The four story beats</h2>
           <p className="mt-3 max-w-3xl text-muted-foreground">
-            Every scene that works without dialogue runs the same engine: a character wants something, something stops them, they decide, and the decision costs or changes something. Select a beat to see the craft behind it.
+            A useful structure for this exercise is: a character wants something, an obstacle interrupts them, and a decision changes the outcome. Select a beat to see the craft behind it.
           </p>
           <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {beats.map((beat, i) => {
@@ -215,7 +215,7 @@ export default function FilmClass() {
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h2 className="heading-3">Narration transcript</h2>
-              <p className="mt-2 text-sm text-muted-foreground">The complete lesson narration, in text. Recorded in the Cam Voice for the animated release.</p>
+              <p className="mt-2 text-sm text-muted-foreground">The complete lesson narration, written out in full text.</p>
             </div>
             <Button variant="outline" aria-expanded={showTranscript} onClick={() => setShowTranscript((v) => !v)}>
               {showTranscript ? "Hide transcript" : "Read transcript"}
